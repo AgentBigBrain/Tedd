@@ -81,6 +81,8 @@ or update an installed plugin.
 
 Python 3.15 is an optional check for pull requests and development branches.
 Pushes to `main` check the supported Python 3.10 through 3.14 range.
+Routine macOS CI uses the standard Intel macOS 26 runner. Apple Silicon host and
+source-helper qualification remains a separate native check.
 
 The enforced scope is explicit in `pyproject.toml`: Ruff formatting, Ruff linting, and mypy cover every production Python module, while branch coverage measures the complete isolated production suite. Mypy uses the deterministic `win32` target on every host so the Windows security primitives receive the same strict typeshed treatment in local and CI runs; the release matrix separately executes the runtime on Windows, macOS, and Linux. The release verifier independently discovers production modules, rejects formatter or mypy exclusions, and rejects explicit `Any` in production. Add new production modules to the checked scope in the same change; do not weaken the gate with broad suppressions or exclusions.
 

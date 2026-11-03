@@ -13,6 +13,8 @@ for source and installation status; older entries retain their original test lim
   controls before checking setup behavior.
 - Keep the optional Python 3.15 check on pull requests and development branches.
   Checks on `main` use the supported Python versions.
+- Use standard Intel Mac runners for routine macOS CI after repeated Apple
+  Silicon runner-allocation failures.
 
 ## 1.2.0-rc.12: 2026-11-03
 
