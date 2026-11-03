@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "tedd-graph": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["./skills/obsidian-knowledge-graph/scripts/tedd_graph_mcp.py"],
+      "cwd": "./"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "tedd",
+  "description": "Local project memory and delegated-work workflows.",
+  "owner": {"name": "AgentBigBrain"},
+  "plugins": [
+    {"name": "tedd", "source": "./plugins/tedd", "description": "Local project memory and delegated-work workflows."}
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "tedd",
+  "version": "1.2.0-rc.12",
+  "description": "Local project memory and delegated-work workflows.",
+  "author": {"name": "AgentBigBrain", "url": "https://github.com/AgentBigBrain"},
+  "homepage": "https://github.com/AgentBigBrain/Tedd#readme",
+  "repository": "https://github.com/AgentBigBrain/Tedd",
+  "license": "Apache-2.0",
+  "userConfig": {
+    "python": {
+      "type": "file",
+      "title": "Qualified Python interpreter",
+      "description": "Absolute executable path verified by Tedd setup, with Python 3.10 through 3.14 and SQLite FTS5.",
+      "required": true
+    },
+    "graph_config": {
+      "type": "file",
+      "title": "Existing Tedd graph configuration",
+      "description": "Private configuration file for the existing shared brain verified by Tedd setup.",
+      "required": true
+    }
+  },
+  "hooks": {
+      "SessionStart": [{"hooks": [{"type": "command", "command": "${user_config.python}", "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py", "--host", "claude", "--config", "${user_config.graph_config}"], "timeout": 10}]}],
+      "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "${user_config.python}", "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py", "--host", "claude", "--config", "${user_config.graph_config}"], "timeout": 10}]}],
+      "Stop": [{"hooks": [{"type": "command", "command": "${user_config.python}", "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py", "--host", "claude", "--config", "${user_config.graph_config}"], "timeout": 10}]}]
+  },
+  "mcpServers": {
+    "tedd-graph": {
+      "command": "${user_config.python}",
+      "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/skills/obsidian-knowledge-graph/scripts/tedd_graph_mcp.py", "--config", "${user_config.graph_config}"]
+    }
+  }
+}

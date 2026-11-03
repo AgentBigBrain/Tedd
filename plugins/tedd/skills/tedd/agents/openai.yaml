@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tedd"
+  short_description: "Coordinate private, durable, verified delegated work"
+  default_prompt: "Use $tedd to coordinate this work, recall only relevant context, and carry it through verified closure."

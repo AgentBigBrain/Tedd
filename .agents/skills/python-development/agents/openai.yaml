@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tedd Python Development"
+  short_description: "Harden and maintain Tedd's Python code"
+  default_prompt: "Use $python-development to review and improve this Tedd Python change safely."

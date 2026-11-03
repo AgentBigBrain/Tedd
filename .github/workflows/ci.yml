@@ -1,0 +1,201 @@
+name: Verify Tedd infrastructure
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'fix/**'
+      - 'tedd-*-beta.*'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 45 || 30 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: ubuntu-latest
+            python-version: "3.14"
+          - os: windows-latest
+            python-version: "3.10"
+          - os: windows-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.10"
+          - os: macos-latest
+            python-version: "3.14"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify infrastructure boundary and tests (Unix)
+        if: runner.os != 'Windows'
+        run: ./scripts/verify-release.sh --expected-python "${{ matrix.python-version }}"
+
+      - name: Verify infrastructure boundary and tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\scripts\verify-release.ps1 --expected-python "${{ matrix.python-version }}"
+
+  dev-environment:
+    name: Developer dependencies / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Exercise the python_version < 3.11 marker branch.
+          - os: ubuntu-latest
+            python-version: "3.10"
+          # Exercise the other marker branch on both remaining supported OSes.
+          - os: windows-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.14"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Resolve the reviewed development dependency group
+        run: |
+          python -m pip install --disable-pip-version-check pip==26.1.2
+          python -m pip install --group dev
+
+      - name: Verify the exact reviewed tool closure
+        run: python -c "from scripts.verify_release import validate_dev_tools; validate_dev_tools()"
+
+      - name: Verify YAML-backed projection contracts
+        run: python -m unittest tests.knowledge_graph.test_knowledge_graph_readable_connections
+
+  windows-office:
+    name: Windows live Office helpers / Python 3.12
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned synthetic-test readers
+        shell: pwsh
+        run: |
+          choco install libreoffice-fresh --version=26.2.6 --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          choco install poppler --version=26.9.0 --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --disable-pip-version-check openpyxl==3.1.5 python-pptx==1.0.2 python-docx==1.2.0 pdfplumber==0.11.9 pypdf==6.10.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run unskipped live Office regressions
+        shell: pwsh
+        run: |
+          $converter = "${env:ProgramFiles}\LibreOffice\program\soffice.com"
+          $renderer = Get-ChildItem "${env:ChocolateyInstall}\lib\poppler\tools" -Filter pdftoppm.exe -Recurse -File | Select-Object -First 1 -ExpandProperty FullName
+          if (!(Test-Path $converter) -or !$renderer) { throw "Required Office helpers are missing" }
+          & $converter --version
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "LibreOffice version check failed" }
+          & $renderer -v
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Poppler version check failed" }
+          $env:TEDD_TEST_OFFICE_CONVERTER = $converter
+          $env:TEDD_TEST_PDF_RENDERER = $renderer
+          @'
+          import importlib.util
+          import os
+          import unittest
+
+          for variable in ("TEDD_TEST_OFFICE_CONVERTER", "TEDD_TEST_PDF_RENDERER"):
+              if not os.environ.get(variable):
+                  raise SystemExit(f"Missing test helper: {variable}")
+          for module in ("openpyxl", "pptx", "docx", "pdfplumber", "pypdf"):
+              if importlib.util.find_spec(module) is None:
+                  raise SystemExit(f"Missing Python test helper: {module}")
+          names = [
+              "tests.knowledge_graph.test_source_office.OfficeTests.test_real_sheet_and_slide_layouts_keep_exact_original_and_clean_staging",
+              "tests.knowledge_graph.test_source_intake.SourceIntakeCommandTests.test_real_document_pages_review_capture_and_offline_read",
+          ]
+          result = unittest.TextTestRunner(verbosity=2).run(
+              unittest.defaultTestLoader.loadTestsFromNames(names)
+          )
+          if not result.wasSuccessful() or result.testsRun != len(names) or result.skipped:
+              raise SystemExit("Live Office regressions failed or were skipped")
+          '@ | python -
+
+  quality:
+    name: Developer quality gates / Python 3.14
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install repository-local developer tools
+        run: |
+          python -m pip install --disable-pip-version-check pip==26.1.2
+          python -m pip install --group dev
+
+      - name: Run lint, format, types, tests, and branch coverage
+        run: python scripts/verify_release.py --quality --expected-python "3.14"
+
+  python-prerelease:
+    name: Experimental / Python 3.15-dev
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up prerelease Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.15-dev"
+          check-latest: true
+
+      - name: Run dependency-free release verification
+        run: ./scripts/verify-release.sh --expected-python "3.15"

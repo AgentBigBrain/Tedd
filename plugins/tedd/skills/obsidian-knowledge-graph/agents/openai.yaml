@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian Knowledge Graph"
+  short_description: "Capture, recall, and audit durable knowledge"
+  default_prompt: "Use $obsidian-knowledge-graph to recall prior work, capture durable outcomes, audit semantic hygiene when triggered, and refresh my Obsidian projection."

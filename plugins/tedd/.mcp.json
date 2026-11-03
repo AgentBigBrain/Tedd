@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tedd-graph": {
+      "command": "python3",
+      "args": ["./skills/obsidian-knowledge-graph/scripts/tedd_graph_mcp.py"],
+      "cwd": "."
+    }
+  }
+}

@@ -1,0 +1,76 @@
+# Operating-system and editor artifacts
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python-generated files and local environments
+**/__pycache__/
+*.py[cod]
+.coverage*
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local Codex and plugin caches
+.codex/
+.cache/
+.worktrees/
+/.superpowers/
+/superpowers/
+/docs/superpowers/
+*.zip
+*.7z
+*.csv
+*.gz
+*.har
+*.log
+*.tar
+*.tgz
+*.tsv
+
+# Credentials and machine-local configuration
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+**/knowledge-graph/config.json
+**/config.json
+
+# Canonical/private Tedd runtime state
+**/archive.json
+**/scope.json
+**/backup.json
+**/graph.sqlite3
+**/graph.sqlite3-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
+**/graph.db
+**/graph.db-*
+**/*.db
+**/*.db-*
+**/graph.json
+**/graph.json.*
+**/*.jsonl
+**/*.plan.key
+**/*.lock
+**/backups/
+**/packets/
+**/memorybench/cases.json
+**/memorybench/reports/
+**/memorybench/
+**/*.backup
+**/*.rollback-*
+**/*.migration-*
+
+# Generated Obsidian projection
+**/.obsidian/
+**/Codex Knowledge/
+**/Tedd Knowledge/
+**/.codex-projection-manifest.json

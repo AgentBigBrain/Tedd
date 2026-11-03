@@ -1,0 +1,45 @@
+{
+  "name": "tedd",
+  "version": "1.2.0-rc.12",
+  "description": "Local project memory and delegated-work workflows.",
+  "author": {
+    "name": "AgentBigBrain",
+    "url": "https://github.com/AgentBigBrain"
+  },
+  "homepage": "https://github.com/AgentBigBrain/Tedd#readme",
+  "repository": "https://github.com/AgentBigBrain/Tedd",
+  "license": "Apache-2.0",
+  "keywords": [
+    "codex",
+    "agent",
+    "delegated-work",
+    "development",
+    "knowledge-graph",
+    "multi-agent",
+    "obsidian"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/codex.json",
+  "interface": {
+    "displayName": "Tedd",
+    "shortDescription": "Private delegated-work and shared-memory workflows.",
+    "longDescription": "Tedd coordinates delegated work through verified closure with a private operator profile, focused domain skills, an auditable multi-agent knowledge graph, and a review-safe Obsidian projection.",
+    "developerName": "AgentBigBrain",
+    "category": "Productivity",
+    "capabilities": [
+      "Delegated Work",
+      "Development Operations",
+      "Durable Knowledge",
+      "Multi-Agent Coordination"
+    ],
+    "composerIcon": "./assets/tedd-brain.png",
+    "logo": "./assets/tedd-brain.png",
+    "logoDark": "./assets/tedd-brain.png",
+    "defaultPrompt": [
+      "Use Tedd to coordinate this work from scoped intake through verified closure.",
+      "Recall the relevant graph context, then help me continue this work safely.",
+      "Audit this Tedd handoff and capture only the durable verified outcome."
+    ]
+  }
+}

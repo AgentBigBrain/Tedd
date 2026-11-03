@@ -1,0 +1,7 @@
+interface:
+  display_name: "Tedd Orchestration"
+  short_description: "Route parallel work and responsive conversations"
+  default_prompt: "Use $orchestrate-work to coordinate this work while keeping conversations responsive."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py\" --host codex", "commandWindows": "& \"$env:CLAUDE_PLUGIN_ROOT/hooks/codex_handoff.ps1\"", "timeout": 10}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py\" --host codex", "commandWindows": "& \"$env:CLAUDE_PLUGIN_ROOT/hooks/codex_handoff.ps1\"", "timeout": 10}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/skills/tedd/scripts/tedd_handoff_hook.py\" --host codex", "commandWindows": "& \"$env:CLAUDE_PLUGIN_ROOT/hooks/codex_handoff.ps1\"", "timeout": 10}]}]
+  }
+}

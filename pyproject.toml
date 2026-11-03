@@ -1,0 +1,190 @@
+[dependency-groups]
+dev = [
+    "coverage[toml]==7.15.3",
+    "librt==0.13.0; platform_python_implementation != 'PyPy'",
+    "mypy==1.20.2",
+    "mypy-extensions==1.1.0",
+    "pathspec==1.1.1",
+    "PyYAML==6.0.3",
+    "ruff==0.16.1",
+    "tomli==2.4.1; python_version < '3.11'",
+    "typing-extensions==4.16.0",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+force-exclude = true
+include = [
+    "scripts/**/*.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_setup.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_handoff_hook.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_file_io.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v3_projection.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v3_validation.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_capture.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_cli.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_integration.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_validation.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/platform_support.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_graph_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/**/*.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
+    "tests/**/*.py",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+
+[tool.ruff.format]
+exclude = []
+
+[tool.mypy]
+python_version = "3.10"
+platform = "win32"
+files = [
+    "scripts",
+    "tests/tooling/test_macos_reader_guest.py",
+    "tests/tooling/test_macos_reader_spike.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_setup.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_handoff_hook.py",
+    "tests/tooling/test_tedd_setup.py",
+    "tests/tedd_profile/test_tedd_profile.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_file_io.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v3_projection.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v3_validation.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_capture.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_cli.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_integration.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_validation.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/platform_support.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_graph_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
+    "tests/evaluation",
+    "tests/knowledge_graph/test_knowledge_graph_source_evidence.py",
+    "tests/knowledge_graph/test_source_cli.py",
+    "tests/knowledge_graph/test_source_host.py",
+    "tests/knowledge_graph/test_source_google.py",
+    "tests/knowledge_graph/test_source_google_oauth.py",
+    "tests/knowledge_graph/test_source_google_connection.py",
+    "tests/knowledge_graph/test_source_credentials.py",
+    "tests/knowledge_graph/test_source_macos_host.py",
+    "tests/knowledge_graph/test_source_reader_cidata.py",
+    "tests/knowledge_graph/test_source_reader_cold.py",
+    "tests/knowledge_graph/test_source_reader_contracts.py",
+    "tests/knowledge_graph/test_source_reader_guest.py",
+    "tests/knowledge_graph/test_source_reader_host.py",
+    "tests/knowledge_graph/test_source_reader_integration.py",
+    "tests/knowledge_graph/test_source_reader_jobs.py",
+    "tests/knowledge_graph/test_source_reader_policy.py",
+    "tests/knowledge_graph/test_source_reader_process.py",
+    "tests/knowledge_graph/test_source_reader_runtime.py",
+    "tests/knowledge_graph/test_source_mcp.py",
+    "tests/knowledge_graph/test_source_intake.py",
+    "tests/knowledge_graph/test_source_viewer.py",
+    "tests/knowledge_graph/test_source_contracts.py",
+    "tests/knowledge_graph/test_source_images.py",
+    "tests/knowledge_graph/test_source_bmff.py",
+    "tests/knowledge_graph/test_source_svg.py",
+    "tests/knowledge_graph/test_source_documents.py",
+    "tests/knowledge_graph/test_source_office.py",
+    "tests/knowledge_graph/test_source_presentation.py",
+    "tests/knowledge_graph/test_source_preview_recovery.py",
+    "tests/knowledge_graph/test_source_archive.py",
+    "tests/knowledge_graph/test_source_capture.py",
+    "tests/knowledge_graph/test_source_pdf_host.py",
+    "tests/knowledge_graph/test_source_authority.py",
+    "tests/knowledge_graph/test_knowledge_graph_file_io.py",
+    "tests/knowledge_graph/test_knowledge_graph.py",
+    "tests/knowledge_graph/test_knowledge_graph_growth.py",
+    "tests/knowledge_graph/test_knowledge_graph_v3_projection.py",
+    "tests/knowledge_graph/test_knowledge_graph_v3_validation.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_validation.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_integration.py",
+    "tests/knowledge_graph/test_windows_acl_policy.py",
+    "tests/knowledge_graph/test_knowledge_graph_architecture.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_mcp_contracts.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_mcp_stdio.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_mcp_subprocess.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_application_service.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_dispatch.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_facade_services.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_mutations.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_privacy.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_projection.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_query.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_store.py",
+    "tests/knowledge_graph/test_knowledge_graph_legacy_values.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_backup.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_cli_dispatch.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_feed_coordination.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_migrations.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_queries.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_read_snapshot.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_registry.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_service_boundaries.py",
+    "tests/knowledge_graph/test_knowledge_graph_v4_transactions.py",
+    "tests/support",
+]
+check_untyped_defs = true
+disallow_any_explicit = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+follow_imports = "skip"
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.knowledge_graph.test_knowledge_graph_v4",
+    "tests.knowledge_graph.test_knowledge_graph_v4_integration",
+    "tests.support.graph_cases",
+    "tests.tedd_profile.test_tedd_profile",
+]
+# These CLI/store integration harnesses intentionally preserve decoded JSON
+# and dynamically loaded facade objects at their test boundaries. The rest of
+# each large suite remains under the global mypy checks.
+disallow_any_explicit = false
+warn_return_any = false
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = [
+    "scripts",
+    "plugins/tedd/skills/tedd/scripts",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts",
+]
+omit = [
+    "*/test_*.py",
+    "*/benchmark_*.py",
+]
+
+[tool.coverage.report]
+# The full isolated suite measured 70% branch coverage during the responsibility
+# decomposition. Retain the established 55% cross-platform regression floor until
+# the higher baseline is stable on every blocking operating system; raise it only
+# with meaningful tests.
+fail_under = 55
+show_missing = true
+skip_covered = true

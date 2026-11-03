@@ -1,0 +1,20 @@
+{
+  "name": "tedd",
+  "interface": {
+    "displayName": "Tedd"
+  },
+  "plugins": [
+    {
+      "name": "tedd",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tedd"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
