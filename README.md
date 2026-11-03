@@ -5,7 +5,7 @@
 <h1 align="center">Tedd</h1>
 
 <p align="center">
-  Local project memory and delegated work for AI assistants.
+  Persistent local memory for AI coding agents, built for Claude Code and Codex.
 </p>
 
 <p align="center">
@@ -15,10 +15,13 @@
   <a href="https://deepwiki.com/AgentBigBrain/Tedd"><img alt="Ask DeepWiki about Tedd" src="docs/assets/deepwiki-badge.svg"></a>
 </p>
 
-Tedd helps AI assistants carry out work you authorize and remember useful project
-knowledge. It stores that knowledge in a private local graph: a database of
-people, projects, facts, and the connections between them. Its optional source
-archive keeps the evidence behind a memory so you can check the source later.
+Tedd is an open-source memory plugin for Claude Code and OpenAI Codex. It
+remembers useful project knowledge across sessions and carries out work you
+authorize. That knowledge lives in a private local knowledge graph: a SQLite
+database of people, projects, facts, decisions, and the connections between
+them, readable through a bundled MCP server and browsable as linked notes in
+Obsidian. An optional source archive keeps the evidence behind a memory so you
+can check the source later.
 
 Codex and Claude Code can use the same local graph, with each task limited to
 its approved project records. Native Windows and macOS checks cover scoped reads,
