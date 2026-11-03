@@ -5,7 +5,8 @@ $ErrorActionPreference = 'Stop'
 if ($env:TEDD_NO_LOCAL_WRITES -eq '1') { exit 0 }
 
 $teddInput = [Console]::OpenStandardInput()
-$teddBuffer = New-Object byte[] (2 * 1024 * 1024 + 1)
+# Keep buffer allocation independent of PowerShell cmdlet discovery.
+$teddBuffer = [byte[]]::new(2 * 1024 * 1024 + 1)
 $teddCount = 0
 $teddProcess = [Diagnostics.Process]::new()
 $teddStarted = $false
