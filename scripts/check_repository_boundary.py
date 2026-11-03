@@ -44,6 +44,7 @@ ALLOWED_SUPPORT_TEXT_PATHS: Final[frozenset[Path]] = frozenset(
     {
         Path("scripts/native/source_av1_validate.c"),
         Path("tests/knowledge_graph/libavif-fixture-LICENSE.txt"),
+        Path("docs/assets/deepwiki-badge.svg"),
     }
 )
 PLUGIN_ICON_REFERENCE: Final = "./assets/tedd-brain.png"

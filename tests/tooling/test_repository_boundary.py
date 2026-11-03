@@ -1127,10 +1127,11 @@ class RepositoryBoundaryTests(unittest.TestCase):
             rogue_errors,
         )
 
-    def test_only_reviewed_native_source_and_fixture_license_paths_are_admitted(self) -> None:
+    def test_only_reviewed_support_text_paths_are_admitted(self) -> None:
         for relative in (
             Path("scripts/native/source_av1_validate.c"),
             Path("tests/knowledge_graph/libavif-fixture-LICENSE.txt"),
+            Path("docs/assets/deepwiki-badge.svg"),
         ):
             with self.subTest(path=relative):
                 path = boundary.ROOT / relative
@@ -1142,6 +1143,7 @@ class RepositoryBoundaryTests(unittest.TestCase):
             Path("tests/knowledge_graph/extra.txt"),
             Path("docs/source_av1_validate.c"),
             Path("docs/libavif-fixture-LICENSE.txt"),
+            Path("docs/assets/extra-badge.svg"),
         ):
             with self.subTest(unapproved=relative):
                 self.assertTrue(

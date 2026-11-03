@@ -5,6 +5,13 @@ Versioning. Repository-only updates have dated entries without changing the
 plugin version. See [current availability](docs/sources/qualification.md#current-availability)
 for source and installation status; older entries retain their original test limits.
 
+## 2026-11-03: Repository updates
+
+- Add a DeepWiki link for exploring Tedd's public code, with a badge stored in
+  the repository so the image loads without an external badge service.
+- Give fresh Windows setup-test folders explicit private ownership and access
+  controls before checking setup behavior.
+
 ## 1.2.0-rc.12: 2026-11-03
 
 - Publish Tedd with fresh public history, vendor-neutral provider guidance, and
@@ -15,6 +22,8 @@ for source and installation status; older entries retain their original test lim
 - Make the saving checks self-contained and explain how to update a pinned Codex
   marketplace installation. Restore executable permissions on the Unix verifier
   and use consistent text line endings across platforms.
+- Allocate the Windows handoff buffer directly through .NET so PowerShell 5.1
+  can process hook input without relying on cmdlet discovery.
 
 Graph and source behavior, archive formats, and access rules are unchanged from
 RC11. Compatibility remains Python 3.10 through 3.14 on Windows, macOS, and Linux,

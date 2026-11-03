@@ -12,6 +12,7 @@
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
   <img alt="Python 3.10 through 3.14" src="https://img.shields.io/badge/Python-3.10%E2%80%933.14-3776AB?logo=python&amp;logoColor=white">
   <img alt="Supported platforms: macOS, Linux, and Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-555">
+  <a href="https://deepwiki.com/AgentBigBrain/Tedd"><img alt="Ask DeepWiki about Tedd" src="docs/assets/deepwiki-badge.svg"></a>
 </p>
 
 Tedd helps AI assistants carry out work you authorize and remember useful project
