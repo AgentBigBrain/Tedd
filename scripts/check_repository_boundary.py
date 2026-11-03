@@ -24,6 +24,7 @@ PORTABLE_PLUGIN_MANIFEST = PLUGIN_ROOT / "plugin.json"
 PORTABLE_MCP_MANIFEST = PLUGIN_ROOT / "mcp.json"
 MCP_CONFIG = PLUGIN_ROOT / ".mcp.json"
 PLUGIN_ICON = ROOT / "plugins/tedd/assets/tedd-brain.png"
+SOCIAL_PREVIEW = ROOT / "docs/assets/social-preview.png"
 MARKETPLACE_MANIFEST = ROOT / ".agents/plugins/marketplace.json"
 CLAUDE_PLUGIN_MANIFEST = PLUGIN_ROOT / ".claude-plugin/plugin.json"
 CLAUDE_MARKETPLACE_MANIFEST = ROOT / ".claude-plugin/marketplace.json"
@@ -38,7 +39,10 @@ ALLOWED_JSON = {
     (PLUGIN_ROOT / "hooks/codex.json").resolve(),
 }
 ALLOWED_BINARY_PATHS: Final[frozenset[Path]] = frozenset(
-    {Path("plugins/tedd/assets/tedd-brain.png")}
+    {
+        Path("plugins/tedd/assets/tedd-brain.png"),
+        Path("docs/assets/social-preview.png"),
+    }
 )
 ALLOWED_SUPPORT_TEXT_PATHS: Final[frozenset[Path]] = frozenset(
     {
@@ -500,24 +504,30 @@ def plugin_icon_reference_errors(interface: Mapping[str, object]) -> list[str]:
     ]
 
 
-def plugin_icon_file_errors(icon_path: Path) -> list[str]:
-    """Validate the packaged icon without admitting arbitrary binary assets."""
+def png_asset_file_errors(asset_path: Path, label: str) -> list[str]:
+    """Validate one allowed PNG asset without admitting arbitrary binary assets."""
 
     try:
-        metadata = icon_path.lstat()
+        metadata = asset_path.lstat()
     except OSError:
-        return ["plugin icon asset is missing"]
+        return [f"{label} is missing"]
     if not stat.S_ISREG(metadata.st_mode) or (
         getattr(metadata, "st_file_attributes", 0) & WINDOWS_REPARSE_POINT
     ):
-        return ["plugin icon asset must be a regular non-reparse file"]
+        return [f"{label} must be a regular non-reparse file"]
     try:
-        signature = icon_path.read_bytes()[: len(PNG_SIGNATURE)]
+        signature = asset_path.read_bytes()[: len(PNG_SIGNATURE)]
     except OSError:
-        return ["plugin icon asset could not be read"]
+        return [f"{label} could not be read"]
     if signature != PNG_SIGNATURE:
-        return ["plugin icon asset must have a valid PNG signature"]
+        return [f"{label} must have a valid PNG signature"]
     return []
+
+
+def plugin_icon_file_errors(icon_path: Path) -> list[str]:
+    """Validate the packaged icon."""
+
+    return png_asset_file_errors(icon_path, "plugin icon asset")
 
 
 def _atx_heading_offsets(markdown: str) -> list[tuple[int, int, str]]:
@@ -881,6 +891,7 @@ def manifest_errors() -> list[str]:
         errors.extend(plugin_icon_reference_errors(interface))
 
     errors.extend(plugin_icon_file_errors(PLUGIN_ICON))
+    errors.extend(png_asset_file_errors(SOCIAL_PREVIEW, "social preview asset"))
     errors.extend(mcp_packaging_errors())
     errors.extend(
         portable_plugin_errors(
