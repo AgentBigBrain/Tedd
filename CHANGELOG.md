@@ -11,6 +11,8 @@ for source and installation status; older entries retain their original test lim
   the repository so the image loads without an external badge service.
 - Give fresh Windows setup-test folders explicit private ownership and access
   controls before checking setup behavior.
+- Keep the optional Python 3.15 check on pull requests and development branches.
+  Checks on `main` use the supported Python versions.
 
 ## 1.2.0-rc.12: 2026-11-03
 

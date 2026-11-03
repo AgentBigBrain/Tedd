@@ -79,6 +79,9 @@ Check the run for the exact commit being proposed. A green run on an earlier
 commit does not qualify later changes, and CI does not prove desktop discovery
 or update an installed plugin.
 
+Python 3.15 is an optional check for pull requests and development branches.
+Pushes to `main` check the supported Python 3.10 through 3.14 range.
+
 The enforced scope is explicit in `pyproject.toml`: Ruff formatting, Ruff linting, and mypy cover every production Python module, while branch coverage measures the complete isolated production suite. Mypy uses the deterministic `win32` target on every host so the Windows security primitives receive the same strict typeshed treatment in local and CI runs; the release matrix separately executes the runtime on Windows, macOS, and Linux. The release verifier independently discovers production modules, rejects formatter or mypy exclusions, and rejects explicit `Any` in production. Add new production modules to the checked scope in the same change; do not weaken the gate with broad suppressions or exclusions.
 
 Run the private production MemoryBench suite separately when the change affects recall, ranking, scoping, sanitization, subscriptions, context packs, or other read boundaries. See the [graph evaluation requirements](plugins/tedd/skills/obsidian-knowledge-graph/SKILL.md#validation-and-recovery) for its role. Never add that suite or its report to this repository.
