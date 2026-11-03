@@ -20,6 +20,7 @@ import knowledge_graph as graph  # noqa: E402
 import knowledge_graph_v4 as storage  # noqa: E402
 import knowledge_graph_v4_capture as capture  # noqa: E402
 import tedd_setup as setup  # noqa: E402
+from platform_support import set_private_path_mode  # noqa: E402
 from tedd_knowledge_graph.v4_cli_contracts import CaptureRequest, ProducerEnvelope  # noqa: E402
 from tedd_setup import (  # noqa: E402
     SetupRequest,
@@ -160,6 +161,7 @@ class SetupBehaviorTests(unittest.TestCase):
     def test_cli_missing_configuration_is_unavailable_not_success_or_corruption(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
+            set_private_path_mode(root, 0o700)
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -186,6 +188,7 @@ class SetupBehaviorTests(unittest.TestCase):
     def test_missing_configuration_never_initializes_or_creates_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
+            set_private_path_mode(root, 0o700)
             request = SetupRequest(
                 "codex",
                 root / "missing.json",
@@ -445,6 +448,8 @@ class ExistingBrainSetupTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(dir=os.environ.get("LOCALAPPDATA"))
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name).resolve()
+        # Elevated Windows runners can give new directories an Administrators owner.
+        set_private_path_mode(self.root, 0o700)
         graph.ensure_private_directory(self.root)
         self.config = self.root / "graph-config.json"
         self.store_path = self.root / "graph.sqlite3"
