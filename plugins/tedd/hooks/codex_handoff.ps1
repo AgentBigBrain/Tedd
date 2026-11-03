@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:TEDD_NO_LOCAL_WRITES -eq '1') { exit 0 }
 
 $teddInput = [Console]::OpenStandardInput()
-# Keep buffer allocation independent of PowerShell cmdlet discovery.
+# Use .NET for buffer allocation and path construction, avoiding module discovery.
 $teddBuffer = [byte[]]::new(2 * 1024 * 1024 + 1)
 $teddCount = 0
 $teddProcess = [Diagnostics.Process]::new()
@@ -21,7 +21,7 @@ try {
         exit 0
     }
 
-    $teddScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../skills/tedd/scripts/tedd_handoff_hook.py'))
+    $teddScript = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, '../skills/tedd/scripts/tedd_handoff_hook.py'))
     # Resolve through PATH, not CreateProcess's implicit project-directory search.
     $teddProcess.StartInfo.FileName = (Get-Command py.exe -CommandType Application -ErrorAction Stop).Source
     $teddProcess.StartInfo.Arguments = '-3 -B "' + $teddScript + '" --host codex'

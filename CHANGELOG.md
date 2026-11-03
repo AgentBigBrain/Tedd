@@ -24,8 +24,8 @@ for source and installation status; older entries retain their original test lim
 - Make the saving checks self-contained and explain how to update a pinned Codex
   marketplace installation. Restore executable permissions on the Unix verifier
   and use consistent text line endings across platforms.
-- Allocate the Windows handoff buffer directly through .NET so PowerShell 5.1
-  can process hook input without relying on cmdlet discovery.
+- Allocate the Windows handoff buffer and construct its helper path directly
+  through .NET, avoiding module discovery during those startup steps.
 
 Graph and source behavior, archive formats, and access rules are unchanged from
 RC11. Compatibility remains Python 3.10 through 3.14 on Windows, macOS, and Linux,

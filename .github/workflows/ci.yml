@@ -53,6 +53,26 @@ jobs:
         if: runner.os != 'Windows'
         run: ./scripts/verify-release.sh --expected-python "${{ matrix.python-version }}"
 
+      - name: Check Windows handoff transport before the full suite
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          @'
+          import os
+          import subprocess
+          import sys
+          from scripts.verify_release import isolated_test_environment
+
+          keys = ("SystemRoot", "WINDIR", "PATH", "PATHEXT", "SystemDrive", "ProgramData", "USERPROFILE", "HOME")
+          inherited = {key: os.environ[key] for key in keys if key in os.environ}
+          with isolated_test_environment(inherited) as environment:
+              subprocess.run(
+                  [sys.executable, "-B", "-m", "unittest", "-v",
+                   "tests.tooling.test_tedd_handoff_hook.HandoffHookTests.test_packaged_windows_hook_receives_json_through_console_free_powershell"],
+                  env=environment, check=True,
+              )
+          '@ | python -
+
       - name: Verify infrastructure boundary and tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
