@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 from unittest import mock
+from urllib.parse import urlsplit
 
 from tedd_knowledge_graph.source_contracts import (
     SourceArchiveError,
@@ -103,7 +104,11 @@ class GoogleSourceTests(unittest.TestCase):
         ) as fetch:
             self.assertEqual(session.acquire(self.metadata, 1024), payload)
         self.assertEqual(
-            sum("docs.googleapis.com" in call.args[0] for call in fetch.call_args_list), 1
+            sum(
+                urlsplit(call.args[0]).hostname == "docs.googleapis.com"
+                for call in fetch.call_args_list
+            ),
+            1,
         )
 
     def test_folder_escape_cycle_and_shortcut_never_read_document_content(self) -> None:
@@ -149,7 +154,10 @@ class GoogleSourceTests(unittest.TestCase):
                 with self.assertRaises(SourceArchiveError):
                     session.acquire(self.metadata, 1024)
                 self.assertFalse(
-                    any("docs.googleapis.com" in call.args[0] for call in fetch.call_args_list)
+                    any(
+                        urlsplit(call.args[0]).hostname == "docs.googleapis.com"
+                        for call in fetch.call_args_list
+                    )
                 )
 
     def test_folder_move_during_transfer_prevents_returning_acquired_bytes(self) -> None:
@@ -217,7 +225,10 @@ class GoogleSourceTests(unittest.TestCase):
             },
         )
         self.assertFalse(
-            any("docs.googleapis.com" in call.args[0] for call in fetch.call_args_list)
+            any(
+                urlsplit(call.args[0]).hostname == "docs.googleapis.com"
+                for call in fetch.call_args_list
+            )
         )
 
     def test_preparation_uses_verified_identity_and_version_not_model_claims(self) -> None:
