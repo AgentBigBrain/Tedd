@@ -43,6 +43,7 @@ from tests.knowledge_graph.test_source_reader_policy import (
     inspected_container,
     inspected_exited_container,
 )
+from tests.support.sockets import require_unix_socket
 
 _PDF = b"%PDF-1.4\nsynthetic reader fixture"
 _AF_UNIX = cast(int, socket.__dict__.get("AF_UNIX", -1))
@@ -238,11 +239,13 @@ def _short_private_fixture_root() -> tuple[tempfile.TemporaryDirectory[str], Pat
 
 class FakeDocker:
     def __init__(self) -> None:
-        listener = socket.socket(_AF_UNIX)
+        listener: socket.socket | None = None
         temporary: tempfile.TemporaryDirectory[str] | None = None
         try:
             temporary, root = _short_private_fixture_root()
             os.chmod(root, 0o700)
+            require_unix_socket(root / "s")
+            listener = socket.socket(_AF_UNIX)
             self.state_root = root / "state"
             self.state_root.mkdir(mode=0o700)
             self.socket = root / "s"
@@ -289,7 +292,8 @@ class FakeDocker:
                 }
             )
         except BaseException:
-            listener.close()
+            if listener is not None:
+                listener.close()
             if temporary is not None:
                 temporary.cleanup()
             raise
@@ -412,8 +416,27 @@ class FakeDockerFixtureTests(unittest.TestCase):
 
         self.assertEqual(len(roots), 1)
         self.assertFalse(roots[0].exists())
-        self.assertEqual(len(listeners), 1)
-        self.assertEqual(listeners[0].fileno(), -1)
+        self.assertEqual(len(listeners), 2)
+        self.assertTrue(all(listener.fileno() == -1 for listener in listeners))
+
+    def test_socket_capability_refusal_removes_the_fixture_root(self) -> None:
+        roots: list[Path] = []
+        original_root = _short_private_fixture_root
+
+        def tracked_root() -> tuple[tempfile.TemporaryDirectory[str], Path]:
+            temporary, root = original_root()
+            roots.append(root)
+            return temporary, root
+
+        with (
+            mock.patch(f"{__name__}._short_private_fixture_root", side_effect=tracked_root),
+            mock.patch.object(socket, "socket", side_effect=PermissionError(1, "socket denied")),
+            self.assertRaisesRegex(unittest.SkipTest, "socket denied"),
+        ):
+            FakeDocker()
+
+        self.assertEqual(len(roots), 1)
+        self.assertFalse(roots[0].exists())
 
 
 @unittest.skipIf(os.name == "nt", "Unix-socket reader transport is macOS-specific")

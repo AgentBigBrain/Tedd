@@ -23,7 +23,7 @@ development guidance and historical evidence.
 | [Codex and Claude qualification](CLAUDE_CODE_QUALIFICATION.md) | Host checks for shared memory, preferences, overdue review, and saving |
 | [Testing on macOS](MACOS_TESTING.md) | Isolated installation checks, source tests, and optional reader prerequisites |
 | [Knowledge-graph scale](SCALE.md) | Measured graph bounds and growth guidance |
-| [Memory research](MEMORY_RESEARCH.md) | Retrieval and agent-task measurements, methods, and limitations |
+| [Memory research](MEMORY_RESEARCH.md) | Retrieval and agent-task measurements, public evaluation tools, and archived study limits |
 | [Security policy](../SECURITY.md) | Data boundaries and private vulnerability reporting |
 
 ## Develop and maintain Tedd

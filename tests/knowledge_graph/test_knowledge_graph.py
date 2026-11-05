@@ -3721,6 +3721,10 @@ class KnowledgeGraphTests(unittest.TestCase):
             self.assertNotEqual(inside.returncode, 0)
             self.assertFalse(inside_config.exists())
 
+    @unittest.skipIf(
+        sys.platform != "win32" and os.geteuid() == 0,
+        "root-owned symlinks are trusted system links by design",
+    )
     def test_cli_rejects_state_symlink_redirection(self) -> None:
         with private_temporary_directory() as temporary:
             root = Path(temporary)

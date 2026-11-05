@@ -4,6 +4,20 @@ All notable changes to Tedd are documented here. Plugin versions follow Semantic
 Versioning. Repository-only updates have dated entries without changing the
 plugin version. See [current availability](docs/sources/qualification.md#current-availability)
 for source and installation status; older entries retain their original test limits.
+Tedd commit identifiers from before the public repository was created refer to records
+in the maintainers' private archive and are kept as historical references.
+
+## 2026-11-05: Repository updates
+
+- Correct the public scale-study reproduction guidance and explain historical
+  commit references retained in the private archive.
+- Skip Unix-socket test fixtures when the host denies the required capability.
+  Unexpected socket errors and cleanup failures still fail their tests.
+- Test child file permissions separately so that check runs when sockets are
+  unavailable.
+- Skip the untrusted-symlink fixture when running as root, where the graph's
+  path policy deliberately trusts that root-owned link. Keep the rejection
+  test active for other users.
 
 ## 2026-11-03: Repository updates
 

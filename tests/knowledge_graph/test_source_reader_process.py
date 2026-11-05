@@ -15,6 +15,8 @@ from unittest import mock
 from tedd_knowledge_graph.source_contracts import SourceArchiveError
 from tedd_knowledge_graph.source_reader_process import _start_bounded, run_bounded
 
+from tests.support.sockets import require_unix_socket
+
 
 class _Pipe:
     def __init__(self) -> None:
@@ -58,19 +60,17 @@ class BoundedProcessTests(unittest.TestCase):
         return (sys.executable, "-I", "-B", "-c", body, *arguments)
 
     @unittest.skipIf(os.name == "nt", "Child umask is a POSIX creation primitive")
-    def test_private_child_mask_restricts_generated_files_and_sockets_not_parent(self) -> None:
+    def test_private_child_mask_restricts_generated_files_not_parent(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             before = root / "parent-before"
             before.write_bytes(b"")
             result = run_bounded(
                 self.child(
-                    "import os,socket,sys; from pathlib import Path; "
+                    "import sys; from pathlib import Path; "
                     "r=Path(sys.argv[1]); (r/'generated').mkdir(mode=0o755); "
                     "(r/'generated'/'file').write_bytes(b'private'); "
-                    "os.chdir(r/'generated'); "
-                    "s=socket.socket(socket.AF_UNIX); s.bind('socket'); "
-                    "s.close(); print('done')",
+                    "print('done')",
                     raw,
                 ),
                 b"",
@@ -83,8 +83,27 @@ class BoundedProcessTests(unittest.TestCase):
             self.assertEqual((result.returncode, result.stdout), (0, b"done\n"))
             self.assertEqual((root / "generated").stat().st_mode & 0o777, 0o700)
             self.assertEqual((root / "generated/file").stat().st_mode & 0o777, 0o600)
-            self.assertEqual((root / "generated/socket").stat().st_mode & 0o777, 0o700)
             self.assertEqual(after.stat().st_mode & 0o777, before.stat().st_mode & 0o777)
+
+    @unittest.skipIf(os.name == "nt", "Child umask is a POSIX creation primitive")
+    def test_private_child_mask_restricts_socket_permissions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix=".us-", dir=Path.home()) as raw:
+            root = Path(raw)
+            require_unix_socket(root / "probe")
+            result = run_bounded(
+                self.child(
+                    "import os,socket,sys; os.chdir(sys.argv[1]); "
+                    "s=socket.socket(socket.AF_UNIX); s.bind('socket'); "
+                    "s.close(); print('done')",
+                    raw,
+                ),
+                b"",
+                deadline=time.monotonic() + 10,
+                output_limit=16,
+                umask=0o077,
+            )
+            self.assertEqual((result.returncode, result.stdout), (0, b"done\n"))
+            self.assertEqual((root / "socket").stat().st_mode & 0o777, 0o700)
 
     def test_invalid_child_mask_refuses_before_process_creation(self) -> None:
         with mock.patch(

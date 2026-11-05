@@ -24,6 +24,7 @@ from tedd_knowledge_graph.source_reader_runtime import (
 )
 
 from tests.knowledge_graph.test_source_reader_policy import DAEMON_ID, IMAGE_ID, OWNER_ID
+from tests.support.sockets import require_unix_socket
 
 _PROFILE = "colima-tedd-reader-spike"
 _SHORT_PROFILE = "tedd-reader-spike"
@@ -60,6 +61,11 @@ class MacRuntimeFixture:
         self.temporary = tempfile.TemporaryDirectory(prefix=".tedd-runtime-", dir=Path.home())
         self.base = Path(self.temporary.name)
         self.base.chmod(0o700)
+        try:
+            require_unix_socket(self.base / "probe")
+        except BaseException:
+            self.temporary.cleanup()
+            raise
         self.root = self.base / "runtime"
         self.lima_home = self.root / "lima"
         self.instance = self.lima_home / _PROFILE
@@ -314,6 +320,19 @@ class MacRuntimeBindingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture = MacRuntimeFixture()
         self.addCleanup(self.fixture.close)
+
+    def test_socket_capability_refusal_removes_the_fixture_root(self) -> None:
+        temporary = tempfile.TemporaryDirectory(prefix=".tedd-runtime-", dir=Path.home())
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        with (
+            mock.patch.object(tempfile, "TemporaryDirectory", return_value=temporary),
+            mock.patch.object(socket, "socket", side_effect=PermissionError(1, "socket denied")),
+            self.assertRaisesRegex(unittest.SkipTest, "socket denied"),
+        ):
+            MacRuntimeFixture()
+
+        self.assertFalse(root.exists())
 
     def test_valid_manifest_loads_and_qualifies_the_exact_profile(self) -> None:
         binding = load_mac_runtime_binding(self.fixture.manifest_path)

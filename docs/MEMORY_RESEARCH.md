@@ -162,7 +162,7 @@ The confirmed-use follow-up improved retrieval metrics but failed its complete-r
 
 ## Reproducibility and data availability
 
-The repository publishes synthetic evaluation code, protocols, aggregate results, exact source commits, and SHA-256 hashes that bind reports to specific files. It excludes production graph content, private user data, raw blinded cases, model responses, grades, and private collection state.
+The repository publishes synthetic evaluation code, protocols, aggregate results, and SHA-256 hashes that bind reports to specific files. Some historical source commits and study runners are retained in the maintainers' private research archive. Production graph content, private user data, raw blinded cases, model responses, grades, and private collection state remain private.
 
 Run the current public retrieval instrument from the repository root:
 
@@ -172,11 +172,6 @@ python scripts/memory_eval_lab.py --pretty
 
 The current evaluator follows [protocol revision 2](../research/memory-eval-lab/PROTOCOL-V2.md). The archived reference measurements used [revision 1](../research/memory-eval-lab/PROTOCOL.md); no revision 2 reference run has been published with a matching SHA-256 hash.
 
-To reproduce the archived scale study, check out its immutable commit and follow its protocol:
+Reproducing the archived scale study requires access to the private research archive, including its source commit, protocol, and `scripts/memory_scale_bench.py` runner.
 
-```bash
-git switch --detach da53a1b1eab11c74e65e6ac057fd927ebbf75a43
-py -3.10 -B scripts\memory_scale_bench.py run --all --run-id <new-unique-run-id>
-```
-
-The current graph benchmark tool is documented in [Knowledge graph scale and limits](SCALE.md). Its code, test data, and procedures differ from the archived study, so running it will not reproduce the archived measurements exactly.
+For a benchmark you can run from this public repository, follow [Knowledge graph scale and limits](SCALE.md#archived-study-and-current-benchmark). Its code, test data, and procedures differ from the archived study, so its measurements describe the current benchmark rather than reproducing the historical results.
