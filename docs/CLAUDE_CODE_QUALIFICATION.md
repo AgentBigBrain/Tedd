@@ -190,8 +190,8 @@ acknowledged billing-blocked CI and unverified interactive permission handling
 in the Claude desktop app on Windows. It applies to this source merge only;
 normal [release requirements](RELEASING.md) remain in force.
 
-The CI workflow includes an optional Python 3.15 development check. It did not
-run for RC8. The earlier RC7 experimental pass recorded in
+At the RC8 merge, CI included an optional Python 3.15 development check. It did
+not run for RC8. The earlier RC7 experimental pass recorded in
 [source qualification](sources/qualification.md#current-availability) applies to RC7.
 
 ### Native host checks

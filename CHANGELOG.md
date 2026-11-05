@@ -9,6 +9,8 @@ in the maintainers' private archive and are kept as historical references.
 
 ## 2026-11-05: Repository updates
 
+- Move experimental Python 3.15 checks to a manual workflow for development
+  branches. Automatic pull-request and `main` checks use Python 3.10 through 3.14.
 - Correct the public scale-study reproduction guidance and explain historical
   commit references retained in the private archive.
 - Skip Unix-socket test fixtures when the host denies the required capability.

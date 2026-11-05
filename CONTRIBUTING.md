@@ -79,8 +79,16 @@ Check the run for the exact commit being proposed. A green run on an earlier
 commit does not qualify later changes, and CI does not prove desktop discovery
 or update an installed plugin.
 
-Python 3.15 is an optional check for pull requests and development branches.
-Pushes to `main` check the supported Python 3.10 through 3.14 range.
+Automatic CI checks the supported Python 3.10 through 3.14 range. For Python 3.15
+compatibility work, start the [manual preview workflow](.github/workflows/python-preview.yml)
+on a development branch:
+
+```bash
+gh workflow run python-preview.yml --ref <development-branch>
+```
+
+The preview workflow skips `main` and tags.
+
 Routine macOS CI uses the standard Intel macOS 26 runner. Apple Silicon host and
 source-helper qualification remains a separate native check.
 

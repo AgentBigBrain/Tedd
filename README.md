@@ -52,7 +52,8 @@ the Codex integration; shared graph memory does not enable it in Claude.
 - macOS, Linux, or Windows
 - A private local filesystem for runtime state
 
-Python 3.15 is experimental.
+Python 3.15 is experimental. Its [preview checks](CONTRIBUTING.md#verification)
+are started manually on development branches.
 
 Several Tedd processes can use the graph on one computer. Keep its database on
 a local disk, outside network shares, cloud-synchronized folders, and shared volumes.
