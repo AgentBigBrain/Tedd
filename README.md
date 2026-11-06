@@ -45,10 +45,20 @@ the Codex integration; shared graph memory does not enable it in Claude.
 
 ## See Tedd in use
 
-Open a project in Obsidian to see its saved facts, the people involved, and the
-evidence behind them. The project examples below use fictional data.
+Obsidian shows Tedd's saved knowledge as linked notes. Each dot is a note; each
+line is a link between notes. Labels are hidden in this working-vault overview.
+
+![An Obsidian graph of linked Tedd notes, with labels hidden.](docs/assets/screenshots/obsidian-graph.jpg)
+
+<details>
+<summary>Inside a project</summary>
+
+Open a project to see its saved facts, the people involved, and the evidence
+behind them. This example uses fictional data.
 
 ![A fictional Harbor website project in Obsidian, showing remembered facts, people, and evidence links.](docs/assets/screenshots/obsidian-project.jpg)
+
+</details>
 
 <details>
 <summary>Decisions and commitments</summary>
@@ -57,16 +67,6 @@ Accepted decisions, proposals, and unfinished commitments each have their own
 section. Completed work keeps its outcome.
 
 ![Fictional project decisions and commitments, with accepted choices, a proposal, owners, next actions, and a completed task.](docs/assets/screenshots/obsidian-decisions.jpg)
-
-</details>
-
-<details>
-<summary>A working graph at a glance</summary>
-
-Each dot is a generated note; each line is a link between notes. This overview
-comes from a working vault with labels hidden.
-
-![An Obsidian graph of linked Tedd notes, with labels hidden.](docs/assets/screenshots/obsidian-graph.jpg)
 
 </details>
 
