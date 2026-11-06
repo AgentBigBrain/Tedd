@@ -7,6 +7,11 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## 2026-11-06: Repository updates
+
+- Add an illustrated README tour of Tedd in Codex and Obsidian, with fictional
+  project examples and an unlabeled graph overview.
+
 ## 2026-11-05: Repository updates
 
 - Move experimental Python 3.15 checks to a manual workflow for development

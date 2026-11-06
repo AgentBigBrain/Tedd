@@ -1,7 +1,8 @@
 # Tedd documentation
 
 Start with the [project README](../README.md) for installation and an overview of
-Tedd. The guides below help you set up and use Tedd; the later sections collect
+Tedd, including a [visual tour](../README.md#see-tedd-in-use). The guides below
+help you set up and use Tedd; the later sections collect
 development guidance and historical evidence.
 
 ## Use and understand Tedd

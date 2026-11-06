@@ -43,6 +43,45 @@ the Codex integration; shared graph memory does not enable it in Claude.
 | Reviewable knowledge | Creates linked notes and tables in the Obsidian notes app so you can browse people, projects, decisions, and evidence. The graph remains the source of truth. |
 | Safety boundaries | Keeps remembered content separate from instructions and permissions, and rechecks facts that may have changed. |
 
+## See Tedd in use
+
+Open a project in Obsidian to see its saved facts, the people involved, and the
+evidence behind them. The project examples below use fictional data.
+
+![A fictional Harbor website project in Obsidian, showing remembered facts, people, and evidence links.](docs/assets/screenshots/obsidian-project.jpg)
+
+<details>
+<summary>Decisions and commitments</summary>
+
+Accepted decisions, proposals, and unfinished commitments each have their own
+section. Completed work keeps its outcome.
+
+![Fictional project decisions and commitments, with accepted choices, a proposal, owners, next actions, and a completed task.](docs/assets/screenshots/obsidian-decisions.jpg)
+
+</details>
+
+<details>
+<summary>A working graph at a glance</summary>
+
+Each dot is a generated note; each line is a link between notes. This overview
+comes from a working vault with labels hidden.
+
+![An Obsidian graph of linked Tedd notes, with labels hidden.](docs/assets/screenshots/obsidian-graph.jpg)
+
+</details>
+
+<details>
+<summary>Tedd in Codex</summary>
+
+Codex lists Tedd's prompts, graph memory server, and skills. For Claude Code,
+follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
+
+![Tedd's plugin page in Codex, showing its prompts, memory server, and skills.](docs/assets/screenshots/tedd-codex.png)
+
+</details>
+
+Learn how to [follow saved connections in Obsidian](docs/OBSIDIAN_CONNECTIONS.md).
+
 ## Quick start
 
 ### Requirements

@@ -1127,6 +1127,29 @@ class RepositoryBoundaryTests(unittest.TestCase):
             rogue_errors,
         )
 
+    def test_readme_screenshot_paths_preserve_the_binary_boundary(self) -> None:
+        for relative in (
+            Path("docs/assets/screenshots/obsidian-project.jpg"),
+            Path("docs/assets/screenshots/obsidian-decisions.jpg"),
+            Path("docs/assets/screenshots/obsidian-graph.jpg"),
+            Path("docs/assets/screenshots/tedd-codex.png"),
+        ):
+            with self.subTest(approved=relative):
+                path = ROOT / relative
+                self.assertEqual(boundary.artifact_errors(path, b"synthetic image"), [])
+                self.assertTrue(boundary.artifact_errors(path, b"SQLite format 3\x00"))
+                self.assertTrue(boundary.artifact_errors(path, b"Bearer TOPSECRET_SYNTHETIC"))
+        for relative in (
+            Path("docs/assets/screenshots/other.jpg"),
+            Path("docs/assets/screenshots/other.png"),
+            Path("docs/assets/obsidian-project.jpg"),
+        ):
+            with self.subTest(unapproved=relative):
+                self.assertIn(
+                    f"unapproved infrastructure file type: {relative}",
+                    boundary.artifact_errors(ROOT / relative, b"synthetic image"),
+                )
+
     def test_only_reviewed_support_text_paths_are_admitted(self) -> None:
         for relative in (
             Path("scripts/native/source_av1_validate.c"),
