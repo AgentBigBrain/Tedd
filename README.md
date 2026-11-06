@@ -60,10 +60,15 @@ commitments each have their own section. Completed work keeps its outcome.
 
 ![Fictional project decisions and commitments, with accepted choices, a proposal, owners, next actions, and a completed task.](docs/assets/screenshots/obsidian-decisions.png)
 
-**Tedd in Codex.** Codex lists Tedd's prompts, graph memory server, and skills.
-For Claude Code, follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
+<details>
+<summary>Tedd in Codex</summary>
+
+Codex lists Tedd's prompts, graph memory server, and skills. For Claude Code,
+follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
 
 ![Tedd's plugin page in Codex, showing its prompts, memory server, and skills.](docs/assets/screenshots/tedd-codex.png)
+
+</details>
 
 Learn how to [follow saved connections in Obsidian](docs/OBSIDIAN_CONNECTIONS.md).
 
