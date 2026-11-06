@@ -11,6 +11,9 @@ in the maintainers' private archive and are kept as historical references.
 
 - Add an illustrated README tour of Tedd in Codex and Obsidian, with fictional
   project examples and an unlabeled graph overview.
+- Show every screenshot in the README tour without expanding a section, and give
+  the screenshots rounded corners. The three Obsidian screenshots are now PNG
+  files so their corners can be transparent.
 
 ## 2026-11-05: Repository updates
 

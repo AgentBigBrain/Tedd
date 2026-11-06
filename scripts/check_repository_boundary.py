@@ -42,9 +42,9 @@ ALLOWED_BINARY_PATHS: Final[frozenset[Path]] = frozenset(
     {
         Path("plugins/tedd/assets/tedd-brain.png"),
         Path("docs/assets/social-preview.png"),
-        Path("docs/assets/screenshots/obsidian-project.jpg"),
-        Path("docs/assets/screenshots/obsidian-decisions.jpg"),
-        Path("docs/assets/screenshots/obsidian-graph.jpg"),
+        Path("docs/assets/screenshots/obsidian-project.png"),
+        Path("docs/assets/screenshots/obsidian-decisions.png"),
+        Path("docs/assets/screenshots/obsidian-graph.png"),
         Path("docs/assets/screenshots/tedd-codex.png"),
     }
 )

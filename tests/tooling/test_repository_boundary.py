@@ -1129,9 +1129,9 @@ class RepositoryBoundaryTests(unittest.TestCase):
 
     def test_readme_screenshot_paths_preserve_the_binary_boundary(self) -> None:
         for relative in (
-            Path("docs/assets/screenshots/obsidian-project.jpg"),
-            Path("docs/assets/screenshots/obsidian-decisions.jpg"),
-            Path("docs/assets/screenshots/obsidian-graph.jpg"),
+            Path("docs/assets/screenshots/obsidian-project.png"),
+            Path("docs/assets/screenshots/obsidian-decisions.png"),
+            Path("docs/assets/screenshots/obsidian-graph.png"),
             Path("docs/assets/screenshots/tedd-codex.png"),
         ):
             with self.subTest(approved=relative):
@@ -1142,7 +1142,8 @@ class RepositoryBoundaryTests(unittest.TestCase):
         for relative in (
             Path("docs/assets/screenshots/other.jpg"),
             Path("docs/assets/screenshots/other.png"),
-            Path("docs/assets/obsidian-project.jpg"),
+            Path("docs/assets/screenshots/obsidian-project.jpg"),
+            Path("docs/assets/obsidian-project.png"),
         ):
             with self.subTest(unapproved=relative):
                 self.assertIn(

@@ -48,37 +48,22 @@ the Codex integration; shared graph memory does not enable it in Claude.
 Obsidian shows Tedd's saved knowledge as linked notes. Each dot is a note; each
 line is a link between notes. Labels are hidden in this working-vault overview.
 
-![An Obsidian graph of linked Tedd notes, with labels hidden.](docs/assets/screenshots/obsidian-graph.jpg)
+![An Obsidian graph of linked Tedd notes, with labels hidden.](docs/assets/screenshots/obsidian-graph.png)
 
-<details>
-<summary>Inside a project</summary>
+**Inside a project.** Open a project to see its saved facts, the people
+involved, and the evidence behind them. This example uses fictional data.
 
-Open a project to see its saved facts, the people involved, and the evidence
-behind them. This example uses fictional data.
+![A fictional Harbor website project in Obsidian, showing remembered facts, people, and evidence links.](docs/assets/screenshots/obsidian-project.png)
 
-![A fictional Harbor website project in Obsidian, showing remembered facts, people, and evidence links.](docs/assets/screenshots/obsidian-project.jpg)
+**Decisions and commitments.** Accepted decisions, proposals, and unfinished
+commitments each have their own section. Completed work keeps its outcome.
 
-</details>
+![Fictional project decisions and commitments, with accepted choices, a proposal, owners, next actions, and a completed task.](docs/assets/screenshots/obsidian-decisions.png)
 
-<details>
-<summary>Decisions and commitments</summary>
-
-Accepted decisions, proposals, and unfinished commitments each have their own
-section. Completed work keeps its outcome.
-
-![Fictional project decisions and commitments, with accepted choices, a proposal, owners, next actions, and a completed task.](docs/assets/screenshots/obsidian-decisions.jpg)
-
-</details>
-
-<details>
-<summary>Tedd in Codex</summary>
-
-Codex lists Tedd's prompts, graph memory server, and skills. For Claude Code,
-follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
+**Tedd in Codex.** Codex lists Tedd's prompts, graph memory server, and skills.
+For Claude Code, follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
 
 ![Tedd's plugin page in Codex, showing its prompts, memory server, and skills.](docs/assets/screenshots/tedd-codex.png)
-
-</details>
 
 Learn how to [follow saved connections in Obsidian](docs/OBSIDIAN_CONNECTIONS.md).
 
