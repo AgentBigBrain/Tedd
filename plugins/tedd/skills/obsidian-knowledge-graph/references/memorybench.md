@@ -3,8 +3,10 @@
 MemoryBench checks retrieval through Tedd's real read interfaces. Existing v1
 suites measure CLI `recall`: relevance-ranked FTS followed by subject filtering.
 Opt-in v2 suites can measure MCP `search_memory` or the overdue and preference
-sections delivered by `recall_context`. MCP search applies scope before limits,
-requires every query term, and orders exact IDs first, then recent changes.
+sections delivered by `recall_context`. MCP search applies scope before limits.
+It returns records that contain every query term, with exact IDs first and then
+recent changes. When none exists, it returns labeled partial matches ordered by
+how many distinct query terms each record contains.
 Scores for one path do not describe another. Keep their reports separate.
 
 Run these commands from the installed `obsidian-knowledge-graph` skill directory
@@ -145,17 +147,28 @@ with the verified existing graph, consumer, agent, task, and active subscription
 Use independently reviewed expected record IDs; the example does not register
 or approve any reader.
 
+A case can add `match` with `auto`, `all` or `any`. Without it, the request
+omits the argument and the connected tool applies its own default, as it would
+for the model. Set `match: all` for a case that depends on the every-term rule.
+A build whose `search_memory` tool does not list `match` refuses the argument,
+which makes the run invalid; omit it for that build.
+
 Use literal search words appropriate to MCP. A natural-language question that
-works with CLI recall's OR matching can return nothing when every MCP term must
-match. Compare the same information need and independently judged records, not
-unexamined query strings. Retain the query and scope in the private suite; do not
-derive expected results from whichever records the current implementation returns.
+works with CLI recall's OR matching has no every-term match when one word is
+missing. Under `match: all` it returns nothing; under the default it returns
+partial matches. Scores for the two modes describe different behavior, so
+record which one a suite used. Compare the same information need and
+independently judged records, not unexamined query strings. Retain the query
+and scope in the private suite; do not derive expected results from whichever
+records the current implementation returns.
 
 Run the same command shown above with the v2 suite path. The runner initializes
 the actual stdio MCP endpoint, checks its tool list, and calls the selected tool.
 A refused identity, missing tool, timeout or malformed protocol response makes
 the run invalid, not a successful empty retrieval. A legitimate no-match case
-can use `max_result_count: 0`. It tests retrieval, not whether a model abstains.
+can use `max_result_count: 0`; add `match: all` when its query has more than one
+term, because the default can return partial matches. It tests retrieval, not
+whether a model abstains.
 
 ## Delivered context suites
 

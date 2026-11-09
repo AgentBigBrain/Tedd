@@ -95,10 +95,13 @@ TOOLS: tuple[JsonObject, ...] = (
         "name": "search_memory",
         "description": (
             "Find saved memories in an existing exact subscription. Supplement recent context; "
-            "use specific words (all terms must match), not FTS operators. An unquoted ASCII word "
+            "use specific words, not FTS operators. An unquoted ASCII word "
             "of at least four letters/digits may end with one * for explicit prefix matching. "
-            "Exact IDs lead, then "
-            "matched recency. Results retain authority/lifecycle; no matches do not prove no memory. "
+            "Records containing every term come first: exact IDs lead, then matched recency. "
+            "If none contains every term, match_mode is any_terms and results are partial: "
+            "ranked by distinct terms matched, each listing matched_terms; a partial match "
+            "does not establish the unmatched words. Set match to all to refuse partial results. "
+            "Results retain authority/lifecycle; no matches do not prove no memory. "
             "Read-only: no source bytes, acknowledgement or scope expansion."
         ),
         "inputSchema": _schema(
@@ -111,6 +114,7 @@ TOOLS: tuple[JsonObject, ...] = (
                 "query": {"type": "string", "minLength": 1, "maxLength": 2000},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 100},
                 "max_chars": {"type": "integer", "minimum": 2, "maximum": 100000},
+                "match": {"type": "string", "enum": ["auto", "all", "any"]},
             },
             ["subscription_id", "consumer_id", "agent_id", "task_id", "query"],
         ),
@@ -353,10 +357,14 @@ class McpServer(McpLifecycle):
                     "query",
                     "limit",
                     "max_chars",
+                    "match",
                 },
             )
             session, subscription_id = self._subscription(values)
             query = self._optional_string(values.get("query"), "query", maximum=2000)
+            match = values.get("match", "auto")
+            if match not in ("auto", "all", "any"):
+                raise ValueError("match must be auto, all or any")
             if query is None or not query.strip():
                 raise ValueError("query is required")
             return self._service.search_memory(
@@ -368,6 +376,7 @@ class McpServer(McpLifecycle):
                     max_chars=self._integer(
                         values.get("max_chars", 12_000), "max_chars", minimum=2, maximum=100_000
                     ),
+                    match=str(match),
                 )
             ).payload
         self._closed(

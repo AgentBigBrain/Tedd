@@ -33,6 +33,13 @@ and CI results apply to their named candidates; they do not qualify a later
 package automatically. Updating source on GitHub does not update an installed
 plugin or enable optional readers, Google access, or source previews.
 
+Unreleased source adds partial-match memory search: when no record contains
+every query word, `search_memory` returns labeled partial matches. It is
+implemented and covered by repository tests. It is not in the RC12 package and
+has no host qualification. A loaded build includes it when its `search_memory`
+tool lists a `match` argument; see the
+[search reference](../../plugins/tedd/skills/obsidian-knowledge-graph/references/recall.md#on-demand-mcp-search).
+
 | Area | Verified scope and remaining limits |
 | --- | --- |
 | Core runtime | Python 3.10–3.14 on Windows, Linux and macOS. All 15 jobs passed for RC7 main commit `5447a53` in the main-branch CI run, including all nine core platform jobs. Python 3.15-dev passed as an experimental target. Platform and dependency skips are not native acceptance. |

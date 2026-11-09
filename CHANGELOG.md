@@ -7,6 +7,25 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- Return labeled partial matches from `search_memory` when no record in the
+  task's subscription contains every query word. Records that contain every
+  word are returned first and unchanged. Otherwise search sets aside common
+  function words, orders records by how many distinct remaining words each
+  contains, then by recency, and names the words each record matched.
+- Add an optional `match` argument to `search_memory`. `auto` is the default,
+  `all` keeps the earlier every-word behavior, and `any` always ranks partial
+  matches. Results report `match_mode` and `considered_terms`.
+- Let a MemoryBench MCP search case set `match`, so a no-match case can keep
+  the every-word rule.
+
+Subscription scope, privacy filtering, result limits, and ordering without
+corpus-wide statistics are unchanged. The store schema and full-text index are
+unchanged; no migration or reindex is required. The store's search method keeps
+the every-word default. These changes alter package files and are not in the
+1.2.0-rc.12 package; they have repository tests and no host qualification.
+
 ## 2026-11-06: Repository updates
 
 - Add an illustrated README tour of Tedd in Codex and Obsidian, with fictional

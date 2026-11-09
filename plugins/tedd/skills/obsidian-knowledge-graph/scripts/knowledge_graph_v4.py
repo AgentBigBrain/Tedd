@@ -1171,7 +1171,7 @@ class KnowledgeGraphV4:
             )
 
     def search_subscription(
-        self, subscription_id: str, query: str, *, limit: int = 10
+        self, subscription_id: str, query: str, *, limit: int = 10, match: str = "all"
     ) -> _v4_queries.ScopedSearchResult:
         """Search current, non-sensitive records in one existing active scope."""
 
@@ -1186,6 +1186,7 @@ class KnowledgeGraphV4:
                 predicate,
                 parameters,
                 limit=limit,
+                match=match,
                 records_loader=self.get_records,
                 watermark_loader=lambda: self.watermark,
                 dependencies=self._query_dependencies(),

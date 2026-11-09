@@ -392,6 +392,153 @@ class V4QueryConsistencyTests(V4TestCase):
                     self.assertEqual(0, result["result_count"])
                     self.assertFalse(result["truncated"])
 
+    def test_subscription_search_auto_keeps_strict_results_and_ranks_partial_matches(
+        self,
+    ) -> None:
+        with self.create_store() as store:
+            applied(
+                store,
+                [change("r_parser", name="Run the fixture suite before parser changes")],
+                fingerprint="a",
+            )
+            applied(store, [change("r_notes", name="Parser meeting notes")], fingerprint="b")
+            applied(store, [change("r_logo", name="Logo approved")], fingerprint="c")
+            applied(store, [change("r_other", name="Unrelated palette")], fingerprint="d")
+            store.register_consumer("reader", agent_id="agent", task_id="task")
+            store.subscribe("reader", {"all": True}, subscription_id="scope")
+            before = store.state()
+
+            strict = store.search_subscription("scope", "logo approved")
+            auto = store.search_subscription("scope", "logo approved", match="auto")
+            self.assertEqual(strict, auto)
+            self.assertEqual("all_terms", auto["match_mode"])
+            self.assertEqual(["logo", "approved"], auto["considered_terms"])
+            self.assertNotIn("matched_terms", auto["results"][0])
+
+            question = "What should happen before changing the parser?"
+            self.assertEqual([], store.search_subscription("scope", question)["results"])
+            partial = store.search_subscription("scope", question, match="auto")
+            self.assertEqual("any_terms", partial["match_mode"])
+            self.assertEqual(["happen", "changing", "parser"], partial["considered_terms"])
+            self.assertEqual(
+                [("r_notes", ["parser"]), ("r_parser", ["parser"])],
+                [(r["record_id"], r["matched_terms"]) for r in partial["results"]],
+            )
+            self.assertFalse(partial["truncated"])
+
+            ranked = store.search_subscription(
+                "scope", "parser fixture suite palette", match="auto"
+            )
+            self.assertEqual(
+                [
+                    ("r_parser", ["parser", "fixture", "suite"]),
+                    ("r_other", ["palette"]),
+                    ("r_notes", ["parser"]),
+                ],
+                [(r["record_id"], r["matched_terms"]) for r in ranked["results"]],
+            )
+            limited = store.search_subscription(
+                "scope", "parser fixture suite palette", match="any", limit=1
+            )
+            self.assertEqual(["r_parser"], [r["record_id"] for r in limited["results"]])
+            self.assertTrue(limited["truncated"])
+            self.assertEqual(before, store.state())
+
+    def test_subscription_partial_search_bounds_modes_terms_and_prefixes(self) -> None:
+        with self.create_store() as store:
+            applied(
+                store,
+                [
+                    change("one", name="Harborstudio logo approval"),
+                    change("two", name="Harborside palette proposed"),
+                ],
+                fingerprint="fixture",
+            )
+            store.register_consumer("reader", agent_id="agent", task_id="task")
+            store.subscribe("reader", {"all": True}, subscription_id="scope")
+            for match in ("", "fuzzy", "ALL", "or"):
+                with self.subTest(match=match), self.assertRaises(ValueError):
+                    store.search_subscription("scope", "logo", match=match)
+            # A one-term query has no partial form, and function words alone rank nothing.
+            for match in ("auto", "any"):
+                with self.subTest(match=match):
+                    self.assertEqual(
+                        [], store.search_subscription("scope", "missing", match=match)["results"]
+                    )
+            empty = store.search_subscription("scope", "what is the", match="any")
+            self.assertEqual(
+                ("any_terms", [], []),
+                (empty["match_mode"], empty["considered_terms"], empty["results"]),
+            )
+            self.assertEqual(
+                "all_terms",
+                store.search_subscription("scope", "what is the", match="auto")["match_mode"],
+            )
+            # Explicit prefixes keep their rules and count as one term.
+            prefixed = store.search_subscription("scope", "harbor* approv* teal", match="auto")
+            self.assertEqual(
+                [("one", ["harbor*", "approv*"]), ("two", ["harbor*"])],
+                [(r["record_id"], r["matched_terms"]) for r in prefixed["results"]],
+            )
+            with self.assertRaises(ValueError):
+                store.search_subscription("scope", "abc* logo", match="any")
+            # Existing strict expectations that the forgiving mode deliberately changes.
+            for query in ("harbor* palette approv*", "harbor logo", "logo OR approval"):
+                with self.subTest(query=query):
+                    self.assertEqual([], store.search_subscription("scope", query)["results"])
+                    self.assertNotEqual(
+                        [], store.search_subscription("scope", query, match="auto")["results"]
+                    )
+
+    def test_subscription_partial_search_enforces_scope_and_privacy_before_limits(self) -> None:
+        with self.create_store() as store:
+            applied(store, [change("visible", name="Logo sketch")], fingerprint="visible")
+            hidden = [change(f"hidden_{i}", name="Logo approved teal final") for i in range(30)]
+            for item in hidden:
+                item["payload"]["sensitive"] = True
+            erased = change("erased", name="Logo approved teal final")
+            erased["payload"]["lifecycle"] = "tombstoned"
+            redacted = change("redacted", name="Logo approved teal final")
+            redacted["payload"]["lifecycle"] = "redacted"
+            applied(store, [*hidden, erased, redacted], fingerprint="hidden")
+            store.register_consumer("reader", agent_id="agent", task_id="task")
+            store.subscribe(
+                "reader",
+                {
+                    "record_ids": [
+                        "visible",
+                        "erased",
+                        "redacted",
+                        *[f"hidden_{i}" for i in range(30)],
+                    ]
+                },
+                subscription_id="scope",
+            )
+            baseline = store.search_subscription(
+                "scope", "logo approved teal final", match="auto", limit=1
+            )
+            self.assertEqual(
+                [("visible", ["logo"])],
+                [(r["record_id"], r["matched_terms"]) for r in baseline["results"]],
+            )
+            self.assertFalse(baseline["truncated"])
+            # Out-of-scope records that match every term change neither membership nor order.
+            applied(
+                store,
+                [change(f"foreign_{i}", name="Logo approved teal final") for i in range(150)],
+                fingerprint="foreign",
+            )
+            after = store.search_subscription(
+                "scope", "logo approved teal final", match="auto", limit=1
+            )
+            self.assertEqual(baseline["results"], after["results"])
+            self.assertFalse(after["truncated"])
+            for query in ("hidden_3 approved", "erased teal", "foreign_7 final"):
+                with self.subTest(query=query):
+                    self.assertEqual(
+                        [], store.search_subscription("scope", query, match="any")["results"]
+                    )
+
     def test_subscription_search_preserves_snapshot_across_concurrent_revision(self) -> None:
         with self.create_store() as store:
             applied(store, [change("record", name="Before")], fingerprint="before")

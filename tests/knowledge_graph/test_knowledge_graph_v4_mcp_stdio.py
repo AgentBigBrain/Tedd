@@ -203,6 +203,39 @@ class McpStdioTests(unittest.TestCase):
                 )
                 self.assertEqual(before, len(self.service.requests))
 
+    def test_search_match_defaults_to_auto_and_accepts_only_declared_modes(self) -> None:
+        self._initialize()
+        arguments: JsonObject = {
+            "subscription_id": "scope",
+            "consumer_id": "consumer",
+            "agent_id": "agent",
+            "task_id": "task",
+            "query": "logo approved",
+        }
+        expected = {None: "auto", "auto": "auto", "all": "all", "any": "any"}
+        for supplied, mode in expected.items():
+            with self.subTest(match=supplied):
+                sent = dict(arguments) if supplied is None else {**arguments, "match": supplied}
+                response = self._dispatch(
+                    2, "tools/call", {"name": "search_memory", "arguments": sent}
+                )
+                assert response is not None
+                self.assertFalse(_result(response).get("isError", False))
+                request = self.service.requests[-1]
+                assert isinstance(request, SearchMemoryRequest)
+                self.assertEqual(mode, request.match)
+        for value in ("fuzzy", "ALL", "", None, True, 1, ["any"]):
+            with self.subTest(match=value):
+                before = len(self.service.requests)
+                response = self._dispatch(
+                    3,
+                    "tools/call",
+                    {"name": "search_memory", "arguments": {**arguments, "match": value}},
+                )
+                assert response is not None
+                self.assertTrue(_result(response)["isError"])
+                self.assertEqual(before, len(self.service.requests))
+
     def test_exact_subscription_translation_never_uses_global_cli_or_acknowledges(self) -> None:
         self._initialize()
         response = self._dispatch(

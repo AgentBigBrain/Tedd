@@ -44,8 +44,9 @@ MCP routes. Keep work local unless another lane materially helps.
 Use `search_memory` to supplement recent context when an older decision or
 detail matters. Reconcile the inbox independently. Follow the
 [scoped search procedure](../../obsidian-knowledge-graph/references/recall.md#on-demand-mcp-search)
-for literal queries, one deliberate prefix broadening when endings explain a
-miss, bounds, empty results and authority interpretation.
+for literal queries, labeled partial matches, one deliberate prefix broadening
+when endings explain a miss, bounds, empty results and authority interpretation.
+Treat a partial match as a lead: it does not establish the unmatched words.
 
 ## During work
 

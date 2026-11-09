@@ -270,6 +270,8 @@ def normalize_case(
 ) -> dict[str, Any]:
     item = require_mapping(raw, f"case[{index}]")
     extra_keys = {"session", "context_section", "max_items"} if read_path != "cli_recall" else set()
+    if read_path == "mcp_search_memory":
+        extra_keys.add("match")
     reject_unknown(item, CASE_KEYS | extra_keys, f"case[{index}]")
     case_id = identifier(item.get("id"), f"case[{index}] id", record=False)
     context = read_path == "mcp_recall_context"
@@ -440,6 +442,10 @@ def normalize_case(
         raise MemoryBenchError(
             f"case {case_id} must contain at least one relevance, ranking, scope, privacy, or result-count assertion"
         )
+    if "match" in item:
+        if item["match"] not in ("auto", "all", "any"):
+            raise MemoryBenchError(f"case {case_id} match must be auto, all, or any")
+        normalized["match"] = item["match"]
     if session is not None:
         normalized["session"] = session
     if context:
@@ -686,6 +692,8 @@ def read_mcp_case(
     arguments = require_mapping(case.get("session"), "MCP session")
     if read_path == "mcp_search_memory":
         arguments.update(query=case["query"], limit=case["limit"], max_chars=case["max_chars"])
+        if "match" in case:
+            arguments["match"] = case["match"]
         body, raw, latency = run_mcp(config, "search_memory", arguments, timeout)
         output = {"command": "recall", "status": "ok", **body, "read_path": read_path}
     else:
