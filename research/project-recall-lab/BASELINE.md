@@ -11,15 +11,21 @@ change that the protocol's comparison rules are meant to judge.
 | Protocol | `tedd-project-recall-protocol-v1` |
 | Scenario catalog | `tedd-project-recall-scenarios-v1` |
 | Catalog SHA-256 | `f38329b084ad0d284d3c7050b775f68c2efb7268d2e28f7dd320bf334680f276` |
-| Evaluator SHA-256 | `d364e4d9c397a4835b52cca639da9770aa942323d0c8aff5409a0336a13fd04e` |
+| Evaluator SHA-256 | `b8b3561db9b398ba39bec48a3f6945890e6f4ec66172f3cf3ec79511f8501991` |
 | Memory evaluation lab evaluator SHA-256 | `fe160c35164bd523d0fcc506116de0247e03fc7e8d328d4f18cf911bfe262eb1` |
-| Source | Commit `33e73385b8830961b257ec59f944be353eeda455`, Tedd 1.2.0-rc.13, with no uncommitted change in the lab or the graph runtime |
-| Host | Windows 11 on AMD64, CPython 3.14.0, SQLite 3.50.4 with FTS5 |
+| Source | Commit `f8f24a52de4b5474e3b12827fd3e67e689c7800d`, Tedd 1.2.0-rc.13, with no uncommitted change in the lab or the graph runtime |
+| Host | Windows 11, CPython 3.10.4, SQLite 3.37.2 with FTS5 |
 | Synthetic graph | 2,087 records at watermark 2,081 |
 | Lab qualification | Passed all nine checks |
 
 The two evaluator digests are computed from file contents, so they identify
 the exact instrument and graph runtime whatever the Git state.
+
+This rerun uses Tedd's service JSON encoding for per-call character limits,
+including separator spaces, and excludes the CLI-added context envelope.
+Every non-timing arm measurement matches the earlier baseline, including
+response costs and zero limit violations. The catalog and graph runtime are
+unchanged; the evaluator digest identifies the corrected budget check.
 
 ## Results by arm
 
