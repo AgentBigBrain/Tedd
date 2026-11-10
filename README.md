@@ -72,6 +72,9 @@ follow the [setup guide](docs/CLAUDE_CODE_SETUP.md).
 
 Learn how to [follow saved connections in Obsidian](docs/OBSIDIAN_CONNECTIONS.md).
 
+For a short visual overview, see
+[Tedd at Flare Web Design](https://www.flarewebdesign.com/lab/tedd).
+
 ## Quick start
 
 ### Requirements
