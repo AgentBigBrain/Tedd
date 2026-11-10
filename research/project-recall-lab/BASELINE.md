@@ -11,9 +11,9 @@ change that the protocol's comparison rules are meant to judge.
 | Protocol | `tedd-project-recall-protocol-v1` |
 | Scenario catalog | `tedd-project-recall-scenarios-v1` |
 | Catalog SHA-256 | `f38329b084ad0d284d3c7050b775f68c2efb7268d2e28f7dd320bf334680f276` |
-| Evaluator SHA-256 | `c746bdfc4042eff4057a507d7af7baced0313735bb5b0bd254008d8e55113128` |
+| Evaluator SHA-256 | `d364e4d9c397a4835b52cca639da9770aa942323d0c8aff5409a0336a13fd04e` |
 | Memory evaluation lab evaluator SHA-256 | `fe160c35164bd523d0fcc506116de0247e03fc7e8d328d4f18cf911bfe262eb1` |
-| Source | Commit `a3e62e1b1a803d3289d867ec3b328eb58a8a4d22`, Tedd 1.2.0-rc.13, with no uncommitted change in the lab or the graph runtime |
+| Source | Commit `9cf09ca859d12e134eac605e778e085f3b8eaae3`, Tedd 1.2.0-rc.13, with this lab's per-call limit check not yet committed |
 | Host | Windows 11 on AMD64, CPython 3.14.0, SQLite 3.50.4 with FTS5 |
 | Synthetic graph | 2,087 records at watermark 2,081 |
 | Lab qualification | Passed all nine checks |
@@ -25,6 +25,7 @@ the exact instrument and graph runtime whatever the Git state.
 
 "Oversized cases" are the five whose required records lie outside what the
 default budget can hold. "Controls" are the two that recency order should pass.
+The three means cover all seven cases.
 
 | Arm | Budget | Oversized cases sufficient | Controls sufficient | Mean delivered recall | Mean response characters | Mean response evaluator tokens |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -41,11 +42,16 @@ default budget can hold. "Controls" are the two that recency order should pass.
 | `oracle_v1` | `standard` | 5 of 5 | 2 of 2 | 1.00 | 1,111 | 309 |
 | `oracle_v1` | `default` | 5 of 5 | 2 of 2 | 1.00 | 1,111 | 309 |
 
-No arm returned a hard violation or a record outside its project. Every arm
-delivered exactly the same thing across its three measured repetitions, and no
-response exceeded its character allowance. One read named a stale record:
-`mcp_search_v1` at `default` returned the replaced decision in
-`replaced_decision` together with the current one.
+No arm returned a hard violation or a record outside its project, and no call
+returned more than the limits it was given. Every arm delivered exactly the
+same thing across its three measured repetitions, and no response exceeded its
+character allowance. For `mcp_context_search_v1` that allowance is the budget
+plus 12,000 characters for its search, so 62,000 at `default`.
+
+One read named a stale record: `mcp_search_v1` at `default` returned the
+replaced decision in `replaced_decision` together with the current one. That
+record is marked as superseded and names its successor, and the read was
+sufficient.
 
 ## What a context returned
 
@@ -134,10 +140,10 @@ project's entity record, which the whole-project reference does not count.
   `standard`. The search found `old_decision`. It did not return the current
   decision in `replaced_decision`, the note in `old_note`, or two of the three
   decisions in `decisions_over_time`.
-- **A larger search limit found more, and a stale record with it.** Scoped
-  search alone with 100 results was sufficient in three of five oversized
-  cases. It returned the current decision in `replaced_decision` together
-  with the decision it replaced.
+- **A larger search limit found more.** Scoped search alone with 100 results
+  was sufficient in three of five oversized cases. It returned the current
+  decision in `replaced_decision` together with the decision it replaced,
+  which is marked as superseded.
 - **Scoped search did not return the overdue commitment at either budget.**
   The route with a context delivered it at `default` only through the
   `overdue` section.
@@ -149,9 +155,10 @@ project's entity record, which the whole-project reference does not count.
 
 Scoped search orders partial matches by how many distinct question words they
 contain and then by recency. These generated projects repeat a small
-vocabulary, so an old record often ties with many newer ones. That is the
-likely reason old records fell outside the shorter limits. The lab did not
-test that explanation separately.
+vocabulary, so an old record often ties with many newer ones. That may be why
+old records fell outside the shorter limits. The run does not establish it:
+each case used one query, the whole question, and no variant of wording,
+vocabulary or recency was compared.
 
 ## Limits
 

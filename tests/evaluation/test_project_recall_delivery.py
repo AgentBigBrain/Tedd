@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from collections.abc import Iterator
 
 from tedd_memory_eval.providers import canonical_payload_json
 from tedd_project_recall.contracts import (
@@ -377,6 +378,141 @@ class McpArmTests(unittest.TestCase):
                 truncated=False,
                 duration_ms=0.0,
             )
+
+
+class CallLimitTests(unittest.TestCase):
+    """Each call is held to the limits it was given, whatever room another call left."""
+
+    def setUp(self) -> None:
+        self.mini = MiniProject()
+        self.case = self.mini.case(self.mini.current)
+        self.sandbox = FakeSandbox(self.case).as_sandbox()
+        everything = [record(item) for item in self.case.scenario.records]
+        # Routine records only, so no returned record points at one left out.
+        self.routine = [*everything[12:], *everything[:3]]
+        self.needed = record(self.mini.current.fixture)
+
+    def found(self, count: int) -> list[dict[str, object]]:
+        """Return ``count`` search results that include the required decision."""
+
+        return [self.needed, *self.routine[: count - 1]]
+
+    def workflow(
+        self, *, context: dict[str, object] | None = None, search: dict[str, object]
+    ) -> DeliveryObservation:
+        fake = FakeMcp(context=context or context_body([]), search=search)
+        arm_under_test = McpContextSearchArm(connect=fake.connect)
+        return score_delivery(
+            arm_id=arm_under_test.arm_id,
+            budget=arm_under_test.allowance(STANDARD_BUDGET),
+            case=self.case,
+            repetition=0,
+            delivery=arm_under_test.read(self.sandbox, self.case, STANDARD_BUDGET),
+        )
+
+    def test_a_search_step_at_exactly_its_item_limit_is_not_a_violation(self) -> None:
+        seen = self.workflow(search=search_body(self.found(SEARCH_STEP_BUDGET.max_items)))
+
+        self.assertEqual(seen.limit_violations, 0)
+        self.assertTrue(seen.sufficient)
+
+    def test_spare_context_room_does_not_hide_an_oversized_search_step(self) -> None:
+        for count in (SEARCH_STEP_BUDGET.max_items + 1, 16):
+            with self.subTest(search_results=count):
+                seen = self.workflow(search=search_body(self.found(count)))
+
+                # The combined allowance alone would pass this read.
+                self.assertEqual(seen.records.hard_violation_count, 0)
+                self.assertLess(seen.response_chars, seen.allowed_chars)
+                self.assertEqual(seen.limit_violations, 1)
+                self.assertFalse(seen.sufficient)
+
+    def test_an_oversized_context_step_is_a_violation(self) -> None:
+        too_many = self.routine[: STANDARD_BUDGET.max_items + 1]
+
+        seen = self.workflow(context=context_body(too_many), search=search_body([self.needed]))
+
+        self.assertEqual(seen.records.hard_violation_count, 0)
+        self.assertEqual(seen.limit_violations, 1)
+        self.assertFalse(seen.sufficient)
+
+    def test_both_steps_over_their_limits_count_separately(self) -> None:
+        seen = self.workflow(
+            context=context_body(self.routine[: STANDARD_BUDGET.max_items + 1]),
+            search=search_body(self.found(SEARCH_STEP_BUDGET.max_items + 1)),
+        )
+
+        self.assertEqual(seen.limit_violations, 2)
+
+    def test_a_search_envelope_counts_toward_its_character_limit(self) -> None:
+        padded = [{**item, "matched_terms": ["x" * 400]} for item in self.found(10)]
+
+        seen = self.workflow(search=search_body(padded))
+
+        self.assertLessEqual(seen.records.payload_chars, SEARCH_STEP_BUDGET.max_chars)
+        self.assertEqual(seen.limit_violations, 1)
+        self.assertFalse(seen.sufficient)
+
+    def test_a_context_section_counts_toward_its_character_limit(self) -> None:
+        long_item = {"id": self.mini.loop.record_id, "title": "x" * 4_000}
+        context = context_body(self.routine[:10], overdue={"items": [long_item]})
+
+        seen = self.workflow(context=context, search=search_body([self.needed]))
+
+        self.assertLessEqual(seen.records.item_count, STANDARD_BUDGET.max_items)
+        self.assertLessEqual(seen.records.payload_chars, STANDARD_BUDGET.max_chars)
+        self.assertEqual(seen.limit_violations, 1)
+
+    def test_single_call_arms_are_held_to_the_same_limits(self) -> None:
+        too_many = self.routine[: STANDARD_BUDGET.max_items + 1]
+        reads = {
+            "scoped search": McpSearchArm(
+                connect=FakeMcp(search=search_body(too_many)).connect
+            ).read(self.sandbox, self.case, STANDARD_BUDGET),
+            "CLI context": arm(CONTEXT_ARM_ID).read(
+                FakeSandbox(self.case, context_records=too_many).as_sandbox(),
+                self.case,
+                STANDARD_BUDGET,
+            ),
+            "CLI search": arm("recall_fts_v1").read(
+                FakeSandbox(self.case, recall_records=too_many).as_sandbox(),
+                self.case,
+                STANDARD_BUDGET,
+            ),
+        }
+
+        self.assertEqual(
+            {label: read.limit_violations for label, read in reads.items()}, dict.fromkeys(reads, 1)
+        )
+
+    def test_exact_id_reads_have_no_limit_to_exceed(self) -> None:
+        delivery = arm("oracle_v1").read(self.sandbox, self.case, STANDARD_BUDGET)
+
+        self.assertEqual(delivery.limit_violations, 0)
+
+
+class _ReadGuard(list[tuple[str, dict[str, object]]]):
+    """A call log that fails, instead of hanging, if it grows while it is read."""
+
+    def __iter__(self) -> Iterator[tuple[str, dict[str, object]]]:
+        length = len(self)
+        for index in range(length + 1):
+            if index == len(self):
+                return
+            if index == length:
+                raise AssertionError("the call log grew while it was being read")
+            yield self[index]
+
+
+class SupportTests(unittest.TestCase):
+    def test_fake_reader_given_its_own_call_log_asks_each_call_once_more(self) -> None:
+        mini = MiniProject()
+        fake = FakeMcp(context=context_body([]), search=search_body([]))
+        fake.calls = _ReadGuard([("recall_context", {}), ("search_memory", {})])
+
+        bodies = fake.call(mini.case(mini.current).scenario, fake.calls)
+
+        self.assertEqual((len(bodies), len(fake.calls)), (2, 4))
 
 
 if __name__ == "__main__":

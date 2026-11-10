@@ -251,6 +251,33 @@ class QualificationFailureTests(unittest.TestCase):
             "identical_measured_repetitions",
         )
 
+    def test_a_call_over_its_limits_is_counted_and_is_never_sufficient(self) -> None:
+        def over(arm_id: str, case: ProjectCase, repetition: int, delivery: Delivery) -> Delivery:
+            chosen = arm_id == "oracle_v1" and case.case_id == "old_decision"
+            return replace(delivery, limit_violations=1) if chosen else delivery
+
+        report = report_for(observations(self.cases, vary=over), self.cases)
+
+        exact = [
+            arm
+            for arm in cast(list[Mapping[str, object]], report["arms"])
+            if arm["arm"] == "oracle_v1"
+        ]
+        self.assertEqual(
+            [member(arm, "safety")["limit_violation_scenarios"] for arm in exact], [1, 1]
+        )
+        rows = cast(list[Mapping[str, object]], exact[0]["cases"])
+        self.assertEqual(
+            [
+                (row["limit_violations"], row["sufficient"])
+                for row in rows
+                if row["case_id"] == "old_decision"
+            ],
+            [(1, False)],
+        )
+        checks = cast(Mapping[str, object], member(report, "qualification")["checks"])
+        self.assertIs(checks["oracle_sufficient_at_every_budget"], False)
+
     def test_other_warmup_or_repetition_counts_fail_qualification(self) -> None:
         report = build_report(
             observations(self.cases),

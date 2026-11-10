@@ -136,19 +136,48 @@ def _payload_mismatches(responses: Sequence[Mapping[str, object]], scenario: Sce
     return mismatches
 
 
+def over_limits(response: Mapping[str, object], limits: Budget) -> bool:
+    """Tell whether one call returned more than the limits it was given.
+
+    A context's character limit covers its whole response; a search's covers
+    its results list.  Both limits are checked in the lab's canonical JSON,
+    which is never longer than the JSON Tedd budgets, so a response that Tedd
+    kept within its limit is never reported here.  A response with neither a
+    records list nor a results list was fetched by exact ID and has no limit.
+    """
+
+    if isinstance(response.get("records"), list):
+        returned, bounded = _objects(response.get("records")), cast(object, response)
+    elif isinstance(response.get("results"), list):
+        returned, bounded = _objects(response.get("results")), response.get("results")
+    else:
+        return False
+    return (
+        len(returned) > limits.max_items or len(canonical_payload_json(bounded)) > limits.max_chars
+    )
+
+
 def deliver(
     packet: ContextPacket,
     responses: Sequence[Mapping[str, object]],
     scenario: Scenario,
     *,
     sections: bool,
+    limits: Sequence[Budget],
 ) -> Delivery:
     """Describe one read from its scored records list and its decoded responses.
 
     With ``sections`` true, items in reserved sections count as listed, and a
     required record counts as carried when one item with its ID holds every
-    asserted field with the asserted value.
+    asserted field with the asserted value.  ``limits`` gives, for each
+    response in order, the limits that call was made with.
+
+    Raises:
+        ValueError: If ``limits`` does not give one entry per response.
     """
+
+    if len(limits) != len(responses):
+        raise ValueError("Every response needs the limits its call was given")
 
     items = [item for response in responses for item in section_items(response)] if sections else []
     carried = tuple(
@@ -176,6 +205,9 @@ def deliver(
             sum(withheld_sections(response) for response in responses) if sections else 0
         ),
         sections_sha256=sections_digest(responses) if sections else "",
+        limit_violations=sum(
+            over_limits(response, limit) for response, limit in zip(responses, limits, strict=True)
+        ),
     )
 
 
@@ -295,7 +327,13 @@ class ProviderArm:
         client = _RecordingClient(sandbox)
         # Providers use only ``call``, which the recorder forwards unchanged.
         packet = self.provider.retrieve(cast(MemoryEvalSandbox, client), case.scenario, budget)
-        return deliver(packet, client.responses, case.scenario, sections=self.reads_sections)
+        return deliver(
+            packet,
+            client.responses,
+            case.scenario,
+            sections=self.reads_sections,
+            limits=[budget] * len(client.responses),
+        )
 
 
 @dataclass(frozen=True)
@@ -331,7 +369,7 @@ class McpSearchArm:
             truncated=_flag(search.get("truncated"), "Search truncation marker"),
             duration_ms=(time.perf_counter() - started) * 1_000,
         )
-        return deliver(packet, [search], scenario, sections=False)
+        return deliver(packet, [search], scenario, sections=False, limits=[budget])
 
 
 @dataclass(frozen=True)
@@ -340,7 +378,9 @@ class McpContextSearchArm:
 
     This is the route an agent takes when it reads its context and then
     searches with its question.  Its allowance is the budget plus the search
-    step's limits, and its sizes are the sum of both responses.
+    step's limits, and its sizes are the sum of both responses.  Each response
+    is still checked against the limits of its own call, so room left by one
+    step cannot hide an overrun in the other.
     """
 
     arm_id: str = WORKFLOW_ARM_ID
@@ -389,7 +429,13 @@ class McpContextSearchArm:
                 duration_ms=0.0,
             ),
         )
-        return deliver(packet, [context, search], scenario, sections=True)
+        return deliver(
+            packet,
+            [context, search],
+            scenario,
+            sections=True,
+            limits=[budget, SEARCH_STEP_BUDGET],
+        )
 
 
 def arms() -> tuple[ReadArm, ...]:
@@ -422,8 +468,9 @@ def score_delivery(
     ``budget`` is the arm's allowance for this read.  The records list is
     scored by the memory evaluation lab's frozen rules.  A read is sufficient
     when every required record was delivered, in a records list or carried by a
-    reserved section, with no hard violation in a records list and no reserved
-    section naming a record outside the project.
+    reserved section, with no hard violation in a records list, no call over
+    its own limits, and no reserved section naming a record outside the
+    project.
     """
 
     scenario = case.scenario
@@ -445,7 +492,10 @@ def score_delivery(
         listed_recall=sum(item in named for item in required) / len(required),
         delivered_recall=delivered_recall,
         sufficient=(
-            delivered_recall == 1.0 and records.hard_violation_count == 0 and scope_exposure == 0
+            delivered_recall == 1.0
+            and records.hard_violation_count == 0
+            and delivery.limit_violations == 0
+            and scope_exposure == 0
         ),
         stale_named=len(set(named) & set(scenario.stale_ids)),
         section_items=len(delivery.listed_ids),
@@ -457,6 +507,7 @@ def score_delivery(
         named_ids=named,
         sections_sha256=delivery.sections_sha256,
         allowed_chars=budget.max_chars,
+        limit_violations=delivery.limit_violations,
     )
 
 
@@ -471,6 +522,7 @@ __all__ = [
     "arms",
     "deliver",
     "frozen_packet",
+    "over_limits",
     "score_delivery",
     "section_items",
     "sections_digest",

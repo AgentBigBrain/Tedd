@@ -134,8 +134,9 @@ measure whether an agent would search, or which words it would use.
 `mcp_context_search_v1` has a larger allowance at each budget: the budget for
 its context, plus 10 results and 12,000 characters for its search, which are
 the shipped `search_memory` defaults. Its sizes are the sum of both responses,
-so a record that both steps return is counted twice. Each response's records
-are checked on their own.
+so a record that both steps return is counted twice. Each of its two calls is
+still held to that call's own limits, so room left by one step cannot hide an
+overrun in the other.
 
 Each arm, budget and case receives one unmeasured warm-up and three measured
 repetitions. Record order, section contents and every score must be identical
@@ -157,8 +158,15 @@ record when it has a text `id`.
 - **Delivered recall**: the share of required records delivered in full. A
   record is delivered when it is in the records list, or when a reserved
   section item with its ID carries every needed field with the authored value.
+- **Limit violations**: calls that returned more than the limits they were
+  given. A call's records must not outnumber its item limit, and the part of
+  its response that its character limit covers must fit that limit: the whole
+  response for a context, the results list for a search. Both are measured in
+  canonical JSON, which is never longer than the JSON Tedd budgets. A read by
+  exact ID has no limit.
 - **Sufficiency**: every required record is delivered, the records list has no
-  hard violation, and no reserved section names a record outside the project.
+  hard violation, no call has a limit violation, and no reserved section names
+  a record outside the project.
 - **Stale named**: stale records named anywhere in the response.
 - **Withheld sections**: reserved sections that Tedd marks `omitted` because
   their items did not fit the budget. An empty section that is not marked had
@@ -256,9 +264,9 @@ the build with the change and on the build without it.
   scored by the rules in the section above.
 - **Guardrails**: every case that is sufficient without the change stays
   sufficient with it, at both budgets, which includes both controls; no case
-  gains a hard violation, a scope exposure, a withheld section, or a newly
-  named stale record; no response exceeds its character allowance; and the
-  run qualifies.
+  gains a hard violation, a limit violation, a scope exposure, a withheld
+  section, or a newly named stale record; no response exceeds its character
+  allowance; and the run qualifies.
 - **Confirmation**: a movement counts only if the confirmation partition moves
   in the same direction as the calibration partition.
 

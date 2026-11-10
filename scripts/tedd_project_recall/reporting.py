@@ -152,6 +152,7 @@ def _measured(item: DeliveryObservation) -> dict[str, object]:
         "section_scope": item.section_scope_exposure,
         "section_items": item.section_items,
         "withheld_sections": item.withheld_sections,
+        "limit_violations": item.limit_violations,
         "payload_mismatches": item.payload_mismatches,
         "items": records.item_count,
         "chars": records.payload_chars,
@@ -196,6 +197,7 @@ def _case_row(item: DeliveryObservation) -> dict[str, object]:
         "sufficient": item.sufficient,
         "stale_named": item.stale_named,
         "hard_violations": records.hard_violation_count,
+        "limit_violations": item.limit_violations,
         "section_scope_exposure": item.section_scope_exposure,
         "item_count": records.item_count,
         "section_items": item.section_items,
@@ -271,6 +273,7 @@ def _aggregate(
             "hard_violation_scenarios": sum(
                 item.records.hard_violation_count > 0 for item in first
             ),
+            "limit_violation_scenarios": sum(item.limit_violations > 0 for item in first),
         },
         "size": {
             "mean_items": _mean(float(item.records.item_count) for item in first),

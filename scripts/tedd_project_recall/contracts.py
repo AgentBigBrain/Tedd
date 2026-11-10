@@ -69,8 +69,9 @@ class Delivery:
     required records for which such a section also carries every asserted
     field.  ``withheld_sections`` counts reserved sections whose items were left
     out for lack of budget, and ``sections_sha256`` binds the exact content of
-    every reserved section read.  Sizes cover the complete decoded responses,
-    not only record payloads.
+    every reserved section read.  ``limit_violations`` counts the calls that
+    returned more than the limits they were given.  Sizes cover the complete
+    decoded responses, not only record payloads.
     """
 
     packet: ContextPacket
@@ -81,6 +82,7 @@ class Delivery:
     payload_mismatches: int
     withheld_sections: int = 0
     sections_sha256: str = ""
+    limit_violations: int = 0
 
 
 @dataclass(frozen=True)
@@ -110,6 +112,7 @@ class DeliveryObservation:
     named_ids: tuple[str, ...]
     sections_sha256: str
     allowed_chars: int
+    limit_violations: int
 
 
 @dataclass(frozen=True)

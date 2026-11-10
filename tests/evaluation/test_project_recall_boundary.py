@@ -45,6 +45,7 @@ class RealBoundaryTests(unittest.TestCase):
         # with its authored payload and the overdue section names the open loop.
         self.assertEqual(context.records.required_recall, 1.0)
         self.assertEqual({item.payload_mismatches for item in seen.values()}, {0})
+        self.assertEqual({item.limit_violations for item in seen.values()}, {0})
         self.assertIn(mini.loop.record_id, context.named_ids[: context.section_items])
         self.assertEqual(context.records.hard_violation_count, 0)
         self.assertGreater(context.response_chars, context.records.payload_chars)
