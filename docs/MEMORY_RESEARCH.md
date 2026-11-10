@@ -172,6 +172,8 @@ python scripts/memory_eval_lab.py --pretty
 
 The current evaluator follows [protocol revision 2](../research/memory-eval-lab/PROTOCOL-V2.md). The archived reference measurements used [revision 1](../research/memory-eval-lab/PROTOCOL.md); no revision 2 reference run has been published with a matching SHA-256 hash.
 
+A separate [project recall lab](../research/project-recall-lab/PROTOCOL.md) was added after the studies in this report. It measures what a read delivers from synthetic projects of 30 to 650 records, and its [baseline](../research/project-recall-lab/BASELINE.md) records the result for Tedd 1.2.0-rc.13. None of the results above come from it, and it measures delivery, not agent answers.
+
 Reproducing the archived scale study requires access to the private research archive, including its source commit, protocol, and `scripts/memory_scale_bench.py` runner.
 
 For a benchmark you can run from this public repository, follow [Knowledge graph scale and limits](SCALE.md#archived-study-and-current-benchmark). Its code, test data, and procedures differ from the archived study, so its measurements describe the current benchmark rather than reproducing the historical results.

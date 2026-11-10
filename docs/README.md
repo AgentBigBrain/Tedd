@@ -38,6 +38,7 @@ development guidance and historical evidence.
 | [Python development skill](../.agents/skills/python-development/SKILL.md) | Repository-only Python guidance: typed transport boundaries, failure categories, bounded parsing and focused rule cards |
 | [Graph storage compatibility](KNOWLEDGE_GRAPH_COMPATIBILITY.md) | Current v3/v4 support, explicit upgrades, and rollback boundaries |
 | [Memory evaluation protocol](../research/memory-eval-lab/PROTOCOL-V2.md) | Current public retrieval-evaluation method |
+| [Project recall protocol](../research/project-recall-lab/PROTOCOL.md) | Synthetic evaluation of reads from projects larger than one context, with its [recorded baseline](../research/project-recall-lab/BASELINE.md) |
 
 The [Tedd skill](../plugins/tedd/skills/tedd/SKILL.md) is the packaged workflow
 entry point. It links identity, development, provider, browser, and communication

@@ -331,6 +331,14 @@ python scripts/memory_eval_lab.py --pretty
 
 The current protocol is [memory evaluation protocol revision 2](research/memory-eval-lab/PROTOCOL-V2.md). The [archived revision 1 protocol](research/memory-eval-lab/PROTOCOL.md) remains available for historical comparison.
 
+A second script measures what a read delivers when a project holds far more records than one context can return:
+
+```bash
+python scripts/project_recall_lab.py --pretty
+```
+
+The [project recall protocol](research/project-recall-lab/PROTOCOL.md) fixes its synthetic projects, its measures and the rules for comparing a change. The [recorded baseline](research/project-recall-lab/BASELINE.md) gives the result for Tedd 1.2.0-rc.13.
+
 ## Development and verification
 
 Use a separate checkout for development and testing. On Windows, keep it on a
