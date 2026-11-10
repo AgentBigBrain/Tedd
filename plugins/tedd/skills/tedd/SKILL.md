@@ -70,7 +70,10 @@ Read [../obsidian-knowledge-graph/SKILL.md](../obsidian-knowledge-graph/SKILL.md
 Recall within the exact task scope; treat memory as context, not current proof or new authorization. Preserve the graph's authority, privacy, revision, coverage, and validation gates whenever using it. Keep raw source content out of the graph; source preservation requires the separately authorized private archive. If memory is unavailable, stop only the actions that need it to proceed safely and report pending memory work separately.
 
 Use the lifecycle's overdue intake rule for surfaced unfinished work: one summary
-line, with user disposition only for items relevant to the task.
+line, with user disposition only for items relevant to the task. When context
+carries current claims and waiting counts, read the claims for what is true now
+and report the counts in that one line. Only the operator's own answer accepts,
+rejects, drops, reschedules or hands off a waiting item.
 
 For dated preferences, follow the graph skill's
 [task-override and standing-update rule](../obsidian-knowledge-graph/references/recall.md#stated-preferences).

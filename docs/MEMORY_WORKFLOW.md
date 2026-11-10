@@ -102,6 +102,86 @@ When saving a new commitment, include its next checkpoint if one is known.
 An unknown date is allowed; Tedd flags the missing checkpoint for review
 instead of inventing one.
 
+## See what is true now
+
+The three sections that follow describe features newer than the 1.2.0-rc.12
+package. Check [current availability](sources/qualification.md#current-availability)
+before relying on them in your installation.
+
+At task start, Tedd can show a short fact sheet for the task's approved project
+scope. Each line is a current fact: something with one value at a time, such as
+a site's hosting provider or a client's main contact. When the value changes,
+Tedd saves the new one and keeps the earlier one in history.
+
+The sheet shows when each fact took effect and when it was last confirmed. A
+fact is confirmed when evidence Tedd verified, or your own statement, restates
+the same value. That date tells you how fresh the fact is. It does not prove
+the fact still holds, so Tedd rechecks anything that may have changed before
+acting on it. When two values for one fact are both current, the sheet flags
+the conflict instead of choosing one.
+
+The sheet holds up to 12 facts and uses at most a quarter of the task's context
+limit, ahead of recent records. A shortened or missing sheet does not mean
+nothing is known.
+
+Facts are not only for code. Ask Tedd to save a person's role, how someone
+prefers to be contacted, what a client agreed to, or a renewal date. Tedd saves
+only what your statement or the evidence supports, and leaves an unknown role
+or date unsaved.
+
+## Answer what is waiting
+
+Beside the fact sheet, Tedd reports how many commitments are unfinished, how
+many of those are overdue, and how many proposals nobody has ruled on. Ask:
+"Show me what is waiting in this project."
+
+Tedd lists commitments with overdue ones first, then proposals with the oldest
+first. Each commitment is marked as unassigned, held by an agent, or held by a
+named person, so you can tell what waits on you from what waits on someone else.
+
+Answer in plain words, several at once. For example: "The report is done, it
+went out Tuesday. Drop the audit, the client cancelled. Move the renewal to
+Friday. Hand the contract to Sam. Accept the caching proposal and reject the
+rewrite."
+
+| Your answer | What Tedd saves |
+| --- | --- |
+| Done, with what happened | The commitment, closed with that outcome |
+| Drop it, with a reason | The commitment, closed as withdrawn with your reason |
+| Later, with a date | A new checkpoint for the commitment |
+| Hand it to someone | That person as the commitment's owner |
+| Accept | The proposal as an accepted decision or an open commitment |
+| Reject | The proposal as a rejected decision |
+| Replaced by another decision | The earlier decision marked replaced and linked to the later one |
+
+A decision can only be replaced by one that has been accepted. You can accept
+the later one in the same answer. Tedd refuses to replace a decision with a
+proposal nobody ruled on, or with one that was rejected.
+
+Tedd reviews the batch and saves it as one change, with your statement as its
+evidence. Only your answer settles an item: Tedd does not answer for you or
+read agreement into silence. Nothing is deleted, and each record keeps its
+history. The
+[agent procedure](../plugins/tedd/skills/obsidian-knowledge-graph/references/capture-and-correction.md#answer-the-review-queue)
+lists the exact answers and limits.
+
+## Fold old notes into current facts
+
+A long-running project collects many dated notes. Ask: "Fold this project's
+notes into current facts." Tedd lists the notes that no fact cites yet, grouped
+by topic. It drafts a small set of facts, each citing the notes it rests on,
+and shows you one batch at a time.
+
+After you approve a batch, those facts appear on the fact sheet. The cited
+notes leave the recent-records list for tasks that can read the facts. The
+notes themselves are unchanged and still appear in search.
+
+A summary can drop a condition. Check that each drafted fact keeps words such
+as "not" and "only when" from its notes. When notes disagree, Tedd records the
+disagreement instead of choosing a winner. A note that is uncertain, or that no
+fact fully states, stays unfolded. A summary Tedd only inferred cannot fold
+notes: that save is refused and hides nothing.
+
 ## Keep preferences scoped and current
 
 A saved preference is a default you have stated, with a condition and a reason.

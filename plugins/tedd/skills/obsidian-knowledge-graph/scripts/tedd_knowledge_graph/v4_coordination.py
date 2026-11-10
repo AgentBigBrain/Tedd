@@ -553,32 +553,69 @@ def ack(
     return {"subscription_id": subscription_id, "last_ack_watermark": target}
 
 
-def current_record_predicate(selector: Selector) -> tuple[str, list[SqlParameter]]:
-    """Subscription membership for current records, using the r/h query aliases."""
+def _membership_predicate(
+    selector: Selector, record: str, header: str
+) -> tuple[str, list[SqlParameter]]:
+    """Subscription membership for one records/current-header alias pair.
+
+    The aliases are fixed identifiers chosen by this module, never caller input.
+    """
 
     predicates: list[str] = []
     parameters: list[SqlParameter] = []
     if selector["all"]:
         predicates.append("1=1")
     if selector["record_ids"]:
-        predicates.append(f"r.record_id IN ({','.join('?' for _ in selector['record_ids'])})")
+        predicates.append(
+            f"{record}.record_id IN ({','.join('?' for _ in selector['record_ids'])})"
+        )
         parameters.extend(selector["record_ids"])
     if selector["collections"]:
-        predicates.append(f"r.collection IN ({','.join('?' for _ in selector['collections'])})")
+        predicates.append(
+            f"{record}.collection IN ({','.join('?' for _ in selector['collections'])})"
+        )
         parameters.extend(selector["collections"])
     if selector["entity_ids"]:
         predicates.append(
-            "EXISTS (SELECT 1 FROM revision_refs rr WHERE rr.record_id=r.record_id "
-            "AND rr.revision=r.current_revision "
+            f"EXISTS (SELECT 1 FROM revision_refs rr WHERE rr.record_id={record}.record_id "
+            f"AND rr.revision={record}.current_revision "
             f"AND rr.target_record_id IN ({','.join('?' for _ in selector['entity_ids'])}))"
         )
         parameters.extend(selector["entity_ids"])
     if selector["discovery_kinds"]:
         predicates.append(
-            f"h.discovery_kind IN ({','.join('?' for _ in selector['discovery_kinds'])})"
+            f"{header}.discovery_kind IN ({','.join('?' for _ in selector['discovery_kinds'])})"
         )
         parameters.extend(selector["discovery_kinds"])
     return " OR ".join(predicates) or "0=1", parameters
+
+
+def current_record_predicate(selector: Selector) -> tuple[str, list[SqlParameter]]:
+    """Subscription membership for current records, using the r/h query aliases."""
+
+    return _membership_predicate(selector, "r", "h")
+
+
+def folded_observation_clause(selector: Selector) -> tuple[str, list[SqlParameter]]:
+    """SQL that is true when a claim visible in this scope cites record ``r``.
+
+    Only a non-sensitive claim that reached the truth surface folds a note, and
+    only for a subscription that can read that claim.  A task that cannot see
+    the claim therefore keeps seeing the note it summarizes.
+    """
+
+    membership, parameters = _membership_predicate(selector, "fc", "fh")
+    clause = (
+        "EXISTS (SELECT 1 FROM revision_refs fr "
+        "JOIN records fc ON fc.record_id=fr.record_id AND fc.current_revision=fr.revision "
+        "JOIN record_revision_headers fh "
+        "ON fh.record_id=fc.record_id AND fh.revision=fc.current_revision "
+        "WHERE fr.target_record_id=r.record_id AND fr.ref_kind='observation' "
+        "AND fc.collection='claims' AND fc.sensitive=0 "
+        "AND fc.lifecycle IN ('current','conflicting','superseded') "
+        f"AND ({membership}))"
+    )
+    return clause, parameters
 
 
 def context_pack(
@@ -599,7 +636,9 @@ def context_pack(
     max_items = max(1, min(int(max_items), dependencies.max_context_items))
     max_chars = max(1_000, min(int(max_chars), dependencies.max_context_chars))
     predicate, parameters = current_record_predicate(selector)
-    parameters.append(max_items + 1)
+    folded, folded_parameters = folded_observation_clause(selector)
+    # A note already folded into a visible claim is represented by that claim;
+    # search and the claim's own references still reach the note itself.
     rows = connection.execute(
         f"""
         SELECT r.record_id,r.collection,r.current_revision,r.last_watermark,
@@ -609,10 +648,10 @@ def context_pack(
           ON h.record_id=r.record_id AND h.revision=r.current_revision
         JOIN record_revision_payloads p
           ON p.record_id=r.record_id AND p.revision=r.current_revision
-        WHERE {predicate}
+        WHERE ({predicate}) AND NOT (r.collection='observations' AND {folded})
         ORDER BY r.last_watermark DESC,r.record_id LIMIT ?
         """,
-        parameters,
+        [*parameters, *folded_parameters, max_items + 1],
     ).fetchall()
     records: list[dict[str, object]] = []
     used_chars = 0

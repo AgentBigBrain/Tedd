@@ -2,18 +2,24 @@
 
 ## Current availability
 
-The public package is **1.2.0-rc.12**. It includes scoped search, guided setup,
-shared Codex/Claude memory, selective-saving handoffs, overdue review, and dated
-preferences. The install commands select `v1.2.0-rc.12`.
+Tedd **1.2.0-rc.13** adds labeled partial-match search, a current-facts sheet,
+follow-through review, and reviewed decision and commitment outcomes. It retains
+scoped memory, guided setup, shared Codex/Claude memory, selective-saving
+handoffs, overdue review, and dated preferences. The install commands select
+`v1.2.0-rc.13`.
 
-Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.12)
+Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.13)
 and the [CI results](https://github.com/AgentBigBrain/Tedd/actions/workflows/ci.yml)
-for the exact public commit. After installation, compare the package files and
-complete a scoped read in your host. Hook discovery, source readers, and provider
-access have their own setup checks.
+for its exact public commit and verification evidence. After installation,
+compare the package files and complete a scoped read in your host. Hook discovery,
+source readers, and provider access have their own setup checks.
 
-RC12 keeps RC11's graph and source behavior, store schema v4, projection format
-v4, and standard-library runtime. No graph migration or rebuild is required.
+RC13 keeps store schema v4, projection format v4, and the standard-library runtime.
+No graph migration, rebuild, or reindex is required. Existing capture packets
+without the new outcome or observation-reference fields retain their fingerprints.
+Source archive formats and reader contracts are unchanged. Installation leaves
+the graph, source permissions, and Obsidian projection intact.
+
 The public package omits private plans, evaluation records, and personal hosting
 procedures. Keep local procedures in a private skill alongside Tedd.
 
@@ -33,12 +39,18 @@ and CI results apply to their named candidates; they do not qualify a later
 package automatically. Updating source on GitHub does not update an installed
 plugin or enable optional readers, Google access, or source previews.
 
-Unreleased source adds partial-match memory search: when no record contains
-every query word, `search_memory` returns labeled partial matches. It is
-implemented and covered by repository tests. It is not in the RC12 package and
-has no host qualification. A loaded build includes it when its `search_memory`
-tool lists a `match` argument; see the
+In RC13, `search_memory` returns labeled partial matches when no record contains
+every query word. Use `match: all` to require every term. Task subscriptions and
+privacy rules apply before matching and result limits. See the
 [search reference](../../plugins/tedd/skills/obsidian-knowledge-graph/references/recall.md#on-demand-mcp-search).
+
+Task context also returns `current_state` and `waiting` sections. The
+`review-queue`, `review-answers`, and `fold-candidates` commands help review
+unfinished work and repeated notes. Writes still use the reviewed capture
+workflow. See [current claims](../../plugins/tedd/skills/obsidian-knowledge-graph/references/recall.md#current-claims).
+
+The dated records below describe earlier builds. They are historical evidence,
+not the RC13 test report; use the release and its exact CI run for that report.
 
 | Area | Verified scope and remaining limits |
 | --- | --- |

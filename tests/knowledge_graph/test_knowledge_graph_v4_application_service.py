@@ -15,6 +15,7 @@ from unittest import mock
 import knowledge_graph_v4 as v4  # noqa: E402
 from tedd_knowledge_graph.v4_application_contracts import (  # noqa: E402
     BrainStatusRequest,
+    FoldCandidatesRequest,
     GraphReadError,
     GraphReadErrorCategory,
     GraphReadScope,
@@ -23,6 +24,8 @@ from tedd_knowledge_graph.v4_application_contracts import (  # noqa: E402
     PullChangesRequest,
     ReadScopeKind,
     RecallContextRequest,
+    ReviewAnswersRequest,
+    ReviewQueueRequest,
     SearchMemoryRequest,
 )
 from tedd_knowledge_graph.v4_application_service import (  # noqa: E402
@@ -35,6 +38,11 @@ from tedd_knowledge_graph.v4_application_service import (  # noqa: E402
     ResultSanitizer,
 )
 from tedd_knowledge_graph.v4_backend_error_mapping import classify_graph_backend_error  # noqa: E402
+from tedd_knowledge_graph.v4_review_answers import (  # noqa: E402
+    Answer,
+    AnswersDocument,
+    StoredRecord,
+)
 
 from tests.support.graph_cases import (  # noqa: E402
     PLAN_KEY,
@@ -154,6 +162,64 @@ class _WriteFailingReadStore:
             "items": [],
             "truncated": False,
             "omitted": False,
+        }
+
+    def current_state(self, subscription_id: str) -> Mapping[str, object]:
+        self.read_calls.append("current_state")
+        return {
+            "label": "current claims, with dates",
+            "items": [],
+            "truncated": False,
+            "omitted": False,
+        }
+
+    def waiting_summary(self, subscription_id: str) -> Mapping[str, object]:
+        self.read_calls.append("waiting_summary")
+        return {
+            "commitments": {
+                "unfinished": 0,
+                "overdue": 0,
+                "unassigned": 0,
+                "agent_owned": 0,
+                "named_owner": 0,
+            },
+            "proposals": {"undecided": 0, "older_than_days": 30, "older": 0},
+            "notes": {"unfolded": 0},
+        }
+
+    def review_queue(self, subscription_id: str, *, limit: int = 20) -> Mapping[str, object]:
+        self.read_calls.append("review_queue")
+        return {"subscription_id": subscription_id, "limit": limit}
+
+    def fold_candidates(
+        self,
+        subscription_id: str,
+        *,
+        subject_id: str | None = None,
+        family: str | None = None,
+        limit: int = 20,
+    ) -> Mapping[str, object]:
+        self.read_calls.append("fold_candidates")
+        return {"subscription_id": subscription_id, "subject_id": subject_id, "family": family}
+
+    def scoped_records(
+        self, subscription_id: str, record_ids: Iterable[str]
+    ) -> Mapping[str, StoredRecord]:
+        self.read_calls.append("scoped_records")
+        return {
+            record_id: {
+                "collection": "decisions",
+                "revision": 1,
+                "payload": {
+                    "id": record_id,
+                    "title": "Synthetic proposal",
+                    "decided_at": "2026-01-03T12:00:00+00:00",
+                    "entity_refs": ["entity_project"],
+                    "status": "proposed",
+                    "authority_state": "candidate",
+                },
+            }
+            for record_id in record_ids
         }
 
     def create_plan_token(self, record_ids: Iterable[str], *, fingerprint: str) -> str:
@@ -992,6 +1058,23 @@ class GraphReadServiceTests(V4TestCase):
         service.pull_changes(
             PullChangesRequest(session=self._subscription_session(), scope=subscription_scope)
         )
+        service.review_queue(
+            ReviewQueueRequest(session=self._subscription_session(), scope=subscription_scope)
+        )
+        service.fold_candidates(
+            FoldCandidatesRequest(session=self._subscription_session(), scope=subscription_scope)
+        )
+        service.review_answers(
+            ReviewAnswersRequest(
+                session=self._subscription_session(),
+                scope=subscription_scope,
+                document=AnswersDocument(
+                    observed_at="2026-01-20T09:30:00+00:00",
+                    title="Synthetic answers",
+                    answers=(Answer(record_id="decision_idea", answer="accept"),),
+                ),
+            )
+        )
         self.assertEqual(
             store.read_calls,
             [
@@ -1002,8 +1085,16 @@ class GraphReadServiceTests(V4TestCase):
                 "context_pack",
                 "review_loops",
                 "preferences",
+                "current_state",
+                "waiting_summary",
                 "subscription_identity",
                 "inbox",
+                "subscription_identity",
+                "review_queue",
+                "subscription_identity",
+                "fold_candidates",
+                "subscription_identity",
+                "scoped_records",
             ],
         )
         self.assertTrue(all(readonly for _, readonly, _ in opener.calls))

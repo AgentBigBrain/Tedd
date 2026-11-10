@@ -42,7 +42,7 @@ After applying the packet, query the exact mutation or record IDs and rerun the 
 7. Choose the caller-controlled authority ceiling. Use the default for inference, `validated_structured_candidate` for evidence you personally verified through tools, and `explicit_user_statement` only for a direct statement from the user.
 8. Add `--allow-replace` only after verifying that a claim is a genuine successor on the same explicit surface. Otherwise the CLI downgrades `replace` to `preserve`.
 9. Classify the durable result with `--discovery-kind`; do not persist working chatter.
-10. Run a dry capture with `--plan-output` naming a new file in a private local directory. Review the packet and returned summary, including `policy_adjustments`, relevant record revisions, uniqueness predicates, and changed IDs. Default `review_safe` output hides the signed token; the private plan file carries it without printing it. A `duplicate` result needs no new plan or apply: verify the existing capture instead.
+10. Run a dry capture with `--plan-output` naming a new file in a private local directory. Review the packet and returned summary, including `policy_adjustments`, relevant record revisions, uniqueness predicates, and changed IDs. When the summary carries [`suggestions`](capture-schema.md#dry-run-suggestions), decide whether an existing claim slot or label fits better; a changed packet needs a fresh dry run. Default `review_safe` output hides the signed token; the private plan file carries it without printing it. A `duplicate` result needs no new plan or apply: verify the existing capture instead.
 11. Apply with the same `--expect-plan-file` and the explicitly reviewed `--expect-fingerprint`. Do not extract or print the token. The fingerprint binds the normalized packet and authority policy; the plan binds the exact store generation, relevant read set, and absence predicates without treating unrelated client writes as conflicts. The existing `--expect-plan-token` interface remains available for authorized private integrations. Use `--expect-watermark` only for strict whole-store administration (v4 `base_watermark`, not `next_watermark`) or legacy v3 compatibility.
 12. Include caller-controlled agent/task/parent/run/discovery/based-on provenance for multi-agent work. A coordinating agent projects and validates once after a parallel batch.
 
@@ -157,6 +157,112 @@ workaround loop during closure.
 
 The capture command normalizes strings and timestamps before fingerprinting, redacts recognized secret forms, rejects oversized or deeply nested packets, rejects semantic credential fields, fingerprints the packet plus its authority policy for replay safety, upserts stable and namespaced entities, preserves temporal history, and writes atomically. Redaction is defense in depth, so inspect the bounded packet and omit credential material at the source. `sensitive: true` controls display; it never permits credentials to be stored.
 
+## Answer the review queue
+
+Use this when the operator has answered items from
+[`review-queue`](recall.md#review-what-is-waiting). One answers file becomes
+one capture packet, so a whole batch is reviewed and saved as a single change.
+Only the operator's own answer settles an item. Do not answer on the
+operator's behalf, and do not treat a recorded suggestion as an answer.
+
+Write the answers to a private file, readable only by the current user:
+
+```json
+{
+  "version": "v1",
+  "observed_at": "2026-11-09T18:00:00-05:00",
+  "title": "Operator answers to the review queue",
+  "answers": [
+    {"id": "loop_send_report", "answer": "done", "outcome": "Report sent and acknowledged."},
+    {"id": "loop_old_audit", "answer": "drop", "reason": "The client cancelled the audit."},
+    {"id": "loop_renewal", "answer": "later", "checkpoint_at": "2026-11-14T09:00:00-05:00"},
+    {"id": "loop_contract", "answer": "hand_off", "owner_refs": ["entity_person_sam"]},
+    {"id": "decision_cache_layer", "answer": "accept"},
+    {"id": "decision_rewrite", "answer": "reject", "reason": "Too costly this quarter."},
+    {"id": "decision_probe_region", "answer": "replace", "superseded_by": "decision_probe_bypass"}
+  ]
+}
+```
+
+The IDs above are placeholders; use the exact IDs the queue returned.
+`observed_at` is when the operator answered and must carry a UTC offset.
+`title` is optional.
+
+| `answer` | Applies to | Requires | Effect |
+| --- | --- | --- | --- |
+| `done` | An unfinished commitment | `outcome` | Closes the loop with that outcome |
+| `drop` | An unfinished commitment | `reason` | Closes the loop with `Withdrawn: <reason>` as its outcome |
+| `later` | An unfinished commitment | `checkpoint_at`; optional `next_action` | Sets the next checkpoint |
+| `hand_off` | An unfinished commitment | `owner_refs`; optional `checkpoint_at`, `next_action` | Replaces the owners |
+| `accept` | A proposed commitment or decision | Nothing | Makes it an open commitment or an accepted decision |
+| `reject` | A proposed decision | Optional `reason` | Marks the decision rejected |
+| `replace` | A decision that is not already settled | `superseded_by` | Marks it superseded and links the later decision |
+
+A dropped commitment is stored as resolved; its outcome text says it was
+withdrawn. `later` or `hand_off` on a proposed commitment also accepts it.
+`replace` must name a decision that stands: one already accepted, or a
+proposal the same file answers with `accept`. A proposal nobody ruled on and a
+rejected decision are refused as replacements.
+Reasons for `reject` and `replace` go in the packet's source excerpt. Text
+fields hold at most 600 characters and a file at most 50 answers. A field that
+an answer does not use, an unknown field, a repeated record, or a time without
+an offset is refused.
+
+Build the packet with the task's verified consumer and subscription:
+
+```bash
+python3 -B scripts/knowledge_graph.py --config '<approved-graph-config-path>' review-answers \
+  --consumer-id '<registered-consumer-id>' \
+  --subscription-id '<active-subscription-id>' \
+  --input /absolute/path/to/private/answers.json \
+  --packet-output /absolute/path/to/private/answers.packet.json
+```
+
+The command saves nothing to the graph. It refuses the whole batch when a
+record is missing, outside the subscription, sensitive, in a state the answer
+does not fit, or last observed after the file's `observed_at`. `--packet-output` must name a new file in a private
+directory, under the same rules as a capture plan file. The result lists each
+`id`, `collection` and `answer`, and reports `saved: false`. The packet repeats
+stored titles, so keep it out of the graph, vault, repository and chat.
+
+Then capture the packet through the normal reviewed workflow above: dry run
+with `--plan-output`, review, apply with the fingerprint and plan file. Pass
+`--authority-ceiling explicit_user_statement`, because the source is the
+operator's statement. Use `--discovery-kind decision` when the batch settles a
+decision, otherwise `loop_resolution`. Verify the committed records, then
+remove the answers and packet files.
+
+## Fold notes into claims
+
+Use this when the operator asks to fold a subject's notes, or accepts a
+`notes` item from the review queue. Folding replaces a pile of dated
+observations with a few current claims that cite them. It is a summary written
+by an agent, so the operator approves each batch before it is saved.
+
+1. Run [`fold-candidates`](recall.md#find-notes-to-fold) for one subject. Work
+   one family at a time.
+2. Read the listed notes. Draft a claim for each fact they establish, on an
+   existing slot from `slots` where one fits, otherwise on a new explicit
+   `surface_id`. See [starter slots](capture-schema.md#starter-slots).
+3. Put the notes each claim rests on in its
+   [`observation_refs`](capture-schema.md#cite-the-notes-a-claim-replaces).
+   Leave a note uncited when no claim states what it says.
+4. Keep every condition, exception and negation from the notes. Do not state
+   as settled what a note records as uncertain or unverified; leave that note
+   uncited. State an unresolved disagreement as `conflict_policy: preserve`;
+   do not choose a winner.
+5. Show the operator the drafted claims with the notes each one cites, and
+   wait for approval of that batch.
+6. Capture the approved packet through the reviewed workflow. The claims'
+   authority follows the packet source and the caller's ceiling as usual. Use
+   `--allow-replace` only for a verified successor on an existing slot.
+
+Capture refuses `observation_refs` from a source below
+`validated_structured_candidate`, so an inferred summary folds nothing, even
+when it restates a claim that is already current. Folding never deletes or
+edits an observation. Stop when
+the notes disagree with current state that can be checked; verify first.
+
 ## Corrections and forgetting
 
 Do not edit generated notes as a way to change canonical knowledge.
@@ -166,7 +272,8 @@ Do not edit generated notes as a way to change canonical knowledge.
 - For a rename of the same real entity, reuse its canonical `id`, immutable namespace and type, and stable `identity_keys`; adequate non-backdated authority updates the display name and preserves the old name as an alias.
 - For two stored IDs proven to denote the same entity, capture an `entity_redirects` entry with a reason and validated evidence, then apply with `--allow-redirect` plus the reviewed fingerprint and v4 plan token. Reserve `--expect-watermark` for legacy v3 or deliberate whole-store administration. The losing entity and historical references remain auditable; future reference resolution follows the redirect.
 - To redact a graph record, use the explicit `redact` command with its stable ID. An independently shared archive source may remain. Whole-source forgetting requires the separate scoped impact preview and approved digest in [source-backed memory](../../tedd/references/source-backed-memory.md#pause-forget-and-recover-deliberately).
-- To close work, use `resolve-loop` with the open-loop ID.
+- To close work, use `resolve-loop` with the open-loop ID, or close several loops in one reviewed capture by [answering the review queue](#answer-the-review-queue).
+- For a decision that a later decision replaced, recapture it as `superseded` with [`superseded_by`](capture-schema.md#settle-or-replace-a-decision). For a declined proposal, recapture it as `rejected`.
 - Destructive entity merges and historical rekeying remain unsupported. A redirect is an identity-resolution edge, not permission to erase or rewrite the losing record.
 
 ```bash

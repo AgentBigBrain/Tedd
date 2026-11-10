@@ -123,6 +123,9 @@ NEW_V4_COMMANDS = frozenset(
         "inbox-ack",
         "context",
         "loops-review",
+        "review-queue",
+        "review-answers",
+        "fold-candidates",
         "backup",
         "export",
         "checkpoint",
@@ -874,6 +877,33 @@ def register_v4_subcommands(
     _add(parser, "--subscription-id", required=True)
     _add(parser, "--overdue-days", type=int, default=0)
     _add(parser, "--age-days", type=int, default=30)
+    _add(parser, "--limit", type=int, default=20)
+    _add_mode(parser)
+
+    parser = _command_parser(
+        subparsers, "review-queue", "List what waits on a person in an existing task scope"
+    )
+    _add(parser, "--consumer-id", required=True)
+    _add(parser, "--subscription-id", required=True)
+    _add(parser, "--limit", type=int, default=20)
+    _add_mode(parser)
+
+    parser = _command_parser(
+        subparsers, "review-answers", "Turn reviewed queue answers into one capture packet"
+    )
+    _add(parser, "--consumer-id", required=True)
+    _add(parser, "--subscription-id", required=True)
+    _add(parser, "--input", required=True)
+    _add(parser, "--packet-output", required=True)
+    _add_mode(parser)
+
+    parser = _command_parser(
+        subparsers, "fold-candidates", "List unfolded notes beside the claim slots for them"
+    )
+    _add(parser, "--consumer-id", required=True)
+    _add(parser, "--subscription-id", required=True)
+    _add(parser, "--subject-id")
+    _add(parser, "--family")
     _add(parser, "--limit", type=int, default=20)
     _add_mode(parser)
 

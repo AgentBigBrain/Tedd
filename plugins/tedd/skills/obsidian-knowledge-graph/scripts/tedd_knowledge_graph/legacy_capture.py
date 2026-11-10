@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -77,6 +78,17 @@ _PROPOSAL_REQUIRED_CATEGORIES = frozenset(
     }
 )
 _FINGERPRINT_ONLY_GRAPH_KEY = "_capture_fingerprint_only"
+_UNDECIDED_STATUSES = frozenset({"proposed", "candidate"})
+
+
+def _decision_links(graph: JsonObject) -> dict[str, str]:
+    """Each replaced decision's successor, keyed by the replaced decision's ID."""
+
+    return {
+        _string(decision["id"]): _string(decision["superseded_by"])
+        for decision in _records(graph, "decisions")
+        if decision.get("superseded_by")
+    }
 
 
 @dataclass(frozen=True)
@@ -610,6 +622,8 @@ class LegacyCaptureService:
                 )
             if "subject_refs" in raw:
                 normalized_claim["subject_refs"] = reference_list(raw, "subject_refs")
+            if "observation_refs" in raw:
+                normalized_claim["observation_refs"] = reference_list(raw, "observation_refs")
             _records(normalized, "claims").append(normalized_claim)
         for raw in records["events"]:
             _records(normalized, "events").append(
@@ -639,6 +653,10 @@ class LegacyCaptureService:
                 normalized_decision["source_tier"] = self.dependencies.source_tier(
                     raw.get("source_tier")
                 )
+            if "superseded_by" in raw:
+                normalized_decision["superseded_by"] = self.dependencies.explicit_record_id(
+                    raw.get("superseded_by")
+                )
             _records(normalized, "decisions").append(normalized_decision)
         for raw in records["open_loops"]:
             normalized_loop: JsonObject = {
@@ -666,6 +684,10 @@ class LegacyCaptureService:
             if "source_tier" in raw:
                 normalized_loop["source_tier"] = self.dependencies.source_tier(
                     raw.get("source_tier")
+                )
+            if "resolution" in raw:
+                normalized_loop["resolution"] = self.dependencies.normalize_space(
+                    raw.get("resolution")
                 )
             _records(normalized, "open_loops").append(normalized_loop)
         for raw in records["receipts"]:
@@ -1065,6 +1087,7 @@ class LegacyCaptureService:
         changed_ids: list[str],
         record_ids_by_path: dict[str, list[str]],
     ) -> None:
+        links_before = _decision_links(graph)
         for collection in ("events", "decisions", "open_loops", "receipts"):
             for index, raw in enumerate(records[collection]):
                 record_id, created = self.dependencies.add_generic_record(
@@ -1073,6 +1096,38 @@ class LegacyCaptureService:
                 if created:
                     changed_ids.append(record_id)
                 record_ids_by_path[f"{collection}[{index}]"] = [record_id]
+        self._require_standing_successors(graph, links_before)
+
+    def _require_standing_successors(
+        self, graph: JsonObject, links_before: Mapping[str, str]
+    ) -> None:
+        """Refuse a new replacement link whose successor does not stand.
+
+        A decision is replaced by one that was accepted, not by a proposal
+        nobody ruled on or by one that was rejected.  The check runs after
+        every decision in the packet is applied, so one packet may accept a
+        proposal and name it as a successor, in either order.  A link that was
+        already stored is left alone: the successor's later history does not
+        undo the replacement.
+        """
+
+        decisions = self.dependencies.index_by_id(_records(graph, "decisions"))
+        for decision_id, successor_id in _decision_links(graph).items():
+            if links_before.get(decision_id) == successor_id:
+                continue
+            # A link is only stored after its successor was found in this graph.
+            successor = decisions[successor_id]
+            status = successor.get("status")
+            if status == "rejected":
+                raise ValueError(
+                    f"Decision {decision_id} cannot be superseded by {successor_id}: "
+                    "that decision was rejected"
+                )
+            if successor.get("authority_state") == "candidate" or status in _UNDECIDED_STATUSES:
+                raise ValueError(
+                    f"Decision {decision_id} cannot be superseded by {successor_id}: "
+                    "accept that proposal first or in the same capture"
+                )
 
     def _append_capture_journal(
         self,
@@ -1181,10 +1236,17 @@ class LegacyCaptureService:
             or request.allow_redirect
             or any("identity_keys" in item for item in request.records["entities"])
             or any(
-                "surface_id" in item or "subject_refs" in item for item in request.records["claims"]
+                "surface_id" in item or "subject_refs" in item or "observation_refs" in item
+                for item in request.records["claims"]
             )
-            or any("source_tier" in item for item in request.records["decisions"])
-            or any("source_tier" in item for item in request.records["open_loops"])
+            or any(
+                "source_tier" in item or "superseded_by" in item
+                for item in request.records["decisions"]
+            )
+            or any(
+                "source_tier" in item or "resolution" in item
+                for item in request.records["open_loops"]
+            )
         )
         fingerprint = _CaptureFingerprint(fingerprint_value, uses_extended_format)
         source, changed_ids = self._build_capture_source(graph, request, fingerprint)

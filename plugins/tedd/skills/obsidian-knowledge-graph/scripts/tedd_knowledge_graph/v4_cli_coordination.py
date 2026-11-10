@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 from .v4_application_contracts import (
     BrainStatusRequest,
+    FoldCandidatesRequest,
     GraphReadError,
     GraphReadErrorCategory,
     GraphReadScope,
@@ -15,13 +16,18 @@ from .v4_application_contracts import (
     PullChangesRequest,
     ReadScopeKind,
     RecallContextRequest,
+    ReviewAnswersRequest,
+    ReviewQueueRequest,
 )
 from .v4_cli_contracts import CommandServices, GraphReadOperations, V4CLIError
 from .v4_cli_values import (
     argument,
+    optional_text,
     sequence_value,
     trimmed_if_truthy,
 )
+from .v4_review import MAX_FOLD_ITEMS, MAX_QUEUE_ITEMS
+from .v4_review_answers import ANSWER_SOURCE_TIER, AnswersError, decode_answers
 
 COORDINATION_COMMANDS = frozenset(
     {
@@ -29,15 +35,25 @@ COORDINATION_COMMANDS = frozenset(
         "consumer-register",
         "consumer-status",
         "context",
+        "fold-candidates",
         "inbox",
         "inbox-ack",
         "loops-review",
+        "review-answers",
+        "review-queue",
         "subscribe",
     }
 )
-READONLY_COMMANDS = frozenset({"consumer-status", "context", "inbox", "loops-review"})
+# Review commands read one existing scope.  ``review-answers`` also writes a
+# private packet file, never the graph.
+REVIEW_COMMANDS = frozenset({"fold-candidates", "review-answers", "review-queue"})
+READONLY_COMMANDS = (
+    frozenset({"consumer-status", "context", "inbox", "loops-review"}) | REVIEW_COMMANDS
+)
 SERVICE_COORDINATION_COMMANDS = READONLY_COMMANDS
-TRUSTED_LOCAL_SUBSCRIPTION_COMMANDS = frozenset({"context", "inbox", "loops-review"})
+TRUSTED_LOCAL_SUBSCRIPTION_COMMANDS = (
+    frozenset({"context", "inbox", "loops-review"}) | REVIEW_COMMANDS
+)
 
 
 def _optional_nonnegative(value: object, label: str, services: CommandServices) -> int | None:
@@ -68,6 +84,69 @@ def _service_payload(
     if not isinstance(payload, dict):
         raise V4CLIError("graph read service returned an invalid payload")
     return payload
+
+
+def _review_scope(
+    args: argparse.Namespace, services: CommandServices
+) -> tuple[GraphReadSession, GraphReadScope]:
+    """Bind a review read to one existing consumer and its exact subscription."""
+
+    subscription_id = services.opaque_id(
+        argument(args, "subscription_id"), "subscription ID", record=True
+    )
+    consumer_id = services.opaque_id(argument(args, "consumer_id"), "consumer ID", record=True)
+    return (
+        GraphReadSession(None, None, None, consumer_id),
+        GraphReadScope(ReadScopeKind.SUBSCRIPTION, subscription_id),
+    )
+
+
+def _review_answers(
+    args: argparse.Namespace,
+    services: CommandServices,
+    read_service: GraphReadOperations,
+) -> dict[str, object]:
+    """Build one capture packet from a private answers file and publish it privately.
+
+    The graph is only read.  The packet lands in a new private file because it
+    repeats stored titles exactly; the result names what the packet settles.
+    """
+
+    session, scope = _review_scope(args, services)
+    answers_input = services.snapshot_capture_input(
+        services.bounded_text(argument(args, "input"), "answers input", 4_096)
+    )
+    if answers_input.content is None:
+        raise V4CLIError("answers must be a private file, not stdin")
+    try:
+        document = decode_answers(
+            answers_input.content,
+            record_id=lambda value: services.opaque_id(value, "answer record ID", record=True),
+        )
+    except AnswersError as error:
+        raise V4CLIError(str(error)) from error
+    payload = _service_payload(
+        lambda: read_service.review_answers(
+            ReviewAnswersRequest(session=session, scope=scope, document=document)
+        )
+    )
+    packet = payload.get("packet")
+    if not isinstance(packet, dict):
+        raise V4CLIError("graph read service returned an invalid answers packet")
+    packet_output = services.bounded_text(
+        argument(args, "packet_output"), "answers packet output", 4_096
+    )
+    try:
+        services.write_plan_file(packet_output, packet)
+    except V4CLIError as error:
+        # The private-file publisher reports its own noun; name this file instead.
+        raise V4CLIError(str(error).replace("capture plan", "answers packet")) from error
+    return {
+        "packet_output": packet_output,
+        "answers": payload.get("answers"),
+        "authority_ceiling": ANSWER_SOURCE_TIER,
+        "saved": False,
+    }
 
 
 def handle_coordination_command(
@@ -272,4 +351,33 @@ def handle_coordination_command(
             limit=services.positive_int(argument(args, "limit"), "loop limit", 20),
         )
         return _service_payload(lambda: read_service.loops_review(request))
+    if command == "review-queue":
+        if read_service is None:
+            raise V4CLIError("graph read service is unavailable")
+        session, scope = _review_scope(args, services)
+        queue_request = ReviewQueueRequest(
+            session=session,
+            scope=scope,
+            limit=services.positive_int(argument(args, "limit"), "queue limit", MAX_QUEUE_ITEMS),
+        )
+        return _service_payload(lambda: read_service.review_queue(queue_request))
+    if command == "fold-candidates":
+        if read_service is None:
+            raise V4CLIError("graph read service is unavailable")
+        session, scope = _review_scope(args, services)
+        family = optional_text(argument(args, "family"))
+        fold_request = FoldCandidatesRequest(
+            session=session,
+            scope=scope,
+            subject_id=services.optional_opaque_id(
+                argument(args, "subject_id"), "subject ID", record=True
+            ),
+            family=None if family is None else services.bounded_text(family, "family", 200),
+            limit=services.positive_int(argument(args, "limit"), "fold limit", MAX_FOLD_ITEMS),
+        )
+        return _service_payload(lambda: read_service.fold_candidates(fold_request))
+    if command == "review-answers":
+        if read_service is None:
+            raise V4CLIError("graph read service is unavailable")
+        return _review_answers(args, services, read_service)
     raise V4CLIError(f"unsupported v4 coordination command: {command}")

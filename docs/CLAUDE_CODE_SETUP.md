@@ -28,7 +28,7 @@ that directory, run these commands in Bash or PowerShell:
 
 ```bash
 git clone --no-checkout https://github.com/AgentBigBrain/Tedd.git tedd-source
-git -C tedd-source checkout --detach v1.2.0-rc.12
+git -C tedd-source checkout --detach v1.2.0-rc.13
 git -C tedd-source rev-parse HEAD
 claude plugin marketplace add ./tedd-source
 ```

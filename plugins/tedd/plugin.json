@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "tedd",
-  "version": "1.2.0-rc.12",
+  "version": "1.2.0-rc.13",
   "description": "Local project memory and delegated-work workflows.",
   "author": {
     "name": "AgentBigBrain",

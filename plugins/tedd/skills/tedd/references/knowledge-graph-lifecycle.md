@@ -29,6 +29,23 @@ truncated section means information is missing, not that nothing is overdue;
 use the [bounded review command](../../obsidian-knowledge-graph/references/recall.md#review-overdue-items)
 within the same scope when that information matters.
 
+When the context pack carries a `current_state` section, read it before recent
+records. It holds the scope's current claims, each with the date validated
+evidence last confirmed it. Answer "what is true now" from those claims and use
+dated observations as supporting detail. A confirmed date shows when a claim
+was checked, not that it still holds. Follow the
+[current-claims reference](../../obsidian-knowledge-graph/references/recall.md#current-claims)
+for its fields, limits and conflicts.
+
+When the context pack carries `waiting` counts, report them in the one intake
+line, such as "6 unfinished commitments, 3 overdue, 2 undecided proposals", in
+place of a separate overdue line. Mention unfolded notes only when the operator
+asks about memory upkeep. Offer the
+[review queue](../../obsidian-knowledge-graph/references/recall.md#review-what-is-waiting)
+when the operator asks what is waiting, when an item affects the task, or at a
+natural stopping point. Do not interrupt unrelated work with it. An omitted
+section means the counts are unknown, not zero.
+
 An empty recall is valid. Never invent history to fill it. Reuse verified intake
 until a relevant change or decision boundary requires refresh.
 
@@ -63,6 +80,20 @@ lanes only where the capture contract permits it; never bypass a refusal.
 For an event with `kind: reusable_fix`, use five nonempty fields in order:
 `Symptom: … Cause: … Fix: … Verified by: … Applies when: …`.
 
+When a fact has one current value, save it as a claim on a stable slot instead
+of another dated observation, so the next task reads the value and its history
+in one place. Reuse an existing slot or label when a dry run
+[suggests one](../../obsidian-knowledge-graph/references/capture-schema.md#dry-run-suggestions)
+and it means the same thing. For a person, client or organization, prefer the
+[starter slots](../../obsidian-knowledge-graph/references/capture-schema.md#starter-slots)
+and save only evidenced values. Fold a subject's older notes into claims only
+through the reviewed
+[folding procedure](../../obsidian-knowledge-graph/references/capture-and-correction.md#fold-notes-into-claims).
+
+When the operator replaces or declines a decision, record the earlier decision
+as superseded with its successor, or as rejected. Do not leave it reading as
+accepted.
+
 After a pending-handoff reminder, handle the new request first. Recheck changed
 scope, honor new no-save/read-only boundaries, and never capture just to clear
 the reminder. Fresh fork/clear identities cannot reuse a parent's consumer.
@@ -87,6 +118,7 @@ Concurrent mutations include agent, task, concrete run, discovery kind, actual b
   governs resolution, rescheduling, withdrawal, or handoff; evidence alone does
   not authorize those changes. Never silently roll a checkpoint forward.
 - Resolve the exact loop only when a receipt, verified provider action, tested deployment, or explicit outcome proves completion.
+- When the operator answers several waiting items, save the answers as one reviewed change through the [answers procedure](../../obsidian-knowledge-graph/references/capture-and-correction.md#answer-the-review-queue). Only the operator's own answer accepts, rejects, drops, reschedules or hands off an item. A dropped commitment is saved as withdrawn with its reason, not as completed work.
 - Write the resolution as what completed and how it was verified.
 - Never reopen a resolved loop. Create a new episode if the same concern recurs.
 - Do not fabricate resolved loops for completed historical events that were never tracked as obligations. Keep those as events and receipts.

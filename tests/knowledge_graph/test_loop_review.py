@@ -31,6 +31,9 @@ class LoopReviewTests(HandoffFixture):
             baseline = dict(store.context_pack("scope_alpha", max_items=1))
             record_ids = [item["record_id"] for item in baseline["records"]]
             baseline["plan_token"] = store.create_plan_token(record_ids, fingerprint=fingerprint)
+            # The waiting counts and the fact sheet are reserved before recent records.
+            baseline["waiting"] = store.waiting_summary("scope_alpha")
+            baseline["current_state"] = store.current_state("scope_alpha")
         baseline["overdue"] = {
             "items": [],
             "truncated": True,
@@ -234,6 +237,8 @@ class LoopReviewTests(HandoffFixture):
         result = self.context()
         section = result.pop("overdue")
         self.assertEqual([], result.pop("preferences")["items"])
+        self.assertEqual([], result.pop("current_state")["items"])
+        self.assertEqual(29, result.pop("waiting")["commitments"]["unfinished"])
         with v4.open_store(self.store_path, readonly=True, plan_hmac_key=PLAN_KEY) as store:
             baseline = sanitize_review_safe_value(
                 store.context_pack("scope_alpha", max_chars=50_000)

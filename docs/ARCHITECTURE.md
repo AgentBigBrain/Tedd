@@ -108,6 +108,26 @@ the same eligibility rules before the limit. Output is sanitized before the
 result-list character limit is applied. Search adds no migration, dependency,
 source-byte access or change to global CLI search.
 
+Subscription context carries standing state ahead of recent records. A
+current-claims sheet lists the active claims in scope, each with the latest
+observation time among its validated evidence. A waiting summary gives exact
+counts of unfinished loops, undecided decisions and observations that no
+visible claim cites. Both are read in the same snapshot under the
+subscription's selection rules, with sensitive and redacted records excluded
+before any limit. Both are budgeted before recent records, and the sheet takes
+at most a quarter of the request. The `review-queue` and `fold-candidates`
+commands list the records behind those counts and only read.
+
+Outcomes reuse the existing capture path instead of adding a write route. A
+reviewed answers file expands into one ordinary capture packet whose source is
+the operator's statement. Authority ceilings, fingerprints, signed plans and
+per-record revisions therefore apply unchanged, and the expansion step writes
+only a private local file. A decision can link to the decision that replaced
+it. A claim can cite the observations it summarizes; a cited observation leaves
+recent context only for a subscription that can read the citing claim, and
+stays searchable. Dry-run suggestions are computed after the plan from records
+about the same entities, and never enter the fingerprint or the saved change.
+
 Source publication rechecks current scope, local permission, workflow state and
 integrity. Provider-checked Google sources also require current provider access.
 Owner-confirmed browser exports carry a different retained-copy policy: their

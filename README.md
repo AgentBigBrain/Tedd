@@ -104,7 +104,7 @@ The commands below pin the current public release tag so the installed package
 matches a reviewed revision.
 
 ```bash
-codex plugin marketplace add AgentBigBrain/Tedd --ref v1.2.0-rc.12
+codex plugin marketplace add AgentBigBrain/Tedd --ref v1.2.0-rc.13
 codex plugin add tedd@tedd
 ```
 
@@ -129,7 +129,7 @@ The commands below update only Tedd's marketplace registration and package:
 
 ```bash
 codex plugin marketplace remove tedd
-codex plugin marketplace add AgentBigBrain/Tedd --ref v1.2.0-rc.12
+codex plugin marketplace add AgentBigBrain/Tedd --ref v1.2.0-rc.13
 codex plugin add tedd@tedd
 ```
 

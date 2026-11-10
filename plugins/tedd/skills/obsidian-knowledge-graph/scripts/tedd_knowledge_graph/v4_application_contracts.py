@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TypeAlias
 
+from .v4_review_answers import AnswersDocument
+
 JsonScalar: TypeAlias = None | bool | int | float | str
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 JsonObject: TypeAlias = dict[str, JsonValue]
@@ -69,6 +71,31 @@ class LoopsReviewRequest:
 
 
 @dataclass(frozen=True)
+class ReviewQueueRequest:
+    session: GraphReadSession
+    scope: GraphReadScope
+    limit: int = 20
+
+
+@dataclass(frozen=True)
+class FoldCandidatesRequest:
+    session: GraphReadSession
+    scope: GraphReadScope
+    subject_id: str | None = None
+    family: str | None = None
+    limit: int = 20
+
+
+@dataclass(frozen=True)
+class ReviewAnswersRequest:
+    """Reviewed answers, already decoded and validated at the caller's boundary."""
+
+    session: GraphReadSession
+    scope: GraphReadScope
+    document: AnswersDocument
+
+
+@dataclass(frozen=True)
 class SearchMemoryRequest:
     session: GraphReadSession
     scope: GraphReadScope
@@ -126,6 +153,7 @@ class GraphReadFailure:
 
 __all__ = [
     "BrainStatusRequest",
+    "FoldCandidatesRequest",
     "GraphReadError",
     "GraphReadErrorCategory",
     "GraphReadFailure",
@@ -140,5 +168,7 @@ __all__ = [
     "PullChangesRequest",
     "ReadScopeKind",
     "RecallContextRequest",
+    "ReviewAnswersRequest",
+    "ReviewQueueRequest",
     "SearchMemoryRequest",
 ]

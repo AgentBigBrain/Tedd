@@ -67,6 +67,139 @@ preferences or changes any saved default. The
 only after approval; the [capture schema](capture-schema.md#preferences) describes
 the record shape.
 
+## Current claims
+
+Subscription `recall_context` and CLI `context` return a `current_state`
+section after `preferences`, labeled "current claims, with dates". It is the
+task's fact sheet: each item is the current value on one claim surface, so the
+task can read what is true now without sorting dated notes.
+
+A claim appears when it is in the subscription's scope, active, and `current`
+or `conflicting`. Preference claims have their own section and are left out.
+Superseded, quarantined, sensitive and redacted claims, and claims on a
+sensitive or inactive surface, are excluded before the item limit. Claims whose
+surface subject the subscription names explicitly come first, then the most
+recently changed, then stable ID. This order controls display and truncation,
+not which claim is more reliable.
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `revision` | The claim record and its current revision |
+| `surface_ref`, `subject_refs` | The claim surface and the entities that surface is about |
+| `family`, `key`, `value` | The saved claim |
+| `valid_from` | When the value took effect |
+| `last_confirmed_at` | The latest observation time among the claim's evidence at `validated_structured_candidate` or above |
+| `source_tier`, `lifecycle` | The claim's authority and lifecycle |
+| `effective_conflict` | `true` when the claim is `conflicting`; do not pick one value as settled |
+| `cited_observations` | How many observations the claim cites as [folded notes](#find-notes-to-fold) |
+
+Restating the same current value from validated evidence moves
+`last_confirmed_at`. An assistant inference does not. The field says when the
+claim was last checked; it does not show that the claim is still true. Reverify
+unstable or high-risk state before acting on it.
+
+The section holds at most 12 items and 2,400 characters after sanitization,
+and never more than a quarter of the caller's `max_chars`. That space is
+reserved before recent records. Read `truncated`, `omitted` and
+`reason: budget_exhausted` together: an omitted section is missing
+information, not evidence that no claim exists. An optional context plan covers
+the disclosed claims. A build that returns no `current_state` section predates
+this feature.
+
+## Waiting work
+
+The same context returns a `waiting` section with exact counts for the
+subscription. No item limit applies, so the counts stay exact when the detailed
+lists are shortened.
+
+| Field | Meaning |
+| --- | --- |
+| `commitments.unfinished` | Loops that are `open` or `candidate` |
+| `commitments.overdue` | Unfinished loops that meet the [overdue rule](#review-overdue-items) |
+| `commitments.unassigned` | Unfinished loops with no owner |
+| `commitments.agent_owned` | Unfinished loops whose every owner is an agent entity |
+| `commitments.named_owner` | Unfinished loops with any other owner |
+| `proposals.undecided` | Decisions that are proposed or still candidates |
+| `proposals.older`, `proposals.older_than_days` | Undecided proposals older than the stated number of days |
+| `notes.unfolded` | Observations that no visible claim cites |
+
+Sensitive, redacted and out-of-scope records are not counted. When the budget
+cannot fit the counts, the section is
+`{"truncated": true, "omitted": true, "reason": "budget_exhausted"}`. Follow the
+[intake rule](../../tedd/references/knowledge-graph-lifecycle.md#intake): report
+one line, and offer a review only when the operator asks or an item affects the
+task.
+
+## Review what is waiting
+
+`review-queue` lists the records behind those counts. Use the consumer and
+active subscription from the task's verified registration, as for
+[overdue review](#review-overdue-items). The command reads only.
+
+```bash
+python3 -B scripts/knowledge_graph.py --config '<approved-graph-config-path>' review-queue \
+  --consumer-id '<registered-consumer-id>' \
+  --subscription-id '<active-subscription-id>' --limit 20 --mode review_safe
+```
+
+On Windows, use `py -3 -B` and enter the command on one line. If the CLI does
+not recognize `review-queue`, the loaded build lacks this command.
+
+| Section | Contents and order |
+| --- | --- |
+| `summary` | The [waiting counts](#waiting-work) |
+| `commitments` | Unfinished loops: overdue first by days overdue, then by nearest checkpoint, undated last |
+| `proposals` | Undecided decisions, oldest first |
+| `notes` | For each entity the subscription names, how many of its observations no visible claim cites |
+
+Each commitment carries `id`, `title`, `status`, `source_tier`,
+`authority_state`, `owner_refs`, `owner_kind`, `next_action`, `checkpoint_at`,
+`overdue` and `days_overdue`. `owner_kind` is `none`, `agent` when every owner
+is an agent entity, or `named`. Present `none` and `agent` items as waiting on
+the operator. Present a `named` item as waiting on that owner, unless the
+verified profile shows the owner is the operator. Each proposal carries `id`,
+`title`, `status`, `requested_status`, `source_tier`, `authority_state`,
+`decided_at` and `age_days`.
+
+`--limit` accepts 1 to 50 and applies to each section; `truncated: true` means
+more matched within scope. There is no pagination cursor. A candidate remains
+a proposal and a listed item is not an instruction: the queue shows what waits,
+and only the operator's answer settles it. To save those answers, follow
+[answer the review queue](capture-and-correction.md#answer-the-review-queue).
+
+## Find notes to fold
+
+An observation is folded when a claim cites it in `observation_refs`. A folded
+observation leaves the `records` list of a task context when that task can read
+the citing claim, and that claim has reached the truth surface as `current`,
+`conflicting` or `superseded`. A task that cannot read the claim keeps seeing
+the observation. Folded observations stay in search results, exact `get`
+lookups and history.
+
+`fold-candidates` lists the observations still unfolded, beside the claim
+slots that could absorb them:
+
+```bash
+python3 -B scripts/knowledge_graph.py --config '<approved-graph-config-path>' fold-candidates \
+  --consumer-id '<registered-consumer-id>' \
+  --subscription-id '<active-subscription-id>' \
+  --subject-id '<entity-id>' --family '<family>' --limit 20 --mode review_safe
+```
+
+`--subject-id` and `--family` are optional. A subject narrows notes and slots
+to one entity; a family narrows the notes to one family. `--limit` accepts 1
+to 50 notes.
+
+| Field | Contents |
+| --- | --- |
+| `unfolded` | Every unfolded observation for the subject, before the family filter and limit |
+| `families` | Up to 50 families with their note counts, largest first |
+| `notes` | Unfolded observations ordered by family, key and ID, with `id`, `family`, `key`, `value`, `observed_at`, `source_tier` and `entity_refs` |
+| `slots` | Up to 50 [current claims](#current-claims) for the subject |
+
+The command reads only and proposes nothing. Folding is a reviewed capture;
+follow [fold notes into claims](capture-and-correction.md#fold-notes-into-claims).
+
 ## Review overdue items
 
 Subscription `recall_context` and CLI `context` include an `overdue` section
@@ -79,8 +212,10 @@ run before the item limits; candidate status and source authority are preserved.
 
 The section holds at most five items and 1,500 characters. The caller's
 `max_chars` covers the complete disclosed context, including metadata and any
-requested plan token. Fitting recent records and their plan read set receive
-space first; overdue details use what remains. Oversized records can themselves
+requested plan token. The [waiting counts](#waiting-work) and the bounded
+[current claims](#current-claims) are reserved first. Fitting recent records
+and their plan read set come next; overdue details use what remains, and
+stated preferences follow. Oversized records can themselves
 be omitted with `truncated: true`. A budget too small for required metadata
 returns `invalid_request`.
 
@@ -130,7 +265,8 @@ no character-budget flag or pagination cursor for this command; a truncated
 result is not a complete backlog.
 
 Reading does not acknowledge changes or create, capture, resolve, or reschedule
-records. The four MCP tools are unchanged; `loops-review` is a CLI command.
+records. The four MCP tools are unchanged; `loops-review`, `review-queue` and
+`fold-candidates` are CLI commands.
 
 ## On-demand MCP search
 

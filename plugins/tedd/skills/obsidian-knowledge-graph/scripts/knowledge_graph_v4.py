@@ -91,6 +91,8 @@ from tedd_knowledge_graph import v4_feed as _v4_feed
 from tedd_knowledge_graph import v4_import as _v4_import
 from tedd_knowledge_graph import v4_queries as _v4_queries
 from tedd_knowledge_graph import v4_registry as _v4_registry
+from tedd_knowledge_graph import v4_review as _v4_review
+from tedd_knowledge_graph import v4_review_answers as _v4_review_answers
 from tedd_knowledge_graph import v4_schema as _v4_schema
 from tedd_knowledge_graph import v4_store as _v4_store
 from tedd_knowledge_graph import v4_transactions as _v4_transactions
@@ -424,6 +426,23 @@ class _Unset:
 
 
 _UNSET = _Unset()
+
+
+@dataclasses.dataclass(frozen=True)
+class _ReviewScope:
+    """One subscription's SQL scope for the review kernels.
+
+    ``fold_clause`` is true for an observation that a claim visible in this
+    scope already cites.  ``subject_ids`` are the entities and records the
+    subscription names explicitly.
+    """
+
+    predicate: str
+    parameters: tuple[object, ...]
+    fold_clause: str
+    fold_parameters: tuple[object, ...]
+    subject_ids: tuple[str, ...]
+    all_subjects: bool
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1225,6 +1244,106 @@ class KnowledgeGraphV4:
                 overdue_days=overdue_days,
                 age_days=age_days,
                 limit=limit,
+            )
+
+    def _review_scope(self, subscription_id: str) -> _ReviewScope:
+        """Resolve one active subscription into the review kernels' SQL scope."""
+
+        subscription = self._subscription(subscription_id)
+        selector = cast(_v4_feed.Selector, json.loads(subscription["selector_json"]))
+        predicate, parameters = _v4_coordination.current_record_predicate(selector)
+        fold_clause, fold_parameters = _v4_coordination.folded_observation_clause(selector)
+        return _ReviewScope(
+            predicate=predicate,
+            parameters=tuple(parameters),
+            fold_clause=fold_clause,
+            fold_parameters=tuple(fold_parameters),
+            subject_ids=tuple(sorted(set(selector["entity_ids"]) | set(selector["record_ids"]))),
+            all_subjects=bool(selector["all"]),
+        )
+
+    def current_state(self, subscription_id: str) -> _v4_review.CurrentState:
+        """Read the current claims in one existing scope as a dated fact sheet."""
+
+        with self.read_snapshot():
+            scope = self._review_scope(subscription_id)
+            return _v4_review.current_state(
+                self.connection,
+                scope.predicate,
+                scope.parameters,
+                subject_ids=scope.subject_ids,
+                all_subjects=scope.all_subjects,
+            )
+
+    def waiting_summary(self, subscription_id: str) -> _v4_review.WaitingSummary:
+        """Count unfinished commitments, undecided proposals, and unfolded notes."""
+
+        with self.read_snapshot():
+            scope = self._review_scope(subscription_id)
+            return _v4_review.waiting_summary(
+                self.connection,
+                scope.predicate,
+                scope.parameters,
+                fold_clause=scope.fold_clause,
+                fold_parameters=scope.fold_parameters,
+                now=utc_now(),
+            )
+
+    def review_queue(self, subscription_id: str, *, limit: int = 20) -> _v4_review.ReviewQueue:
+        """List what waits on a person within one existing subscription."""
+
+        with self.read_snapshot():
+            scope = self._review_scope(subscription_id)
+            return _v4_review.review_queue(
+                self.connection,
+                subscription_id,
+                scope.predicate,
+                scope.parameters,
+                fold_clause=scope.fold_clause,
+                fold_parameters=scope.fold_parameters,
+                subject_ids=scope.subject_ids,
+                now=utc_now(),
+                limit=limit,
+            )
+
+    def fold_candidates(
+        self,
+        subscription_id: str,
+        *,
+        subject_id: str | None = None,
+        family: str | None = None,
+        limit: int = 20,
+    ) -> _v4_review.FoldCandidates:
+        """List unfolded notes and the claim slots that could absorb them."""
+
+        with self.read_snapshot():
+            scope = self._review_scope(subscription_id)
+            return _v4_review.fold_candidates(
+                self.connection,
+                subscription_id,
+                scope.predicate,
+                scope.parameters,
+                fold_clause=scope.fold_clause,
+                fold_parameters=scope.fold_parameters,
+                subject_ids=scope.subject_ids,
+                all_subjects=scope.all_subjects,
+                subject_id=None if subject_id is None else _valid_record_id(subject_id),
+                family=None if family is None else normalize_key(family),
+                limit=limit,
+            )
+
+    def scoped_records(
+        self, subscription_id: str, record_ids: Iterable[str]
+    ) -> dict[str, _v4_review_answers.StoredRecord]:
+        """Load named decisions and loops only where the subscription may read them."""
+
+        with self.read_snapshot():
+            scope = self._review_scope(subscription_id)
+            return _v4_review.scoped_records(
+                self.connection,
+                scope.predicate,
+                scope.parameters,
+                [_valid_record_id(record_id) for record_id in record_ids],
             )
 
     def _feed_predicate(

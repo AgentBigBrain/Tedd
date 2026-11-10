@@ -196,6 +196,63 @@ Use `replace` only for a verified successor to a singular current value. Use `pr
 The CLI downgrades `replace` to `preserve` unless the caller also passes `--allow-replace`. A backdated replacement that would invert an active validity interval is quarantined.
 An observation or claim cannot have a higher tier than its source. Claims below `validated_structured_candidate` remain inactive in quarantine until corroborated by validated evidence.
 
+### Cite the notes a claim replaces
+
+A claim may name stored observations in `observation_refs`. This is a `claims`
+fragment of a [complete capture packet](#source):
+
+```json
+{
+  "claims": [{
+    "surface_id": "surface_client_alpha_plugin_production_version",
+    "family": "deployment",
+    "key": "client_alpha.plugin.version",
+    "value": "2.4.1",
+    "subject_refs": ["client-alpha-prod"],
+    "valid_from": "2026-07-30T16:45:00-04:00",
+    "conflict_policy": "replace",
+    "observation_refs": ["observation_0123456789abcdef"]
+  }]
+}
+```
+
+Each value is the exact ID of a stored, non-redacted observation that shares
+at least one entity with the claim. An unknown ID, another collection's ID, a
+redacted observation, or one about unrelated entities is refused. An
+observation captured in the same packet with the same family, key, value and
+entities is still linked automatically. Restating a current value with further
+`observation_refs` adds them to that claim's list.
+
+`observation_refs` requires a claim source at `validated_structured_candidate`
+or above, after the authority ceiling is applied. A weaker source is refused,
+including one that only restates a value that is already current.
+
+Citing an observation folds it into the claim: see
+[find notes to fold](recall.md#find-notes-to-fold). The observation, its source
+and its history are unchanged. A claim in quarantine folds nothing, including
+an observation linked automatically.
+The field enters the capture fingerprint only when a claim carries it.
+
+### Starter slots
+
+A claim surface is a slot: one stable place for a value that changes over
+time. Prefer a small set of stable slots per entity over a new observation
+key for each update. These keys are suggestions for common subjects, not a
+closed list:
+
+| Subject type | `family` | `key` | Holds |
+| --- | --- | --- | --- |
+| `person` | `relationship` | `role` | The person's evidenced role for a client or project |
+| `person` | `contact` | `preferred_channel` | How the person asked to be reached |
+| `client`, `organization` | `relationship` | `primary_contact` | Who to contact |
+| `client`, `organization` | `agreement` | `scope` | What was agreed |
+| `client`, `organization` | `agreement` | `key_dates` | Renewal, review or deadline dates |
+| `project`, `site`, `repository` | `status` | `current_state` | Where the work stands |
+
+Give each slot an explicit `surface_id` and exactly the subject it describes.
+Save only an evidenced value; an unknown role or date stays unsaved. A slot
+never raises a source's authority.
+
 ### Preferences
 
 Use `family: preference`, a stable topic key, and one canonical subject.
@@ -301,6 +358,102 @@ Every decision and open loop in a coverage-bearing packet must explicitly declar
 Open loops may carry four optional operating fields: `owner_refs` is a list of packet-local or stable entity references; `next_action` is the concrete next step; `checkpoint_at` is the next ISO 8601 review or wake time; and `terminal_condition` says exactly what evidence permits resolution. These fields are mutable operating state rather than episode identity. A same-episode recapture with equal or stronger, non-backdated authority replaces a field only when that field is explicitly present. Omitted fields preserve the stored value, while an empty `owner_refs`, empty string, or `null` checkpoint explicitly clears that field. Existing loops without these fields remain valid. The review-safe Obsidian projection renders owners as semantic wikilinks in an `owners` frontmatter property and shows all four operating surfaces in the loop note and Base, without exposing canonical owner IDs there.
 
 Open loops are episodes. A resolved loop cannot be reopened in place. If the same concern recurs, capture it with a new `created_at` so the prior resolution remains historical; changing only the explicit ID is rejected because the semantic episode identity would still collide.
+
+### Settle or replace a decision
+
+To update a stored decision, recapture it with the same `id`, `title`,
+`decided_at` and `entity_refs`. These `status` values have a defined meaning:
+
+| `status` | Meaning |
+| --- | --- |
+| `proposed` | A candidate; no authoritative source has ruled on it |
+| `accepted` | An authoritative source approved it |
+| `rejected` | An authoritative source declined it |
+| `superseded` | A later decision replaced it |
+
+A source at `validated_structured_candidate` or above settles a proposal by
+recapturing it as `accepted` or `rejected`. To record a replacement, recapture
+the earlier decision as `superseded` and name the later one:
+
+```json
+{
+  "decisions": [{
+    "id": "decision_monitoring_region",
+    "title": "Use North American monitoring probes",
+    "decided_at": "2026-07-31T09:05:00-04:00",
+    "entity_refs": ["client_alpha"],
+    "status": "superseded",
+    "superseded_by": "decision_monitoring_challenge_bypass"
+  }]
+}
+```
+
+`superseded_by` is the exact ID of another stored, non-redacted decision. It
+requires `status: superseded` from an authoritative source. A missing target,
+a decision naming itself, a chain that loops back, or an inference is refused.
+
+The successor must stand once the packet is applied. A successor that is still
+`proposed`, or was `rejected`, is refused. One packet may accept a proposal and
+name it as a successor, in either order. A successor that was itself
+superseded is allowed. Capture checks this when the link is saved; a later
+ruling on the successor does not remove the link.
+
+A stored link moves only when the source is at least as recent and as
+authoritative as the stored decision. Repeating the stored link changes
+nothing. The earlier decision keeps its text and history, and both records
+remain readable. The field enters the capture fingerprint only when present.
+
+### Close a loop with its outcome
+
+An authoritative source may close an unfinished loop through capture.
+Recapture the loop with its `id`, `title`, `created_at` and `entity_refs`,
+`status: resolved`, and a `resolution` that states what completed and how it
+was verified:
+
+```json
+{
+  "open_loops": [{
+    "id": "loop_client_alpha_health_monitoring_2026_07_31",
+    "title": "Continue Client Alpha health monitoring",
+    "created_at": "2026-07-31T09:05:00-04:00",
+    "entity_refs": ["client_alpha"],
+    "status": "resolved",
+    "resolution": "Seven days passed without a verified regression."
+  }]
+}
+```
+
+Capture records `resolved_at` as the source's `observed_at`. A source below
+`validated_structured_candidate` cannot close an accepted loop: the capture is
+refused instead of saving a `resolution` on a loop that stays open. A later
+capture does not rewrite an outcome already recorded. The
+[`resolve-loop` command](capture-and-correction.md#corrections-and-forgetting)
+remains available for one loop. `resolution` enters the capture fingerprint
+only when present.
+
+## Dry-run suggestions
+
+A dry run can return a `suggestions` object. It is advice about the records
+the capture would create. It never changes what is saved, is not part of the
+fingerprint or plan, and is absent from an apply result and from a dry run
+with nothing to suggest.
+
+| `kind` | Returned when | Fields |
+| --- | --- | --- |
+| `existing_claim_slot` | A new observation shares at least two label words with a claim slot for one of its entities, covering half or more of that slot's label words | `record_id`, `family`, `key`, `surface_id`, `slot_family`, `slot_key`, `shared_words` |
+| `similar_label` | A new event `kind`, receipt `kind` or observation `family` is unused by records about the same entities, and a similar label is used there | `record_id`, `collection`, `field`, `label`, `similar` with each label's `uses` |
+
+Label words are the letter and digit runs in a label, compared without case.
+Slot matching ignores words shorter than three characters. Two labels are
+similar when one's words contain the other's, or when at least half of their
+combined words are shared. Suggestions come only from non-sensitive records
+about the entities the new record names, so another subject's labels never
+appear. At most 10 items are returned; `truncated: true` means more applied.
+
+For `existing_claim_slot`, consider saving a claim on that surface instead of
+another observation, or cite the observation from that claim. For
+`similar_label`, reuse the existing label when it means the same thing. Keep
+the new label when the meaning differs; a suggestion is not a rejection.
 
 ## Capture rules
 
