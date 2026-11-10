@@ -504,6 +504,9 @@ class MemoryBenchCase(unittest.TestCase):
             ("mcp_search_memory", {**search, "subject_ids": ["entity_beta"]}),
             ("mcp_search_memory", {**search, "collections": ["claims"]}),
             ("mcp_search_memory", {**search, "context_section": "overdue"}),
+            ("mcp_search_memory", {**search, "match": "fuzzy"}),
+            ("mcp_search_memory", {**search, "match": ["all"]}),
+            ("mcp_recall_context", {**search, "context_section": "overdue", "match": "all"}),
             ("mcp_recall_context", {**search, "context_section": []}),
             ("mcp_recall_context", {**search, "context_section": "preferences"}),
         ]
@@ -513,6 +516,25 @@ class MemoryBenchCase(unittest.TestCase):
                 raw["defaults"] = {"max_chars": 12000}
                 with self.assertRaises(bench.MemoryBenchError):
                     bench.normalize_suite(raw, json.dumps(raw).encode())
+
+    def test_v2_search_case_can_pin_the_match_mode(self):
+        session = {
+            "consumer_id": "reader",
+            "agent_id": "agent",
+            "task_id": "task",
+            "subscription_id": "scope",
+        }
+        for supplied in (None, "auto", "all", "any"):
+            with self.subTest(match=supplied):
+                case = {"id": "search", "query": "teal", "session": session, "max_result_count": 0}
+                if supplied is not None:
+                    case["match"] = supplied
+                raw = self.suite(
+                    [case], schema_version="tedd-memorybench-v2", read_path="mcp_search_memory"
+                )
+                raw["defaults"] = {"max_chars": 12000}
+                normalized = bench.normalize_suite(raw, json.dumps(raw).encode())["cases"][0]
+                self.assertEqual(supplied, normalized.get("match"))
 
     def test_context_safety_checks_other_sections_not_only_the_scored_section(self):
         raw = self.suite(

@@ -48,7 +48,7 @@ class GraphReadStore(Protocol):
     ) -> Mapping[str, object]: ...
 
     def search_subscription(
-        self, subscription_id: str, query: str, *, limit: int = 10
+        self, subscription_id: str, query: str, *, limit: int = 10, match: str = "all"
     ) -> Mapping[str, object]: ...
 
     def records_referencing(
@@ -410,11 +410,15 @@ class GraphReadService:
             self._raise(
                 GraphReadErrorCategory.INVALID_REQUEST, "search character budget is too small"
             )
+        if request.match not in {"all", "any", "auto"}:
+            self._raise(GraphReadErrorCategory.INVALID_REQUEST, "search match is invalid")
 
         def operation(store: GraphReadStore, _path: Path) -> JsonObject:
             self._validate_subscription_owner(store, subscription_id, request.session)
             return self._json_object(
-                store.search_subscription(subscription_id, request.query, limit=limit)
+                store.search_subscription(
+                    subscription_id, request.query, limit=limit, match=request.match
+                )
             )
 
         result = self._execute("search_memory", operation)

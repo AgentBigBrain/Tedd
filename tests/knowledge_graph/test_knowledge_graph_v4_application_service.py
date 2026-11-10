@@ -138,7 +138,7 @@ class _WriteFailingReadStore:
         return {"subscription_id": subscription_id, "records": []}
 
     def search_subscription(
-        self, subscription_id: str, query: str, *, limit: int = 10
+        self, subscription_id: str, query: str, *, limit: int = 10, match: str = "all"
     ) -> Mapping[str, object]:
         self.read_calls.append("search_subscription")
         return {"subscription_id": subscription_id, "results": [], "truncated": False}
@@ -254,6 +254,19 @@ class GraphReadServiceTests(V4TestCase):
                     self._subscription_session(),
                     GraphReadScope(ReadScopeKind.SUBSCRIPTION, "subscription_alpha"),
                     query="record**",
+                )
+            )
+        self.assertEqual(GraphReadErrorCategory.INVALID_REQUEST, raised.exception.category)
+
+    def test_search_rejects_an_undeclared_match_mode_before_reading(self) -> None:
+        self._seed()
+        with self.assertRaises(GraphReadError) as raised:
+            self._service().search_memory(
+                SearchMemoryRequest(
+                    self._subscription_session(),
+                    GraphReadScope(ReadScopeKind.SUBSCRIPTION, "subscription_alpha"),
+                    query="record_alpha",
+                    match="fuzzy",
                 )
             )
         self.assertEqual(GraphReadErrorCategory.INVALID_REQUEST, raised.exception.category)

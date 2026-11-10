@@ -242,20 +242,35 @@ search for `logo approved` within the task's existing subscription, which select
 the records that task may read. Search does not expand that selection; a
 deliberately broad subscription remains broad.
 
-Text searches match saved words without regard to case. For `logo approved`,
-both words must appear in the indexed fields; similar meaning alone is not a
-match. Search covers compact fields such as names, titles, aliases, summaries,
-and values. It does not read archived documents or entire conversations.
-Only the latest saved revision of an eligible record is searched. An exact
-record ID takes priority; other matches appear by most recent update, then ID.
+Text searches match saved words without regard to case; similar meaning alone
+is not a match. Search first looks for records that contain every word. For
+`logo approved`, a record with both words is a full match. An exact record ID
+takes priority; other full matches appear by most recent update, then ID.
 
-If word endings explain a missing match, Tedd can retry once with an explicit
-prefix: `logo approv*` finds both `logo approved` and `logo approval`. Use at least
-four ASCII letters or digits after normalizing case, followed by one `*`, without quotes or punctuation
-in that prefix. Every other word still must match. `harbor*` could find both
-`harborstudio` and `harborside`; that does not make them the same client.
-Try another relevant literal query if needed, while preserving the project's
-scope and the meaning of the question.
+When no record contains every word, Tedd returns partial matches instead of an
+empty list. It sets aside common words such as `what` and `the`, then lists the
+records that contain the most of the remaining words first. The result is
+marked `match_mode: any_terms`, and each record shows the words it matched.
+Treat a partial match as a lead to check: a record that matched `logo` but not
+`approved` does not show that the logo was approved. To accept full matches
+only, ask Tedd to search with `match` set to `all`.
+
+Partial matches are newer than the 1.2.0-rc.12 package, which returns an empty
+list when a word is missing. Check [current availability](sources/qualification.md#current-availability)
+before relying on them in your installation.
+
+Search covers compact fields such as names, titles, aliases, summaries, and
+values. It does not read archived documents or entire conversations. Only the
+latest saved revision of an eligible record is searched.
+
+Words are compared whole, so `approved` does not match `approval`. If word
+endings explain a missing match, Tedd can retry once with an explicit prefix:
+`logo approv*` finds both `logo approved` and `logo approval`. Use at least four
+ASCII letters or digits after normalizing case, followed by one `*`, without
+quotes or punctuation in that prefix. A full match still needs every other
+word. `harbor*` could find both `harborstudio` and `harborside`; that does not
+make them the same client. Try another relevant literal query if needed, while
+preserving the project's scope and the meaning of the question.
 
 Check each result's status and evidence before acting. A record can reliably
 describe a proposed decision without establishing that anyone approved it.

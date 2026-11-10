@@ -75,6 +75,7 @@ class SearchMemoryRequest:
     query: str
     limit: int = 10
     max_chars: int = 12_000
+    match: str = "auto"
 
 
 @dataclass(frozen=True)

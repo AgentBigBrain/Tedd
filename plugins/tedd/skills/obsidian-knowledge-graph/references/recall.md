@@ -164,21 +164,53 @@ no authority.
 ```
 
 Start with literal words or an exact canonical record ID. Text matching is
-case-insensitive and uses SQLite's Unicode word tokenizer. All terms must match;
-`logo OR approved` also requires the word `OR`. Quotes do not enable a query
-language. An eligible exact-ID match comes first, followed by text matches
-ordered by most recent record update and then stable ID. This order is not a
-confidence or authority score and does not use corpus-wide relevance ranking.
+case-insensitive and uses SQLite's Unicode word tokenizer. Quotes do not enable
+a query language, and `logo OR approved` treats `OR` as a word.
 
-When a relevant literal query returns no match and word endings may explain it,
-try one deliberate prefix broadening within the same subscription. For example,
-retry `logo approved` as `logo approv*`, keeping the other terms. A prefix is an
-unquoted word that normalizes to at least four ASCII letters or digits, followed by one trailing
-`*`. `approv*` matches `approved` and `approval`; `approved*` does not match
-`approval`. `harbor*` can match both `harborstudio` and `harborside`, so it cannot
-establish that two names identify the same project. All terms still must match.
-Short, quoted, punctuated, leading, embedded or repeated wildcards return
-`invalid_request`, not broader results.
+Search first looks for records that contain every term. An eligible exact-ID
+match comes first, followed by those records ordered by most recent record
+update and then stable ID. The result reports `match_mode: all_terms`. This
+order is not a confidence or authority score and does not use corpus-wide
+relevance ranking.
+
+When no eligible record contains every term, search returns partial matches
+and reports `match_mode: any_terms`. It sets aside common English function
+words such as `what`, `the` and `before`, lists the remaining terms in
+`considered_terms`, and returns records that contain at least one of them.
+Records are ordered by how many distinct considered terms they contain, then by
+most recent record update and stable ID. Each record lists the terms it contains
+in `matched_terms`. That count belongs to the record alone, so no other record,
+inside or outside the subscription, changes its position. A one-term query has
+no partial form, and a query of function words alone has no partial matches.
+
+A partial match is a lead, not an answer. A record that matched `logo` but not
+`approved` does not show that anything was approved. Compare `matched_terms`
+with `considered_terms`, read the record's own status, and search again with
+the record's wording when the missing term matters.
+
+The optional `match` argument selects this behavior:
+
+| `match` | Returns |
+| --- | --- |
+| `auto` | Records containing every term; partial matches only when there are none. This is the default. |
+| `all` | Records containing every term, or an empty list. |
+| `any` | Partial matching for every query. Records containing more of the considered terms still come first. |
+
+Check that the connected `search_memory` tool lists `match` before relying on
+partial matches or sending the argument. A build without it requires every term,
+returns an empty list when one is missing, and refuses `match` as
+`invalid_request`.
+
+Matching compares whole words, so `approved` does not match `approval` in either
+pass. When word endings may explain a missing or partial match, try one
+deliberate prefix broadening within the same subscription. For example, retry
+`logo approved` as `logo approv*`, keeping the other terms. A prefix is an
+unquoted word that normalizes to at least four ASCII letters or digits, followed
+by one trailing `*`. `approv*` matches `approved` and `approval`; `approved*`
+does not match `approval`. `harbor*` can match both `harborstudio` and
+`harborside`, so it cannot establish that two names identify the same project.
+A prefix counts as one term in both passes. Short, quoted, punctuated, leading,
+embedded or repeated wildcards return `invalid_request`, not broader results.
 
 The one-retry limit applies to prefix broadening, not every search attempt.
 Different relevant literal words, such as `palette approved` and then
@@ -191,6 +223,7 @@ force a match. An empty result is not proof that the event never happened.
 | `query` | Required | Nonblank text, at most 2,000 characters and 32 distinct terms; punctuation alone is invalid |
 | `limit` | 10 | 1 to 100 records |
 | `max_chars` | 12,000 | 2 to 100,000 characters of disclosed result-list JSON |
+| `match` | `auto` | `auto`, `all` or `any` |
 
 The character cap applies after review-safe sanitization and includes the list
 brackets, separators and first record. Metadata is outside that cap. Search
@@ -201,6 +234,11 @@ are excluded before result limits, including for exact-ID requests. Previous
 revisions require the separately authorized CLI history workflow.
 
 ### Interpret the result
+
+`match_mode` says which pass produced the list: `all_terms` records contain
+every term, and `any_terms` records are partial matches that each carry
+`matched_terms`. `considered_terms` lists the terms that pass used. State a
+partial match as partial when reporting it.
 
 `result_count` counts returned records only. `truncated: true` means a count or
 character limit withheld matching results. An empty truncated list may need a

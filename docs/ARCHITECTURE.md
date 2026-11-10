@@ -97,10 +97,16 @@ task in the same database snapshot as the results. Search reuses the subscriptio
 selection rules: a record can match any included criterion, so an intentionally
 broad subscription stays broad. Out-of-scope, sensitive, redacted, tombstoned and
 missing-payload records cannot occupy the result limit, even through an exact ID.
-Eligible matches are ordered by exact ID first, then most recent record update
-and stable ID. Records outside the scope do not influence that ordering.
-Output is sanitized before the result-list character limit is applied. Search
-adds no migration, dependency, source-byte access or change to global CLI search.
+Records that contain every query term are ordered by exact ID first, then most
+recent record update and stable ID. When no eligible record contains every
+term, search returns labeled partial matches. It sets aside common function
+words and orders eligible records by how many distinct query terms each
+contains, then by update and ID. That count is a property of the single record.
+Neither ordering uses corpus-wide relevance statistics, so records outside the
+scope do not influence it. Both passes read the same database snapshot and apply
+the same eligibility rules before the limit. Output is sanitized before the
+result-list character limit is applied. Search adds no migration, dependency,
+source-byte access or change to global CLI search.
 
 Source publication rechecks current scope, local permission, workflow state and
 integrity. Provider-checked Google sources also require current provider access.

@@ -49,6 +49,109 @@ def _shm_metadata(path: Path) -> tuple[int, int]:
 
 
 class McpSubprocessTests(unittest.TestCase):
+    def test_partial_search_and_strict_opt_out_use_the_real_read_only_endpoint(self) -> None:
+        question = "Who approved the Harborstudio logo?"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            set_private_path_mode(root, 0o700)
+            store_path = root / "graph.sqlite3"
+            with v4.create_store(store_path) as store:
+                sensitive = change("sensitive", name=question)
+                sensitive["payload"]["sensitive"] = True
+                applied(
+                    store,
+                    [
+                        change("approval", name="Harborstudio logo approved teal"),
+                        change("proposal", name="Harborstudio logo proposal cobalt"),
+                        change("foreign", name=question),
+                        sensitive,
+                    ],
+                    fingerprint="partial-search-subprocess",
+                )
+                store.register_consumer("reader", agent_id="agent", task_id="task")
+                store.subscribe(
+                    "reader",
+                    {"record_ids": ["approval", "proposal", "sensitive"]},
+                    subscription_id="scope",
+                )
+                config = root / "config.json"
+                config.write_text(json.dumps({"store_path": str(store_path)}), encoding="utf-8")
+                set_private_path_mode(config, 0o600)
+                before = _directory_digest(root)
+                state = store.state()
+                consumer = store.consumer_status("reader")
+                subscription = store.subscription_identity("scope")
+                cases: dict[str, dict[str, str | int]] = {
+                    "default_partial": {"query": question},
+                    "strict_opt_out": {"query": question, "match": "all"},
+                    "strict_match": {"query": "logo approved"},
+                    "bounded_partial": {"query": question, "limit": 1},
+                }
+                requests = [
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {"protocolVersion": "2025-11-25"},
+                    },
+                ]
+                for number, arguments in enumerate(cases.values(), 2):
+                    requests.append(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": number,
+                            "method": "tools/call",
+                            "params": {
+                                "name": "search_memory",
+                                "arguments": {
+                                    "subscription_id": "scope",
+                                    "consumer_id": "reader",
+                                    "agent_id": "agent",
+                                    "task_id": "task",
+                                    **arguments,
+                                },
+                            },
+                        }
+                    )
+                completed = subprocess.run(
+                    [sys.executable, str(LAUNCHER), "--config", str(config)],
+                    input=("\n".join(json.dumps(request) for request in requests) + "\n").encode(),
+                    capture_output=True,
+                    timeout=20,
+                    check=False,
+                )
+                self.assertEqual(0, completed.returncode, completed.stderr.decode())
+                responses = [json.loads(line) for line in completed.stdout.splitlines()]
+                self.assertEqual(len(requests), len(responses))
+                results = {
+                    name: response["result"]["structuredContent"]
+                    for name, response in zip(cases, responses[1:], strict=True)
+                }
+                partial = results["default_partial"]
+                self.assertEqual(
+                    ["approval", "proposal"], [r["record_id"] for r in partial["results"]]
+                )
+                self.assertEqual("any_terms", partial["match_mode"])
+                self.assertEqual(["approved", "harborstudio", "logo"], partial["considered_terms"])
+                self.assertEqual(
+                    [["approved", "harborstudio", "logo"], ["harborstudio", "logo"]],
+                    [r["matched_terms"] for r in partial["results"]],
+                )
+                self.assertFalse(partial["truncated"])
+                self.assertEqual([], results["strict_opt_out"]["results"])
+                self.assertEqual("all_terms", results["strict_opt_out"]["match_mode"])
+                strict = results["strict_match"]
+                self.assertEqual(["approval"], [r["record_id"] for r in strict["results"]])
+                self.assertEqual("all_terms", strict["match_mode"])
+                self.assertNotIn("matched_terms", strict["results"][0])
+                bounded = results["bounded_partial"]
+                self.assertEqual(["approval"], [r["record_id"] for r in bounded["results"]])
+                self.assertTrue(bounded["truncated"])
+                self.assertEqual(before, _directory_digest(root))
+                self.assertEqual(state, store.state())
+                self.assertEqual(consumer, store.consumer_status("reader"))
+                self.assertEqual(subscription, store.subscription_identity("scope"))
+
     def test_prefix_search_and_refusals_use_the_real_read_only_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

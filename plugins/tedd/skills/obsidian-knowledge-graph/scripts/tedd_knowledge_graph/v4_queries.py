@@ -84,9 +84,21 @@ class SearchResult(TypedDict):
     results: list[RecordSnapshot]
 
 
-class ScopedSearchResult(SearchResult):
+class ScopedRecordSnapshot(RecordSnapshot, total=False):
+    """A scoped match; partial matches name the query terms they contain."""
+
+    matched_terms: list[str]
+
+
+class ScopedSearchResult(TypedDict):
     subscription_id: str
+    query: str
+    watermark: int
+    result_count: int
+    results: list[ScopedRecordSnapshot]
     truncated: bool
+    match_mode: str
+    considered_terms: list[str]
 
 
 class RecordsLoader(Protocol):
@@ -522,7 +534,34 @@ def semantic_key_owner(
     return str(row[0]) if row else None
 
 
-def _scoped_search_expression(query: str) -> str:
+SCOPED_MATCH_MODES = ("all", "any", "auto")
+
+# Function words dropped only when ranking partial matches. An all-terms search
+# still requires every literal word, so this list never widens a strict match.
+_PARTIAL_MATCH_STOP_WORDS = frozenset(
+    "a about after am an and any are as at be been before but by can could did do does for from "
+    "had has have how i if in into is it its may me my of on or our shall should so than that the "
+    "their them then there these they this those to us was we were what when where which who whom "
+    "whose why will with would you your".split()
+)
+
+
+def _partial_match_terms(terms: Sequence[str]) -> list[str]:
+    """Terms worth ranking on: prefixes, multi-token literals and non-function words."""
+
+    kept: list[str] = []
+    for term in terms:
+        literal = term[1:-2] if term.endswith("*") else term[1:-1]
+        if term.endswith("*") or (len(literal) > 1 and literal not in _PARTIAL_MATCH_STOP_WORDS):
+            kept.append(term)
+    return kept
+
+
+def _display_term(term: str) -> str:
+    return f"{term[1:-2]}*" if term.endswith("*") else term[1:-1]
+
+
+def _scoped_search_terms(query: str) -> list[str]:
     """Keep literal tokenization; admit only explicit, unquoted word prefixes."""
 
     terms: list[str] = []
@@ -549,7 +588,7 @@ def _scoped_search_expression(query: str) -> str:
     terms = list(dict.fromkeys(terms))
     if not terms or len(terms) > 32:
         raise ValueError("Search query must contain 1 to 32 terms")
-    return " AND ".join(terms)
+    return terms
 
 
 def search_scoped(
@@ -560,47 +599,119 @@ def search_scoped(
     parameters: Sequence[object],
     *,
     limit: int = 10,
+    match: str = "all",
     records_loader: RecordsLoader,
     watermark_loader: Callable[[], int],
     dependencies: QueryDependencies,
 ) -> ScopedSearchResult:
-    """Literal and explicit prefix matches within a resolved subscription scope."""
+    """Literal and explicit prefix matches within a resolved subscription scope.
+
+    ``all`` requires every term. ``any`` ranks records that contain at least one
+    meaningful term. ``auto`` returns the all-terms result and ranks partial
+    matches only when no eligible record contains every term.
+    """
 
     if not isinstance(query, str) or not query.strip() or len(query) > 2_000:
         raise ValueError("Search query must contain 1 to 2,000 characters")
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
         raise ValueError("Search limit must be between 1 and 100")
+    if match not in SCOPED_MATCH_MODES:
+        raise ValueError("Search match must be all, any or auto")
     query = dependencies.normalize_space(query)
-    expression = _scoped_search_expression(dependencies.normalize_key(query))
-    # Do not use corpus-wide BM25 here: unrelated records must not affect the
-    # ordering of authorized matches. Exact IDs lead, then matched recency.
-    rows = connection.execute(
-        f"""
-        SELECT r.record_id
-        FROM records r
+    terms = _scoped_search_terms(dependencies.normalize_key(query))
+    current = """
         JOIN record_revision_headers h
           ON h.record_id=r.record_id AND h.revision=r.current_revision
         JOIN record_revision_payloads p
           ON p.record_id=r.record_id AND p.revision=r.current_revision
+    """
+    eligible = f"""
         WHERE ({predicate}) AND r.sensitive=0
           AND COALESCE(r.lifecycle,'') NOT IN ('redacted','tombstoned')
-          AND (r.record_id=? OR r.record_id IN (
-            SELECT record_id FROM records_fts WHERE records_fts MATCH ?))
-        ORDER BY CASE WHEN r.record_id=? THEN 0 ELSE 1 END,
-                 r.last_watermark DESC,r.record_id
+    """
+
+    def result(
+        records: list[ScopedRecordSnapshot], found: int, mode: str, considered: Sequence[str]
+    ) -> ScopedSearchResult:
+        return {
+            "subscription_id": subscription_id,
+            "query": query,
+            "watermark": watermark_loader(),
+            "result_count": len(records),
+            "results": records,
+            "truncated": found > limit,
+            "match_mode": mode,
+            "considered_terms": [_display_term(term) for term in considered],
+        }
+
+    if match != "any":
+        # Do not use corpus-wide BM25 here: unrelated records must not affect the
+        # ordering of authorized matches. Exact IDs lead, then matched recency.
+        rows = connection.execute(
+            f"""
+            SELECT r.record_id
+            FROM records r
+            {current}
+            {eligible}
+              AND (r.record_id=? OR r.record_id IN (
+                SELECT record_id FROM records_fts WHERE records_fts MATCH ?))
+            ORDER BY CASE WHEN r.record_id=? THEN 0 ELSE 1 END,
+                     r.last_watermark DESC,r.record_id
+            LIMIT ?
+            """,
+            [*parameters, query, " AND ".join(terms), query, limit + 1],
+        ).fetchall()
+        partial_terms = _partial_match_terms(terms)
+        # A one-term query has no partial form: the strict pass already ran it.
+        if match == "all" or rows or not partial_terms or len(terms) == 1:
+            strict = [
+                cast(ScopedRecordSnapshot, record)
+                for record in records_loader(str(row[0]) for row in rows[:limit])
+            ]
+            return result(strict, len(rows), "all_terms", terms)
+    else:
+        partial_terms = _partial_match_terms(terms)
+        if not partial_terms:
+            return result([], 0, "any_terms", [])
+    # Rank by how many distinct query terms one record contains. That count is a
+    # property of the record alone, so no other record, in or out of scope, can
+    # change it. Eligibility is applied before the limit, as in the strict path.
+    # Validation keeps each FTS rowid equal to its record's rowid.
+    arms = " UNION ALL ".join(
+        f"SELECT rowid AS hit, {index} AS term FROM records_fts WHERE records_fts MATCH ?"
+        for index in range(len(partial_terms))
+    )
+    rows = connection.execute(
+        f"""
+        WITH hits(hit, term) AS ({arms}),
+        matched(hit, matched_count, matched_terms) AS (
+          SELECT hit, COUNT(*), GROUP_CONCAT(term) FROM hits GROUP BY hit
+        )
+        SELECT r.record_id, m.matched_terms
+        FROM matched m
+        JOIN records r ON r.rowid=m.hit
+        {current}
+        {eligible}
+        ORDER BY m.matched_count DESC, r.last_watermark DESC, r.record_id
         LIMIT ?
         """,
-        [*parameters, query, expression, query, limit + 1],
+        [*partial_terms, *parameters, limit + 1],
     ).fetchall()
-    records = records_loader(str(row[0]) for row in rows[:limit])
-    return {
-        "subscription_id": subscription_id,
-        "query": query,
-        "watermark": watermark_loader(),
-        "result_count": len(records),
-        "results": records,
-        "truncated": len(rows) > limit,
+    matched_terms = {
+        str(row[0]): [
+            _display_term(partial_terms[index])
+            for index in sorted(int(item) for item in str(row[1]).split(","))
+        ]
+        for row in rows[:limit]
     }
+    partial = [
+        cast(
+            ScopedRecordSnapshot,
+            {**record, "matched_terms": matched_terms[record["record_id"]]},
+        )
+        for record in records_loader(matched_terms)
+    ]
+    return result(partial, len(rows), "any_terms", partial_terms)
 
 
 def search(
