@@ -88,6 +88,14 @@ For overdue context items or a bounded CLI review, follow
 [review overdue items](references/recall.md#review-overdue-items); reads propose
 dispositions without applying them.
 
+A subscription context also carries the scope's
+[current claims](references/recall.md#current-claims) and
+[waiting counts](references/recall.md#waiting-work) when the loaded build
+provides them. Read current claims for what is true now. Use
+[`review-queue`](references/recall.md#review-what-is-waiting) to list what waits
+on a person and [`fold-candidates`](references/recall.md#find-notes-to-fold) to
+list notes no claim cites. All three only read.
+
 ## Capture workflow
 
 Before an authorized write, read [capture and correction](references/capture-and-correction.md#capture-workflow)
@@ -98,6 +106,15 @@ plan file. Verify committed record IDs; never treat a receipt as proof of every
 durable conclusion.
 The capture reference also describes optional journal-verified prompt receipts;
 use them only when the loaded build advertises the handoff commands.
+
+When the operator answers waiting items, follow
+[answer the review queue](references/capture-and-correction.md#answer-the-review-queue):
+one private answers file becomes one reviewed capture. Only the operator's own
+answer settles an item. To replace a subject's dated notes with current claims,
+follow [fold notes into claims](references/capture-and-correction.md#fold-notes-into-claims)
+and get approval for each batch. A dry run's
+[suggestions](references/capture-schema.md#dry-run-suggestions) are advice, not
+a gate.
 After memory use, including read-only work, follow the
 [fixed memory handoff](../tedd/references/knowledge-graph-lifecycle.md#closure).
 

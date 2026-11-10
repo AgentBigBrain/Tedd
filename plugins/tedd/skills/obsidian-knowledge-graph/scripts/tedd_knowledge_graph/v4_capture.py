@@ -22,6 +22,7 @@ from typing import Protocol, TypedDict, cast
 
 from tedd_knowledge_graph.handoff_receipts import validate_prompt_id
 from tedd_knowledge_graph.preferences import is_preference_scope, validate_preference_record
+from tedd_knowledge_graph.v4_capture_hints import capture_suggestions
 from tedd_knowledge_graph.v4_cli_contracts import CaptureRequest
 
 MAX_CAPTURE_SLICE_RECORDS = 2_000
@@ -339,6 +340,16 @@ def _record_ids_from_packet(records: Mapping[str, Sequence[Mapping[str, object]]
         surface_id = _legacy().explicit_record_id(claim.get("surface_id"))
         if surface_id:
             result.add(surface_id)
+        cited = claim.get("observation_refs", [])
+        if isinstance(cited, list):
+            for value in cited:
+                observation_id = _legacy().explicit_record_id(value)
+                if observation_id:
+                    result.add(observation_id)
+    for decision in records["decisions"]:
+        successor_id = _legacy().explicit_record_id(decision.get("superseded_by"))
+        if successor_id:
+            result.add(successor_id)
     for collection in ("relations", "entity_redirects"):
         for item in records[collection]:
             for field in ("source", "target", "from", "to"):
@@ -1018,6 +1029,10 @@ def _execute_capture(
         "validation": validation,
     }
     if request.dry_run:
+        # Advisory only: computed after the plan, outside the fingerprint, never on apply.
+        suggestions = capture_suggestions(capture_store.connection, changes)
+        if suggestions["items"]:
+            summary["suggestions"] = suggestions
         return summary
     if not request.plan_token:
         raise _storage().PlanTokenError(

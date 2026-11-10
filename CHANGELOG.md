@@ -7,7 +7,7 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## Unreleased
+## 1.2.0-rc.13: 2026-11-10
 
 - Return labeled partial matches from `search_memory` when no record in the
   task's subscription contains every query word. Records that contain every
@@ -19,12 +19,47 @@ in the maintainers' private archive and are kept as historical references.
   matches. Results report `match_mode` and `considered_terms`.
 - Let a MemoryBench MCP search case set `match`, so a no-match case can keep
   the every-word rule.
+- Add a current-claims sheet to task context. `recall_context` and CLI
+  `context` return a `current_state` section with the scope's current claims,
+  each with the date validated evidence last confirmed it. The sheet holds at
+  most 12 claims and 2,400 characters, and at most a quarter of the context
+  budget.
+- Add exact `waiting` counts to task context: unfinished and overdue
+  commitments by owner kind, undecided proposals, and observations that no
+  visible claim cites.
+- Add `review-queue`, which lists the commitments, proposals and per-subject
+  note counts behind those counts. Add `review-answers`, which turns a private
+  file of the operator's answers into one capture packet for the normal
+  reviewed dry run and apply.
+- Let capture record outcomes. A decision can be `rejected`, or `superseded`
+  with `superseded_by` naming its successor. The successor must be accepted,
+  earlier or in the same packet; an undecided or rejected one is refused. An
+  authoritative source can close a loop with `status: resolved` and a
+  `resolution`.
+- Let a claim cite stored observations in `observation_refs`, from a source at
+  `validated_structured_candidate` or above. A cited observation leaves a
+  task's recent records when that task can read the citing claim, and stays
+  searchable. Add `fold-candidates` to list uncited observations beside the
+  existing claim slots.
+- Add advisory `suggestions` to a capture dry run when a new observation
+  resembles an existing claim slot, or a new label is close to one already
+  used for the same entities. Suggestions never change what is saved.
 
 Subscription scope, privacy filtering, result limits, and ordering without
 corpus-wide statistics are unchanged. The store schema and full-text index are
 unchanged; no migration or reindex is required. The store's search method keeps
-the every-word default. These changes alter package files and are not in the
-1.2.0-rc.12 package; they have repository tests and no host qualification.
+the every-word default. RC13 includes these package changes. Installation is separate from source
+publication; see the current availability record for verification status.
+
+Task context now reserves space for the waiting counts and the current-claims
+sheet before recent records, so a tight `max_chars` can return fewer recent
+records than before. Overdue details and preferences keep their limits and
+still follow recent records. Review the budgets of a private MemoryBench
+context suite after upgrading. The four MCP tools and their arguments are
+unchanged. A capture packet that uses none of `observation_refs`,
+`superseded_by` or `resolution` keeps its earlier fingerprint. Recent records
+are selected as before until a claim cites an observation. The projection
+format is unchanged.
 
 ## 2026-11-06: Repository updates
 

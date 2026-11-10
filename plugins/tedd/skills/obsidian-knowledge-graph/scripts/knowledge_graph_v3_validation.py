@@ -337,6 +337,19 @@ class _ValidationState:
                 except (TypeError, ValueError):
                     self.errors.append(f"{loop.get('id')} has an invalid checkpoint timestamp")
 
+    def validate_decision_successors(self) -> None:
+        decision_ids = self.collection_ids.get("decisions", set())
+        for decision in self.collection_records["decisions"]:
+            successor = self.record_string(decision, "superseded_by")
+            if not successor:
+                continue
+            if successor == decision.get("id") or successor not in decision_ids:
+                self.errors.append(f"{decision.get('id')} references missing successor {successor}")
+            if decision.get("status") != "superseded":
+                self.errors.append(
+                    f"{decision.get('id')} names a successor without being superseded"
+                )
+
     def validate_relations_and_observations(self) -> None:
         entity_ids = self.collection_ids.get("entities", set())
         source_ids = self.collection_ids.get("sources", set())
@@ -621,6 +634,7 @@ def validate_graph(graph: object, dependencies: ValidationDependencies) -> Valid
     state.validate_generic_identities()
     state.validate_record_references()
     state.validate_open_loops()
+    state.validate_decision_successors()
     state.validate_relations_and_observations()
     state.validate_journal()
     state.validate_authority_states()

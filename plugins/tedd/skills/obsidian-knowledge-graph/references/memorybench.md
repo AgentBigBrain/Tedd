@@ -178,6 +178,12 @@ and hard negatives. There is no query. Set `max_items` to bound recent records
 in the request and `max_chars` for the entire disclosed context. Omit `limit`
 from the case and defaults; it would not control these sections.
 
+A build that returns [current claims](recall.md#current-claims) and
+[waiting counts](recall.md#waiting-work) reserves their space before recent
+records. They are not selectable as a `context_section`, but they count toward
+`max_chars`. A suite written against an earlier build can therefore see fewer
+recent records at the same budget; review its budgets before comparing scores.
+
 A complete context suite can name a preference's stable surface. Replace the
 example identities and expected surface with verified values. This suite has
 no `limit` in either its defaults or case:

@@ -228,6 +228,40 @@ class LegacyRecordService:
         )
         return observation_id, True
 
+    def _cited_observations(
+        self, graph: JsonObject, raw: JsonObject, claim_refs: list[str]
+    ) -> list[str]:
+        """Resolve existing observations a claim explicitly folds into its slot.
+
+        A cited observation must already exist, remain readable, and share an
+        entity with the claim, so one subject cannot fold another's notes.
+        """
+
+        values = raw.get("observation_refs")
+        if values is None:
+            return []
+        if not isinstance(values, list):
+            raise ValueError("Claim observation_refs must be a list")
+        stored = self.dependencies.index_by_id(_records(graph, "observations"))
+        claim_entities = set(claim_refs)
+        cited: list[str] = []
+        for value in values:
+            observation_id = self.dependencies.explicit_record_id(value)
+            observation = stored.get(observation_id) if observation_id else None
+            if observation is None:
+                raise ValueError("Claim observation_refs must name existing observations")
+            if observation.get("lifecycle") == "redacted":
+                raise ValueError("A claim cannot cite a redacted observation")
+            observation_entities = set(
+                self.dependencies.canonical_entity_refs(
+                    graph, _objects(observation.get("entity_refs", []))
+                )
+            )
+            if not observation_entities & claim_entities:
+                raise ValueError("A cited observation must share an entity with the claim")
+            cited.append(observation_id)
+        return cited
+
     def _prepare_claim_context(
         self,
         graph: JsonObject,
@@ -273,6 +307,14 @@ class LegacyRecordService:
             and item.get("source_ref") == source["id"]
             and tuple(sorted(_strings(item.get("entity_refs", [])))) == scope
         ]
+        cited = self._cited_observations(graph, raw, refs)
+        if cited and not validated_claim:
+            # Citing a note takes it out of task context, including when this
+            # packet only restates a claim that is already current.
+            raise ValueError(
+                "Claim observation_refs require a source at validated_structured_candidate or above"
+            )
+        observations = self.dependencies.unique_strings([*observations, *cited])
         conflict_policy = self.dependencies.normalize_key(raw.get("conflict_policy")) or "preserve"
         if conflict_policy not in {"preserve", "replace"}:
             raise ValueError("Claim conflict_policy must be preserve or replace")
@@ -712,12 +754,34 @@ class LegacyRecordService:
         self._apply_generic_field_updates(existing, raw, context)
         existing["source_tier"] = context.source_tier
 
+    def _source_outranks(
+        self,
+        existing: JsonObject,
+        source: JsonObject,
+        context: _GenericRecordContext,
+    ) -> bool:
+        """Whether this source is at least as recent and as strong as the stored record.
+
+        Read this before the record's observation times are updated.
+        """
+
+        observed_at = _string(source["observed_at"])
+        stored_at = _string(
+            existing.get("last_observed_at") or existing.get(context.timestamp_key) or observed_at
+        )
+        if self.dependencies.time_value(observed_at) < self.dependencies.time_value(stored_at):
+            return False
+        return self.dependencies.source_tiers[
+            context.source_tier
+        ] >= self.dependencies.source_tier_rank(existing.get("source_tier"))
+
     def _update_existing_generic_record(
         self,
         existing: JsonObject,
         raw: JsonObject,
         source: JsonObject,
         context: _GenericRecordContext,
+        outranks: bool,
     ) -> tuple[str, bool]:
         if existing:
             if existing.get("lifecycle") == "redacted":
@@ -763,13 +827,7 @@ class LegacyRecordService:
                 _optional_string(existing.get("last_observed_at") or prior_last_observed),
                 _string(source["observed_at"]),
             )
-            if self.dependencies.time_value(
-                _string(source["observed_at"])
-            ) >= self.dependencies.time_value(
-                prior_last_observed
-            ) and self.dependencies.source_tiers[
-                context.source_tier
-            ] >= self.dependencies.source_tier_rank(existing.get("source_tier")):
+            if outranks:
                 self._apply_generic_authority_update(existing, raw, source, context)
             return context.record_id, True
         raise AssertionError("existing generic record is required")
@@ -836,9 +894,89 @@ class LegacyRecordService:
         source: JsonObject,
     ) -> tuple[str, bool]:
         context, existing = self._prepare_generic_record(graph, collection, raw, local_refs, source)
+        previous_status = existing.get("status") if existing else None
         if existing:
-            return self._update_existing_generic_record(existing, raw, source, context)
-        return self._create_generic_record(graph, raw, source, context)
+            outranks = existing.get("lifecycle") != "redacted" and self._source_outranks(
+                existing, source, context
+            )
+            result = self._update_existing_generic_record(existing, raw, source, context, outranks)
+        else:
+            outranks = True
+            result = self._create_generic_record(graph, raw, source, context)
+        record = self.dependencies.index_by_id(_records(graph, collection))[context.record_id]
+        if collection == "decisions":
+            self._apply_decision_successor(
+                graph, record, raw, context, context.accepted_authority and outranks
+            )
+        elif collection == "open_loops":
+            self._apply_loop_resolution(record, raw, source, previous_status)
+        return result
+
+    def _apply_decision_successor(
+        self,
+        graph: JsonObject,
+        record: JsonObject,
+        raw: JsonObject,
+        context: _GenericRecordContext,
+        authoritative: bool,
+    ) -> None:
+        """Link a replaced decision to the decision that replaced it.
+
+        ``authoritative`` says this capture's source is validated and outranks
+        what is stored.  Only such a source may add or move the link; repeating
+        the stored link changes nothing.  Whether the successor itself stands
+        is judged once the whole packet is applied, by the capture service.
+        """
+
+        if raw.get("superseded_by") in (None, ""):
+            return
+        if record.get("lifecycle") == "redacted":
+            return
+        successor_id = self.dependencies.explicit_record_id(raw.get("superseded_by"))
+        replaced = record.get("status") == "superseded" and (
+            record.get("authority_state") == "accepted"
+        )
+        unchanged = record.get("superseded_by") == successor_id
+        if not replaced or not (unchanged or authoritative):
+            raise ValueError(
+                "Decision superseded_by requires status superseded from an authoritative source"
+            )
+        if unchanged:
+            return
+        decisions = self.dependencies.index_by_id(_records(graph, "decisions"))
+        successor = decisions.get(successor_id)
+        if successor is None or successor.get("lifecycle") == "redacted":
+            raise ValueError("Decision superseded_by must name an existing decision")
+        seen = {context.record_id}
+        cursor: JsonObject | None = successor
+        while cursor is not None:
+            cursor_id = _string(cursor.get("id", ""))
+            if cursor_id in seen:
+                raise ValueError("Decision superseded_by would form a cycle")
+            seen.add(cursor_id)
+            cursor = decisions.get(_optional_string(cursor.get("superseded_by")) or "")
+        record["superseded_by"] = successor_id
+
+    def _apply_loop_resolution(
+        self,
+        record: JsonObject,
+        raw: JsonObject,
+        source: JsonObject,
+        previous_status: object,
+    ) -> None:
+        """Record the stated outcome when a capture closes an unfinished loop."""
+
+        resolution = self.dependencies.normalize_space(raw.get("resolution"))
+        if not resolution or record.get("lifecycle") == "redacted":
+            return
+        if previous_status == "resolved":
+            return
+        if record.get("status") != "resolved":
+            raise ValueError(
+                "Open-loop resolution requires status resolved from an authoritative source"
+            )
+        record["resolution"] = resolution
+        record["resolved_at"] = _string(source["observed_at"])
 
 
 __all__ = ["LegacyRecordService"]

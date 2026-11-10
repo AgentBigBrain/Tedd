@@ -109,6 +109,24 @@ class V4CLIServiceParityTests(V4TestCase):
                 "truncated": False,
                 "omitted": False,
             }
+            # The seeded scopes hold entities only: no claims, loops, decisions or notes.
+            result["current_state"] = {
+                "label": "current claims, with dates",
+                "items": [],
+                "truncated": False,
+                "omitted": False,
+            }
+            result["waiting"] = {
+                "commitments": {
+                    "unfinished": 0,
+                    "overdue": 0,
+                    "unassigned": 0,
+                    "agent_owned": 0,
+                    "named_owner": 0,
+                },
+                "proposals": {"undecided": 0, "older_than_days": 30, "older": 0},
+                "notes": {"unfolded": 0},
+            }
         result.setdefault("status", "ok")
         return result
 

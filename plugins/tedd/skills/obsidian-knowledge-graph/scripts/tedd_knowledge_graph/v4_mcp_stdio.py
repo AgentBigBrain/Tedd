@@ -76,7 +76,12 @@ TOOLS: tuple[JsonObject, ...] = (
     },
     {
         "name": "recall_context",
-        "description": "Read the existing exact subscription context without creating state.",
+        "description": (
+            "Read the existing exact subscription context without creating state: stated "
+            "preferences, current claims with the date each was last confirmed, counts of "
+            "waiting commitments and proposals, recent records and overdue items. A section "
+            "marked omitted is missing information, not an empty result. Read-only."
+        ),
         "inputSchema": _schema(
             {
                 "subscription_id": {"type": "string", "maxLength": 512},
@@ -232,7 +237,7 @@ class McpLifecycle(ABC):
             "id": request_id,
             "result": {
                 "protocolVersion": negotiated,
-                "serverInfo": {"name": self._name, "version": "1.2.0-rc.12"},
+                "serverInfo": {"name": self._name, "version": "1.2.0-rc.13"},
                 "instructions": self._instructions,
                 "capabilities": {"tools": {"listChanged": False}},
             },

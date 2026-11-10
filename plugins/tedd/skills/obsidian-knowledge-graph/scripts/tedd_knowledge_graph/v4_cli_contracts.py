@@ -10,10 +10,13 @@ from typing import Callable, Mapping, Protocol, Sequence, TypeAlias
 
 from .v4_application_contracts import (
     BrainStatusRequest,
+    FoldCandidatesRequest,
     GraphReadResult,
     LoopsReviewRequest,
     PullChangesRequest,
     RecallContextRequest,
+    ReviewAnswersRequest,
+    ReviewQueueRequest,
 )
 
 JsonScalar: TypeAlias = None | bool | int | float | str
@@ -234,6 +237,12 @@ class GraphReadOperations(Protocol):
     def recall_context(self, request: RecallContextRequest) -> GraphReadResult: ...
 
     def loops_review(self, request: LoopsReviewRequest) -> GraphReadResult: ...
+
+    def review_queue(self, request: ReviewQueueRequest) -> GraphReadResult: ...
+
+    def review_answers(self, request: ReviewAnswersRequest) -> GraphReadResult: ...
+
+    def fold_candidates(self, request: FoldCandidatesRequest) -> GraphReadResult: ...
 
     def pull_changes(self, request: PullChangesRequest) -> GraphReadResult: ...
 

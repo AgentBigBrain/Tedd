@@ -10,14 +10,15 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterable, Mapping
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
-from typing import NoReturn, Protocol, cast
+from typing import Literal, NoReturn, Protocol, cast
 
 from .v4_application_contracts import (
     MAX_CURSOR_CHARS,
     BrainStatusRequest,
+    FoldCandidatesRequest,
     GraphReadError,
     GraphReadErrorCategory,
     GraphReadFailure,
@@ -30,8 +31,18 @@ from .v4_application_contracts import (
     PullChangesRequest,
     ReadScopeKind,
     RecallContextRequest,
+    ReviewAnswersRequest,
+    ReviewQueueRequest,
     SearchMemoryRequest,
 )
+from .v4_review_answers import AnswersError, StoredRecord, build_answers_packet
+
+# Disclosed-section ceilings, in characters of sanitized JSON.
+CURRENT_STATE_CHARS = 2_400
+OVERDUE_CHARS = 1_500
+PREFERENCE_CHARS = 2_000
+# The current-state sheet never takes more than this share of a context budget.
+CURRENT_STATE_BUDGET_DIVISOR = 4
 
 
 class GraphReadStore(Protocol):
@@ -78,6 +89,25 @@ class GraphReadStore(Protocol):
     ) -> Mapping[str, object]: ...
 
     def preferences(self, subscription_id: str) -> Mapping[str, object]: ...
+
+    def current_state(self, subscription_id: str) -> Mapping[str, object]: ...
+
+    def waiting_summary(self, subscription_id: str) -> Mapping[str, object]: ...
+
+    def review_queue(self, subscription_id: str, *, limit: int = 20) -> Mapping[str, object]: ...
+
+    def fold_candidates(
+        self,
+        subscription_id: str,
+        *,
+        subject_id: str | None = None,
+        family: str | None = None,
+        limit: int = 20,
+    ) -> Mapping[str, object]: ...
+
+    def scoped_records(
+        self, subscription_id: str, record_ids: Iterable[str]
+    ) -> Mapping[str, StoredRecord]: ...
 
     def create_plan_token(self, record_ids: Iterable[str], *, fingerprint: str) -> str: ...
 
@@ -174,6 +204,35 @@ def _public_store_health(assessment: Mapping[str, object]) -> JsonObject:
     return {"safe": safe, "coordination_scope": "same-machine-only"}
 
 
+# The item-list sections that grow one item at a time inside their own ceilings.
+_SectionName = Literal["current_state", "overdue", "preferences"]
+
+
+@dataclass(frozen=True)
+class _ContextSections:
+    """The parts of one subscription context that are budgeted independently."""
+
+    records: list[JsonValue]
+    current_state: JsonObject
+    waiting: JsonObject
+    overdue: JsonObject
+    preferences: JsonObject
+
+    def section(self, name: _SectionName) -> JsonObject:
+        if name == "current_state":
+            return self.current_state
+        if name == "overdue":
+            return self.overdue
+        return self.preferences
+
+    def with_section(self, name: _SectionName, section: JsonObject) -> _ContextSections:
+        if name == "current_state":
+            return replace(self, current_state=section)
+        if name == "overdue":
+            return replace(self, overdue=section)
+        return replace(self, preferences=section)
+
+
 class GraphReadService:
     """Execute scope-safe graph reads without persisting any state."""
 
@@ -220,6 +279,8 @@ class GraphReadService:
                 }
                 return {
                     "preferences": self._json_object(store.preferences(subscription_id)),
+                    "current_state": self._json_object(store.current_state(subscription_id)),
+                    "waiting": self._json_object(store.waiting_summary(subscription_id)),
                     **payload,
                 }
 
@@ -291,38 +352,50 @@ class GraphReadService:
     def _subscription_context_disclosure(
         self, store: GraphReadStore, payload: JsonObject, request: RecallContextRequest
     ) -> JsonObject:
-        """Fit recent records first, then overdue items and stated preferences."""
+        """Fit one context inside the caller's budget, most durable sections first.
+
+        The waiting counts and a bounded current-state sheet are reserved before
+        recent records.  Overdue details and stated preferences use what remains.
+        """
 
         fingerprint = request.plan_fingerprint
         if fingerprint is not None:
             fingerprint = fingerprint.strip()
             if not fingerprint or len(fingerprint) > 256:
                 self._raise(GraphReadErrorCategory.INVALID_REQUEST, "plan fingerprint is invalid")
-        overdue = self._json_object(payload["overdue"])
-        items = self._json_list(overdue["items"])
-        preferences = self._json_object(payload["preferences"])
-        preference_items = self._json_list(preferences["items"])
-        omitted: JsonObject = {
-            "items": [],
-            "truncated": True,
-            "omitted": True,
-            "reason": "budget_exhausted",
-        }
-        original_records = self._json_list(payload.get("records"))
+        exhausted: JsonObject = {"truncated": True, "omitted": True, "reason": "budget_exhausted"}
+        full = _ContextSections(
+            records=self._json_list(payload.get("records")),
+            current_state=self._json_object(payload["current_state"]),
+            waiting=self._json_object(payload["waiting"]),
+            overdue=self._json_object(payload["overdue"]),
+            preferences=self._json_object(payload["preferences"]),
+        )
 
-        preference_baseline = {**preferences, **omitted} if preference_items else preferences
+        def withheld(section: JsonObject) -> JsonObject:
+            # An empty section is a true "nothing here"; only withheld items are omissions.
+            return {**section, "items": [], **exhausted} if section["items"] else section
 
-        def disclose(
-            records: list[JsonValue], section: JsonObject, preference_section: JsonObject
-        ) -> JsonObject:
+        def portion(section: JsonObject, count: int) -> JsonObject:
+            items = self._json_list(section["items"])
+            return {
+                **section,
+                "items": items[:count],
+                "truncated": bool(section["truncated"]) or count < len(items),
+                "omitted": False,
+            }
+
+        def disclose(sections: _ContextSections) -> JsonObject:
             candidate = {
                 **payload,
-                "records": records,
-                "overdue": section,
-                "preferences": preference_section,
+                "records": sections.records,
+                "current_state": sections.current_state,
+                "waiting": sections.waiting,
+                "overdue": sections.overdue,
+                "preferences": sections.preferences,
             }
-            if len(records) < len(original_records):
-                candidate["item_count"] = len(records)
+            if len(sections.records) < len(full.records):
+                candidate["item_count"] = len(sections.records)
                 candidate["char_count"] = sum(
                     len(
                         json.dumps(
@@ -332,64 +405,150 @@ class GraphReadService:
                             sort_keys=True,
                         )
                     )
-                    for item in records
+                    for item in sections.records
                 )
                 candidate["truncated"] = True
             if fingerprint is not None:
-                record_ids = [str(self._json_object(item)["record_id"]) for item in records]
-                record_ids.extend(
-                    str(self._json_object(item)["id"]) for item in self._json_list(section["items"])
-                )
-                record_ids.extend(
-                    str(self._json_object(item)["id"])
-                    for item in self._json_list(preference_section["items"])
-                )
+                record_ids = [
+                    str(self._json_object(item)["record_id"]) for item in sections.records
+                ]
+                for section in (sections.current_state, sections.overdue, sections.preferences):
+                    record_ids.extend(
+                        str(self._json_object(item)["id"])
+                        for item in self._json_list(section["items"])
+                    )
                 candidate["plan_token"] = store.create_plan_token(
                     record_ids, fingerprint=fingerprint
                 )
             # Always start from canonical values, never re-sanitize a disclosure.
             return self._json_object(self._dependencies.sanitize(candidate))
 
-        records = original_records
-        baseline = omitted if items else overdue
-        safe = disclose(records, baseline, preference_baseline)
-        while len(json.dumps(safe, ensure_ascii=False)) > request.max_chars and records:
-            records = records[:-1]
-            safe = disclose(records, baseline, preference_baseline)
-        if len(json.dumps(safe, ensure_ascii=False)) > request.max_chars:
+        def size(value: JsonValue) -> int:
+            return len(json.dumps(value, ensure_ascii=False))
+
+        def fill(
+            chosen: _ContextSections, safe: JsonObject, name: _SectionName, ceiling: int
+        ) -> tuple[_ContextSections, JsonObject]:
+            """Grow one section an item at a time while it and the whole context fit."""
+
+            section = full.section(name)
+            for count in range(1, len(self._json_list(section["items"])) + 1):
+                trial = chosen.with_section(name, portion(section, count))
+                candidate = disclose(trial)
+                if size(candidate[name]) > ceiling or size(candidate) > request.max_chars:
+                    break
+                chosen, safe = trial, candidate
+            return chosen, safe
+
+        chosen = _ContextSections(
+            records=[],
+            current_state=withheld(full.current_state),
+            waiting=dict(exhausted),
+            overdue=withheld(full.overdue),
+            preferences=withheld(full.preferences),
+        )
+        safe = disclose(chosen)
+        if size(safe) > request.max_chars:
             self._raise(
                 GraphReadErrorCategory.INVALID_REQUEST, "context budget cannot fit its metadata"
             )
-        selected_overdue = baseline
-        for count in range(1, len(items) + 1):
-            section: JsonObject = {
-                "items": items[:count],
-                "truncated": bool(overdue["truncated"]) or count < len(items),
-                "omitted": False,
-            }
-            candidate = disclose(records, section, preference_baseline)
-            if (
-                len(json.dumps(candidate["overdue"], ensure_ascii=False)) > 1_500
-                or len(json.dumps(candidate, ensure_ascii=False)) > request.max_chars
-            ):
+        counted = replace(chosen, waiting=full.waiting)
+        candidate = disclose(counted)
+        if size(candidate) <= request.max_chars:
+            chosen, safe = counted, candidate
+        chosen, safe = fill(
+            chosen,
+            safe,
+            "current_state",
+            min(CURRENT_STATE_CHARS, request.max_chars // CURRENT_STATE_BUDGET_DIVISOR),
+        )
+        records = full.records
+        while records:
+            candidate = disclose(replace(chosen, records=records))
+            if size(candidate) <= request.max_chars:
+                chosen, safe = replace(chosen, records=records), candidate
                 break
-            safe = candidate
-            selected_overdue = section
-        for count in range(1, len(preference_items) + 1):
-            section = {
-                **preferences,
-                "items": preference_items[:count],
-                "truncated": bool(preferences["truncated"]) or count < len(preference_items),
-                "omitted": False,
-            }
-            candidate = disclose(records, selected_overdue, section)
-            if (
-                len(json.dumps(candidate["preferences"], ensure_ascii=False)) > 2000
-                or len(json.dumps(candidate, ensure_ascii=False)) > request.max_chars
-            ):
-                break
-            safe = candidate
+            records = records[:-1]
+        chosen, safe = fill(chosen, safe, "overdue", OVERDUE_CHARS)
+        chosen, safe = fill(chosen, safe, "preferences", PREFERENCE_CHARS)
         return safe
+
+    def review_queue(self, request: ReviewQueueRequest) -> GraphReadResult:
+        """List what waits on a person in one existing subscription."""
+
+        return self._subscription_read(
+            "review_queue",
+            request.session,
+            request.scope,
+            lambda store, subscription_id: self._json_object(
+                store.review_queue(subscription_id, limit=request.limit)
+            ),
+        )
+
+    def fold_candidates(self, request: FoldCandidatesRequest) -> GraphReadResult:
+        """List unfolded notes and the claim slots that could absorb them."""
+
+        return self._subscription_read(
+            "fold_candidates",
+            request.session,
+            request.scope,
+            lambda store, subscription_id: self._json_object(
+                store.fold_candidates(
+                    subscription_id,
+                    subject_id=request.subject_id,
+                    family=request.family,
+                    limit=request.limit,
+                )
+            ),
+        )
+
+    def review_answers(self, request: ReviewAnswersRequest) -> GraphReadResult:
+        """Turn reviewed answers into one capture packet without saving anything.
+
+        Records outside the subscription, sensitive records, and answers that do
+        not fit a record's current status are refused as ``INVALID_REQUEST``.
+        The packet repeats stored titles exactly, so compose this service
+        without a review sanitizer and keep the result in private storage.
+        """
+
+        def read(store: GraphReadStore, subscription_id: str) -> JsonObject:
+            records = store.scoped_records(subscription_id, request.document.record_ids())
+            try:
+                built = build_answers_packet(request.document, records)
+            except AnswersError as error:
+                self._raise(GraphReadErrorCategory.INVALID_REQUEST, str(error))
+            return {
+                "packet": built["packet"],
+                "answers": [
+                    {"id": item["id"], "collection": item["collection"], "answer": item["answer"]}
+                    for item in built["answers"]
+                ],
+            }
+
+        return self._subscription_read("review_answers", request.session, request.scope, read)
+
+    def _subscription_read(
+        self,
+        operation: str,
+        session: GraphReadSession,
+        scope: GraphReadScope,
+        read: Callable[[GraphReadStore, str], JsonObject],
+    ) -> GraphReadResult:
+        """Run one read that only an exact, owned subscription may perform."""
+
+        self._validate_scope(session, scope)
+        if scope.kind is not ReadScopeKind.SUBSCRIPTION:
+            self._raise(
+                GraphReadErrorCategory.SCOPE_DENIED,
+                f"{operation.replace('_', ' ')} requires subscription scope",
+            )
+        subscription_id = self._require_subscription(session, scope)
+
+        def callback(store: GraphReadStore, _path: Path) -> JsonObject:
+            self._validate_subscription_owner(store, subscription_id, session)
+            return read(store, subscription_id)
+
+        return self._execute(operation, callback)
 
     def search_memory(self, request: SearchMemoryRequest) -> GraphReadResult:
         self._validate_scope(request.session, request.scope)
