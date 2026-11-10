@@ -7,6 +7,24 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## 2026-11-10: Repository updates
+
+- Add a project recall lab, `scripts/project_recall_lab.py`, with its own
+  [protocol](research/project-recall-lab/PROTOCOL.md) and a frozen catalog of
+  seven synthetic projects of 30 to 650 records. It measures what a context,
+  a search, and a context followed by a search deliver when a project holds
+  more records than one context returns, through the CLI and the read-only
+  MCP server. It counts a record that a reserved section of the context
+  response names or carries, reports sizes against handing over the whole
+  project, and fixes the rules for comparing a later change, including how a
+  leaner record format will be scored. The memory evaluation lab, its
+  protocol and its catalog are unchanged.
+- Record the lab's [baseline](research/project-recall-lab/BASELINE.md) for
+  1.2.0-rc.13. At the default budget a context returned 43 to 45 records of
+  each 250 to 650 record project and delivered the required records in one of
+  five oversized cases. A context followed by a search with the question
+  delivered them in two of five.
+
 ## 1.2.0-rc.13: 2026-11-10
 
 - Return labeled partial matches from `search_memory` when no record in the
