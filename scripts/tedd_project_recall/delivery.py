@@ -10,6 +10,7 @@ records list leaves out, and the reads an agent makes through MCP.
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -136,24 +137,31 @@ def _payload_mismatches(responses: Sequence[Mapping[str, object]], scenario: Sce
     return mismatches
 
 
-def over_limits(response: Mapping[str, object], limits: Budget) -> bool:
+def over_limits(
+    response: Mapping[str, object], limits: Budget, *, cli_envelope: bool = False
+) -> bool:
     """Tell whether one call returned more than the limits it was given.
 
-    A context's character limit covers its whole response; a search's covers
-    its results list.  Both limits are checked in the lab's canonical JSON,
-    which is never longer than the JSON Tedd budgets, so a response that Tedd
-    kept within its limit is never reported here.  A response with neither a
-    records list nor a results list was fetched by exact ID and has no limit.
+    A context's character limit covers its service payload; a search's covers
+    its results list. Use Tedd's budget encoding, including separator spaces
+    and unescaped Unicode. Only CLI reads exclude the command/status envelope
+    added after the service budgets a context. Exact-ID reads have no limit.
     """
 
     if isinstance(response.get("records"), list):
-        returned, bounded = _objects(response.get("records")), cast(object, response)
+        returned = _objects(response.get("records"))
+        bounded: object = (
+            {key: value for key, value in response.items() if key not in ("command", "status")}
+            if cli_envelope
+            else dict(response)
+        )
     elif isinstance(response.get("results"), list):
         returned, bounded = _objects(response.get("results")), response.get("results")
     else:
         return False
     return (
-        len(returned) > limits.max_items or len(canonical_payload_json(bounded)) > limits.max_chars
+        len(returned) > limits.max_items
+        or len(json.dumps(bounded, ensure_ascii=False)) > limits.max_chars
     )
 
 
@@ -164,13 +172,16 @@ def deliver(
     *,
     sections: bool,
     limits: Sequence[Budget],
+    cli_envelope: bool = False,
 ) -> Delivery:
     """Describe one read from its scored records list and its decoded responses.
 
     With ``sections`` true, items in reserved sections count as listed, and a
     required record counts as carried when one item with its ID holds every
     asserted field with the asserted value.  ``limits`` gives, for each
-    response in order, the limits that call was made with.
+    response in order, the limits that call was made with. ``cli_envelope``
+    excludes the CLI-added fields from context limit checks only; response
+    cost and section digests still describe the complete responses.
 
     Raises:
         ValueError: If ``limits`` does not give one entry per response.
@@ -206,7 +217,8 @@ def deliver(
         ),
         sections_sha256=sections_digest(responses) if sections else "",
         limit_violations=sum(
-            over_limits(response, limit) for response, limit in zip(responses, limits, strict=True)
+            over_limits(response, limit, cli_envelope=cli_envelope)
+            for response, limit in zip(responses, limits, strict=True)
         ),
     )
 
@@ -333,6 +345,7 @@ class ProviderArm:
             case.scenario,
             sections=self.reads_sections,
             limits=[budget] * len(client.responses),
+            cli_envelope=True,
         )
 
 

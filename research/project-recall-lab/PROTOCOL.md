@@ -161,9 +161,13 @@ record when it has a text `id`.
 - **Limit violations**: calls that returned more than the limits they were
   given. A call's records must not outnumber its item limit, and the part of
   its response that its character limit covers must fit that limit: the whole
-  response for a context, the results list for a search. Both are measured in
-  canonical JSON, which is never longer than the JSON Tedd budgets. A read by
-  exact ID has no limit.
+  service payload for a context, the results list for a search. Sizes here use
+  Tedd's budget encoding, `json.dumps(..., ensure_ascii=False)`, including
+  separator spaces. The CLI adds `command` and `status` after a context is
+  budgeted; those two fields are excluded only for CLI context limit checks.
+  Search metadata outside the results list is excluded from its limit.
+  Complete responses still count toward the canonical response-cost metrics
+  below. A read by exact ID has no limit.
 - **Sufficiency**: every required record is delivered, the records list has no
   hard violation, no call has a limit violation, and no reserved section names
   a record outside the project.

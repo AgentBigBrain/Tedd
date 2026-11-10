@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from collections.abc import Iterator
 
@@ -415,6 +416,83 @@ class CallLimitTests(unittest.TestCase):
 
         self.assertEqual(seen.limit_violations, 0)
         self.assertTrue(seen.sufficient)
+
+    def test_search_character_boundaries_use_the_service_results_encoding(self) -> None:
+        for offset in (-1, 0, 1):
+            found = self.found(10)
+            found[0] = {**found[0], "matched_terms": ["é"]}
+            padding = (
+                SEARCH_STEP_BUDGET.max_chars + offset - len(json.dumps(found, ensure_ascii=False))
+            )
+            self.assertGreater(padding, 0)
+            found[0]["matched_terms"] = ["é" * (padding + 1)]
+            body = {**search_body(found), "metadata": "outside the results budget" * 500}
+            fake = FakeMcp(search=body)
+            single = McpSearchArm(connect=fake.connect)
+            cli = arm("recall_fts_v1")
+            reads = {
+                "MCP search": single.read(self.sandbox, self.case, STANDARD_BUDGET),
+                "CLI search": cli.read(
+                    FakeSandbox(
+                        self.case, recall_records=found, recall_extra={"metadata": body["metadata"]}
+                    ).as_sandbox(),
+                    self.case,
+                    STANDARD_BUDGET,
+                ),
+            }
+            with self.subTest(offset=offset, route="MCP context then search"):
+                seen = self.workflow(search=body)
+                self.assertEqual(seen.limit_violations, int(offset > 0))
+                self.assertEqual(seen.sufficient, offset <= 0)
+            for route, delivery in reads.items():
+                with self.subTest(offset=offset, route=route):
+                    self.assertEqual(delivery.limit_violations, int(offset > 0))
+            self.assertEqual(reads["MCP search"].response_chars, len(canonical_payload_json(body)))
+
+    def test_mcp_context_character_boundaries_include_all_service_fields(self) -> None:
+        for offset in (-1, 0, 1):
+            # These names are only excluded at the CLI boundary, never by shape.
+            context = context_body([self.needed], command="context", status="ok", padding="é")
+            padding = (
+                STANDARD_BUDGET.max_chars + offset - len(json.dumps(context, ensure_ascii=False))
+            )
+            self.assertGreater(padding, 0)
+            context["padding"] = "é" * (padding + 1)
+            with self.subTest(offset=offset):
+                seen = self.workflow(context=context, search=search_body([]))
+                self.assertEqual(seen.limit_violations, int(offset > 0))
+                self.assertEqual(seen.sufficient, offset <= 0)
+
+    def test_cli_context_character_boundaries_exclude_only_the_cli_envelope(self) -> None:
+        context_arm = arm(CONTEXT_ARM_ID)
+        initial = FakeSandbox(self.case, context_records=[self.needed], sections={"padding": "é"})
+        context_arm.read(initial.as_sandbox(), self.case, STANDARD_BUDGET)
+        response = initial.call(initial.calls[0])
+        service = {
+            key: value for key, value in response.items() if key not in ("command", "status")
+        }
+        for offset in (-1, 0, 1):
+            padding = (
+                STANDARD_BUDGET.max_chars + offset - len(json.dumps(service, ensure_ascii=False))
+            )
+            self.assertGreater(padding, 0)
+            fake = FakeSandbox(
+                self.case, context_records=[self.needed], sections={"padding": "é" * (padding + 1)}
+            )
+            with self.subTest(offset=offset):
+                delivery = context_arm.read(fake.as_sandbox(), self.case, STANDARD_BUDGET)
+                seen = score_delivery(
+                    arm_id=context_arm.arm_id,
+                    budget=STANDARD_BUDGET,
+                    case=self.case,
+                    repetition=0,
+                    delivery=delivery,
+                )
+                self.assertEqual(seen.limit_violations, int(offset > 0))
+                self.assertEqual(seen.sufficient, offset <= 0)
+                self.assertEqual(
+                    delivery.response_chars, len(canonical_payload_json(fake.call(fake.calls[0])))
+                )
 
     def test_spare_context_room_does_not_hide_an_oversized_search_step(self) -> None:
         for count in (SEARCH_STEP_BUDGET.max_items + 1, 16):

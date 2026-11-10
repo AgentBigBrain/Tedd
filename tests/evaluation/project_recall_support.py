@@ -98,6 +98,7 @@ class FakeSandbox:
         if command[0] == "context":
             return {
                 "command": "context",
+                "status": "ok",
                 **self._sections,
                 "subscription_id": command[command.index("--subscription-id") + 1],
                 "item_count": len(self._context_records),
