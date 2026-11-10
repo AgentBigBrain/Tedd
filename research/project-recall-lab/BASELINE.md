@@ -13,7 +13,7 @@ change that the protocol's comparison rules are meant to judge.
 | Catalog SHA-256 | `f38329b084ad0d284d3c7050b775f68c2efb7268d2e28f7dd320bf334680f276` |
 | Evaluator SHA-256 | `c746bdfc4042eff4057a507d7af7baced0313735bb5b0bd254008d8e55113128` |
 | Memory evaluation lab evaluator SHA-256 | `fe160c35164bd523d0fcc506116de0247e03fc7e8d328d4f18cf911bfe262eb1` |
-| Source | Commit `da7b201a0ed00a2231c286a0e65190802ada740a`, Tedd 1.2.0-rc.13, with this lab's files not yet committed |
+| Source | Commit `a3e62e1b1a803d3289d867ec3b328eb58a8a4d22`, Tedd 1.2.0-rc.13, with no uncommitted change in the lab or the graph runtime |
 | Host | Windows 11 on AMD64, CPython 3.14.0, SQLite 3.50.4 with FTS5 |
 | Synthetic graph | 2,087 records at watermark 2,081 |
 | Lab qualification | Passed all nine checks |
