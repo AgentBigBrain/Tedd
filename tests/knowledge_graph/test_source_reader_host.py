@@ -717,7 +717,8 @@ class ReaderCoordinatorTests(unittest.TestCase):
 
         with (
             self.qualified(),
-            mock.patch.object(reader_host, "_REQUEST_SECONDS", 3.0),
+            # Compare budgets without shortening the real helper startup deadline.
+            mock.patch.object(reader_host, "_CLEANUP_SECONDS", 60.0),
             mock.patch.object(reader_host, "_cleanup_receipt", new=record_cleanup),
         ):
             result = ReaderCoordinator(
