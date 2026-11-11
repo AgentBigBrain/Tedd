@@ -7,6 +7,15 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## 2026-11-11: Repository updates
+
+- Keep the source-reader cleanup-budget test independent of helper startup speed.
+  It now extends the test's cleanup budget instead of shortening the request
+  deadline to three seconds. Production deadlines and timeout checks are unchanged.
+- Make the bind-deadline test expire the coordinator clock after the job is
+  bound, so slow helper startup cannot exhaust its deadline before the scenario
+  under test. It still checks that no payload starts and the created job is cleaned up.
+
 ## 2026-11-10: Repository updates
 
 - Add a project recall lab, `scripts/project_recall_lab.py`, with its own
