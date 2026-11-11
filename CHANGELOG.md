@@ -7,7 +7,7 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## Unreleased
+## 2026-11-11: Repository updates
 
 - Keep the source-reader cleanup-budget test independent of helper startup speed.
   It now extends the test's cleanup budget instead of shortening the request
