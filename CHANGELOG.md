@@ -12,6 +12,9 @@ in the maintainers' private archive and are kept as historical references.
 - Keep the source-reader cleanup-budget test independent of helper startup speed.
   It now extends the test's cleanup budget instead of shortening the request
   deadline to three seconds. Production deadlines and timeout checks are unchanged.
+- Make the bind-deadline test expire the coordinator clock after the job is
+  bound, so slow helper startup cannot exhaust its deadline before the scenario
+  under test. It still checks that no payload starts and the created job is cleaned up.
 
 ## 2026-11-10: Repository updates
 

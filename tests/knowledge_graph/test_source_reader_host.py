@@ -1477,16 +1477,20 @@ class ReaderCoordinatorTests(unittest.TestCase):
 
         def expire_during_bind(jobs: ReaderJobs, job_id: str, container_id: str) -> None:
             original_bind(jobs, job_id, container_id)
-            time.sleep(1.1)
+            clock.monotonic.return_value = time.monotonic() + reader_host._REQUEST_SECONDS
 
         with (
             self.qualified(),
-            mock.patch("tedd_knowledge_graph.source_reader_host._REQUEST_SECONDS", 1.0),
-            mock.patch.object(ReaderJobs, "bind", new=expire_during_bind),
+            # Expire only the coordinator clock after bind, not the shared subprocess clock.
+            mock.patch.object(reader_host, "time", wraps=time) as clock,
+            mock.patch.object(
+                ReaderJobs, "bind", autospec=True, side_effect=expire_during_bind
+            ) as bind,
             self.assertRaises(SourceArchiveError) as raised,
         ):
             self.coordinator().read(ReaderRequest("pdf-text"), _PDF)
 
+        bind.assert_called_once()
         self.assertEqual(raised.exception.code, "source_unavailable")
         state = self.fake.read()
         commands = cast(list[list[str]], state["commands"])
