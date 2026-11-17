@@ -187,6 +187,8 @@ Windows, CPython 3.10.4 and SQLite 3.37.2. The catalog, budgets and
 repetitions matched the November 10 run. All nine qualification checks passed.
 The evaluator digest was
 `0b1c18468e640a3177449b496536ff5edb5924a1059cc5e9fbb802ba7bdc4411`.
+The digest includes the protocol text. Use `69359f4` to reproduce it. The
+wording edit in `36f8966` changed the digest while preserving the scoring rules.
 
 | CLI recall budget | Oversized cases sufficient (RC13 → rerun) | Mean response characters (RC13 → rerun) |
 | --- | ---: | ---: |
