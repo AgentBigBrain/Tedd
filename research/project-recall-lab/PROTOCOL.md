@@ -99,11 +99,11 @@ question or label requires a new catalog ID.
 2. `context_response_v1` is one CLI `context` call for the project's
    subscription. The lab reads the whole response: the records list and every
    reserved section.
-3. `recall_fts_v1` is one CLI `recall` call with the case's question, filtered
-   to the project. The command ranks matches across the whole graph, keeps as
-   many as the item limit, and only then filters to the project, so the other
-   six projects' records compete for the limit. This arm is diagnostic. It is
-   not the search an agent uses.
+3. `recall_fts_v1` is one CLI `recall` call with the case's question and
+   project ID. Tedd applies the project filter before the item limit. An
+   eligible exact record ID comes first, followed by full-text matches ranked
+   by relevance. In the original RC13 run, other projects' matches could
+   consume the limit before Tedd applied the filter. This arm measures the CLI.
 4. `mcp_search_v1` is one MCP `search_memory` call with the case's question,
    scoped to the project's subscription, with the budget as its result and
    character limits. This is the search an agent uses.

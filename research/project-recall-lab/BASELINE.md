@@ -179,3 +179,28 @@ vocabulary or recency was compared.
   nothing about the `current_state` and `preferences` sections.
 - The run measures what a read delivers. It does not show whether an agent
   would answer correctly with it.
+
+## 2026-11-17 rerun after the CLI recall fix
+
+The rerun used clean commit `69359f4ec1522a279f670e95b8476648c003f2d2`,
+Windows, CPython 3.10.4 and SQLite 3.37.2. The catalog, budgets and
+repetitions matched the November 10 run. All nine qualification checks passed.
+The evaluator digest was
+`0b1c18468e640a3177449b496536ff5edb5924a1059cc5e9fbb802ba7bdc4411`.
+
+| CLI recall budget | Oversized cases sufficient (RC13 → rerun) | Mean response characters (RC13 → rerun) |
+| --- | ---: | ---: |
+| Standard | 2 of 5 → 3 of 5 | 1,768 → 11,277 |
+| Default | 4 of 5 → 4 of 5 | 16,529 → 46,068 |
+
+At the standard budget, CLI recall found the required note in `old_note`.
+Every previously sufficient case stayed sufficient. Responses grew because
+more of each page could now hold matches from the requested project. Every
+call stayed within its budget. The other five arms matched the original
+results table at both budgets.
+
+At the default budget, CLI recall also returned the superseded decision beside
+its successor in `replaced_decision`. The case was still answerable, but the
+additional stale record trips the protocol's comparison guardrail. The result
+supports the CLI filtering fix without establishing an overall recall
+improvement. The primary context outcome stayed at one of five oversized cases.
