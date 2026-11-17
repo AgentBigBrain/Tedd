@@ -98,6 +98,35 @@ Run the private production MemoryBench suite separately when the change affects 
 
 Graph architecture, identity, authority, migration, privacy, and projection changes also require full graph validation and a read-only [Graph Steward review](plugins/tedd/skills/obsidian-knowledge-graph/SKILL.md#conditional-graph-steward-review) against an isolated or explicitly authorized store.
 
+## Commit messages and squash pull requests
+
+Use `<type>: <imperative summary>` for the title. Start the summary with a
+lowercase verb, keep names such as Python and CLI capitalized, and omit the
+final period. Keep the whole title within 72 characters.
+
+Choose the type that best describes the change. Use `fix` for a bug fix,
+`feat` for a feature, `docs` for documentation, `test` for tests, `ci` for
+automation, and `release` for release preparation. Use `refactor` for an
+internal change that preserves behavior and `chore` for routine maintenance.
+
+For a behavior change, leave a blank line after the title. Explain what
+prompted the change, what a caller will see, and how you verified it. Mention
+any relevant check still outstanding. A small, self-explanatory edit can use
+a title alone.
+
+```text
+fix: apply CLI recall filters before the result limit
+
+An unrelated record could take the only slot in a one-result search.
+Applying the subject filter first lets recall return the matching record.
+
+Verified with a one-result search that failed before the fix.
+```
+
+For a squash merge, use the same format for the pull request title. Write the
+description as the commit body you want readers to find on main, and check
+the final title and body in the merge dialog.
+
 ## Changelog and release discipline
 
 - Use `Unreleased` for notable changes that have not yet been published. Once a repository-only documentation, skill or tooling update is published on `main`, put it under a dated repository-update heading. Do not bump the plugin version when its package bytes are unchanged.

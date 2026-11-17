@@ -31,7 +31,7 @@ development guidance and historical evidence.
 
 | Document | Purpose |
 | --- | --- |
-| [Contributing](../CONTRIBUTING.md) | Engineering workflow, mandatory cross-platform requirements, isolated tests, and quality gates |
+| [Contributing](../CONTRIBUTING.md) | Engineering workflow, cross-platform requirements, testing, commit messages, and squash pull requests |
 | [Maintaining documentation](DOCUMENTATION.md) | Document ownership, writing standards, and verification |
 | [Release process](RELEASING.md) | Versioning, source verification, and installation qualification |
 | [Changelog](../CHANGELOG.md) | Notable changes by version |
