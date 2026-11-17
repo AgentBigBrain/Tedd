@@ -7,7 +7,10 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## Unreleased
+## 2026-11-17: CLI recall fix on main
+
+Published on `main` in [PR #10](https://github.com/AgentBigBrain/Tedd/pull/10)
+after the [RC13 prerelease](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.13).
 
 - Fix CLI recall so subject matches remain visible at small result limits and
   exact record IDs respect the requested section. The character budget now fits
