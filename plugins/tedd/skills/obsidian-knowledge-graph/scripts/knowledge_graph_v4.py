@@ -1174,6 +1174,7 @@ class KnowledgeGraphV4:
         *,
         limit: int = 20,
         collections: Iterable[str] | None = None,
+        subject_ids: Iterable[str] = (),
     ) -> dict[str, object]:
         with self.read_snapshot():
             return cast(
@@ -1183,6 +1184,7 @@ class KnowledgeGraphV4:
                     query,
                     limit=limit,
                     collections=collections,
+                    subject_ids=subject_ids,
                     records_loader=self.get_records,
                     watermark_loader=lambda: self.watermark,
                     dependencies=self._query_dependencies(),

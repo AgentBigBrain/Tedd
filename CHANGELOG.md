@@ -7,6 +7,14 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- Fix CLI recall so subject matches remain visible at small result limits and
+  exact record IDs respect the requested section. The character budget now fits
+  the complete displayed result list, including brackets and separators. If
+  the first record is too large, recall returns an empty list and sets
+  `truncated_by_char_budget` to `true`.
+
 ## 2026-11-11: Repository updates
 
 - Keep the source-reader cleanup-budget test independent of helper startup speed.
