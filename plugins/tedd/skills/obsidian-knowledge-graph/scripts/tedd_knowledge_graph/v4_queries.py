@@ -389,6 +389,13 @@ def find_entities(
     return records
 
 
+def _reference_targets(target_ids: Iterable[str], dependencies: QueryDependencies) -> list[str]:
+    targets = list(dict.fromkeys(dependencies.valid_record_id(item) for item in target_ids))
+    if len(targets) > 500:
+        raise ValueError("Reference queries are bounded to 500 targets")
+    return targets
+
+
 def records_referencing(
     connection: sqlite3.Connection,
     target_ids: Iterable[str],
@@ -398,11 +405,9 @@ def records_referencing(
     records_loader: RecordsLoader,
     dependencies: QueryDependencies,
 ) -> list[RecordSnapshot]:
-    targets = list(dict.fromkeys(dependencies.valid_record_id(item) for item in target_ids))
+    targets = _reference_targets(target_ids, dependencies)
     if not targets:
         return []
-    if len(targets) > 500:
-        raise ValueError("records_referencing is bounded to 500 targets")
     parameters: list[object] = [*targets]
     target_placeholders = ",".join("?" for _ in targets)
     clause = f"rr.target_record_id IN ({target_placeholders})"
@@ -720,6 +725,7 @@ def search(
     *,
     limit: int = 20,
     collections: Iterable[str] | None = None,
+    subject_ids: Iterable[str] = (),
     records_loader: RecordsLoader,
     watermark_loader: Callable[[], int],
     dependencies: QueryDependencies,
@@ -731,9 +737,23 @@ def search(
     collection_filter = sorted(set(collections or []))
     if any(item not in dependencies.collection_set for item in collection_filter):
         raise ValueError("Search collection filter contains an unknown collection")
+    subjects = _reference_targets(subject_ids, dependencies)
+
+    # The exact match and the ranked page must draw from the same eligible records.
+    filters = ""
+    if collection_filter:
+        filters += f" AND r.collection IN ({','.join('?' for _ in collection_filter)})"
+    if subjects:
+        filters += (
+            " AND EXISTS (SELECT 1 FROM revision_refs rr WHERE rr.record_id=r.record_id"
+            " AND rr.revision=r.current_revision"
+            f" AND rr.target_record_id IN ({','.join('?' for _ in subjects)}))"
+        )
+    filter_values = [*collection_filter, *subjects]
     ids: list[str] = []
     exact = connection.execute(
-        "SELECT record_id FROM records WHERE record_id=?", (query,)
+        f"SELECT r.record_id FROM records r WHERE r.record_id=?{filters}",
+        (query, *filter_values),
     ).fetchone()
     if exact:
         ids.append(str(exact[0]))
@@ -746,17 +766,12 @@ def search(
         expression = " OR ".join(
             f'"{token.replace(chr(34), chr(34) * 2)}"' for token in tokens[:32]
         )
-        parameters: list[object] = [expression]
-        clause = "records_fts MATCH ?"
-        if collection_filter:
-            clause += f" AND collection IN ({','.join('?' for _ in collection_filter)})"
-            parameters.extend(collection_filter)
-        parameters.append(max(limit * 5, 100))
         try:
             rows = connection.execute(
-                f"SELECT record_id FROM records_fts WHERE {clause} "
+                "SELECT r.record_id FROM records_fts JOIN records r ON r.rowid=records_fts.rowid "
+                f"WHERE records_fts MATCH ?{filters} "
                 "ORDER BY bm25(records_fts) LIMIT ?",
-                parameters,
+                (expression, *filter_values, limit),
             )
             for row in rows:
                 record_id = str(row[0])

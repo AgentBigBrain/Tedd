@@ -1,7 +1,8 @@
 # Tedd MemoryBench
 
 MemoryBench checks retrieval through Tedd's real read interfaces. Existing v1
-suites measure CLI `recall`: relevance-ranked FTS followed by subject filtering.
+suites measure CLI `recall`. It searches within the requested sections and
+subjects, returns an eligible exact ID first, then ranks full-text matches.
 Opt-in v2 suites can measure MCP `search_memory` or the overdue and preference
 sections delivered by `recall_context`. MCP search applies scope before limits.
 It returns records that contain every query term, with exact IDs first and then
@@ -298,8 +299,5 @@ Repeated capture failures need their exact errors investigated; passing search
 tests cannot repair knowledge that was never saved, and privacy checks remain
 in force.
 
-The v4 path has no scan-recall comparator; `--no-index` is a legacy flag and is
-not a valid FTS parity test. Subject filtering currently happens after the
-initial top-k FTS candidate cutoff in CLI recall; this does not describe MCP
-search. Scoped misses should remain visible as
-benchmark failures rather than being hidden by the evaluator.
+Use the indexed results when evaluating v4. The legacy `--no-index` flag
+cannot provide a v4 scan comparison. Keep scoped misses visible in the report.

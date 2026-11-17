@@ -95,16 +95,15 @@ class _WriteFailingReadStore:
         return {"watermark": 4, "store_id": "fixture"}
 
     def search(
-        self, query: str, *, limit: int = 100, collections: Iterable[str] | None = None
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        collections: Iterable[str] | None = None,
+        subject_ids: Iterable[str] = (),
     ) -> Mapping[str, object]:
         self.read_calls.append("search")
         return {"query": query, "watermark": 4, "result_count": 0, "results": []}
-
-    def records_referencing(
-        self, target_ids: Iterable[str], *, limit: int = 500
-    ) -> list[Mapping[str, object]]:
-        self.read_calls.append("records_referencing")
-        return []
 
     def mutation_feed(
         self,

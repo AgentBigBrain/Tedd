@@ -1105,15 +1105,15 @@ def handle_v4_command(
         output_mode = getattr(args, "mode", None)
         if output_mode is not None and output_mode not in MODES:
             raise V4CLIError(f"unsupported output mode: {output_mode}")
-        context_review = command == "context" and output_mode == "review_safe"
-        if context_review and review_sanitizer is None:
+        service_review = command in {"context", "recall"} and output_mode == "review_safe"
+        if service_review and review_sanitizer is None:
             raise V4CLIError("review_safe output requires a review_sanitizer(value) callback")
         read_service = _make_graph_read_service(
             storage,
             canonical_path,
             plan_hmac_key,
             command,
-            review_sanitizer=review_sanitizer if context_review else None,
+            review_sanitizer=review_sanitizer if service_review else None,
         )
         if command in READ_COMMANDS:
             value = handle_read_command(
@@ -1137,7 +1137,7 @@ def handle_v4_command(
                 max_page_size=MAX_PAGE_SIZE,
                 max_context_chars=MAX_CONTEXT_CHARS,
             )
-        if output_mode == "review_safe" and not context_review:
+        if output_mode == "review_safe" and not service_review:
             value = _apply_review_sanitizer(value, review_sanitizer)
         return _result(command, value)
 

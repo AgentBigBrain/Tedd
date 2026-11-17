@@ -55,16 +55,17 @@ class GraphReadStore(Protocol):
     def state(self) -> Mapping[str, object]: ...
 
     def search(
-        self, query: str, *, limit: int = 100, collections: Iterable[str] | None = None
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        collections: Iterable[str] | None = None,
+        subject_ids: Iterable[str] = (),
     ) -> Mapping[str, object]: ...
 
     def search_subscription(
         self, subscription_id: str, query: str, *, limit: int = 10, match: str = "all"
     ) -> Mapping[str, object]: ...
-
-    def records_referencing(
-        self, target_ids: Iterable[str], *, limit: int = 500
-    ) -> list[Mapping[str, object]]: ...
 
     def mutation_feed(
         self,
@@ -292,6 +293,8 @@ class GraphReadService:
                 ),
             )
 
+        max_chars = self._search_char_budget(request.max_chars)
+
         def global_operation(store: GraphReadStore, _path: Path) -> JsonObject:
             if request.at_watermark is not None:
                 state = self._json_object(store.state())
@@ -307,26 +310,17 @@ class GraphReadService:
                     query,
                     limit=self._bounded_positive(request.limit, "recall limit"),
                     collections=request.collections or None,
+                    subject_ids=request.subject_ids,
                 )
             )
             if request.subject_ids:
-                allowed = {
-                    str(record.get("record_id"))
-                    for record in store.records_referencing(request.subject_ids, limit=2_000)
-                }
-                results = self._json_list(value.get("results"))
-                filtered = [
-                    record
-                    for record in results
-                    if self._json_object(record).get("record_id") in allowed
-                ]
-                value["results"] = filtered
-                value["result_count"] = len(filtered)
                 value["subject_ids"] = list(request.subject_ids)
-            self._truncate_search(value, self._bounded_context_chars(request.max_chars))
             return value
 
-        return self._execute("recall_context", global_operation)
+        result = self._execute("recall_context", global_operation)
+        if self._truncate_search(result.payload, max_chars):
+            result.payload["truncated_by_char_budget"] = True
+        return result
 
     def loops_review(self, request: LoopsReviewRequest) -> GraphReadResult:
         self._validate_scope(request.session, request.scope)
@@ -564,11 +558,7 @@ class GraphReadService:
         limit = self._bounded_positive(request.limit, "search limit")
         if limit > 100:
             self._raise(GraphReadErrorCategory.INVALID_REQUEST, "search limit is too large")
-        max_chars = self._bounded_context_chars(request.max_chars)
-        if max_chars < 2:
-            self._raise(
-                GraphReadErrorCategory.INVALID_REQUEST, "search character budget is too small"
-            )
+        max_chars = self._search_char_budget(request.max_chars)
         if request.match not in {"all", "any", "auto"}:
             self._raise(GraphReadErrorCategory.INVALID_REQUEST, "search match is invalid")
 
@@ -581,22 +571,8 @@ class GraphReadService:
             )
 
         result = self._execute("search_memory", operation)
-        # Budget the disclosed JSON, not raw payloads, and never let the first
-        # oversized result escape the cap. Metadata is outside the result budget.
-        results = self._json_list(result.payload.get("results"))
-        bounded: list[JsonValue] = []
-        used = 2  # enclosing list brackets
-        for item in results:
-            size = len(json.dumps(item, ensure_ascii=False)) + (2 if bounded else 0)
-            if used + size > max_chars:
-                break
-            bounded.append(item)
-            used += size
-        result.payload["results"] = bounded
-        result.payload["result_count"] = len(bounded)
-        result.payload["truncated"] = bool(result.payload.get("truncated")) or len(bounded) < len(
-            results
-        )
+        trimmed = self._truncate_search(result.payload, max_chars)
+        result.payload["truncated"] = trimmed or bool(result.payload.get("truncated"))
         return result
 
     def pull_changes(self, request: PullChangesRequest) -> GraphReadResult:
@@ -794,21 +770,26 @@ class GraphReadService:
     def _nonblank_text(value: object) -> bool:
         return isinstance(value, str) and bool(value.strip())
 
-    def _truncate_search(self, value: JsonObject, max_chars: int) -> None:
+    def _search_char_budget(self, value: int) -> int:
+        max_chars = self._bounded_context_chars(value)
+        if max_chars < 2:
+            self._raise(
+                GraphReadErrorCategory.INVALID_REQUEST, "search character budget is too small"
+            )
+        return max_chars
+
+    def _truncate_search(self, value: JsonObject, max_chars: int) -> bool:
+        """Fit the disclosed JSON result list, including its brackets and separators."""
         results = self._json_list(value.get("results"))
-        if len(json.dumps(results, ensure_ascii=False)) <= max_chars:
-            return
-        bounded: list[JsonValue] = []
         used = 2
-        for item in results:
-            size = len(json.dumps(item, ensure_ascii=False)) + 1
-            if bounded and used + size > max_chars:
-                break
-            bounded.append(item)
-            used += size
-        value["results"] = bounded
-        value["result_count"] = len(bounded)
-        value["truncated_by_char_budget"] = True
+        for index, item in enumerate(results):
+            used += len(json.dumps(item, ensure_ascii=False)) + (2 if index else 0)
+            if used > max_chars:
+                value["results"] = results[:index]
+                value["result_count"] = index
+                return True
+        value["result_count"] = len(results)
+        return False
 
     @staticmethod
     def _json_object(value: object) -> JsonObject:

@@ -94,7 +94,7 @@ EXPECTED_QUERY_SIGNATURES = {
     ),
     "search": (
         "(self, query: 'str', *, limit: 'int' = 20, collections: "
-        "'Iterable[str] | None' = None) -> 'dict[str, object]'"
+        "'Iterable[str] | None' = None, subject_ids: 'Iterable[str]' = ()) -> 'dict[str, object]'"
     ),
 }
 

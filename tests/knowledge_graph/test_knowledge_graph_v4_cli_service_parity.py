@@ -239,21 +239,55 @@ class V4CLIServiceParityTests(V4TestCase):
                 wrapped = self._wrapped(args.command, expected)
                 self.assertEqual(actual, wrapped)
 
-    def test_recall_truncation_and_review_safe_presentation_are_preserved(self) -> None:
-        """This fails if the adapter bypasses the CLI character budget or final sanitizer."""
+    def test_recall_filters_by_current_subject_before_the_limit(self) -> None:
+        with self.create_store() as store:
+            applied(
+                store,
+                [
+                    change("subject"),
+                    change("needle", refs=[{"target_id": "subject"}]),
+                    change("linked", name="needle", refs=[{"target_id": "subject"}]),
+                ],
+                fingerprint="subject-filter",
+            )
+            applied(
+                store,
+                [change("needle", refs=[], expected_revision=1)],
+                fingerprint="remove-subject",
+                expected_revisions={"needle": 1},
+            )
+        result = self._run(self._args("recall", query="needle", subject_id=["subject"], limit=1))
+        self.assertEqual([row["record_id"] for row in result["results"]], ["linked"])
 
+    def test_recall_exact_id_respects_section(self) -> None:
         self._seed()
-        args = self._args("recall", query="record", max_chars=3, mode="review_safe")
-        result = v4_cli.handle_v4_command(
-            args,
-            db_path=self.store_path,
-            plan_hmac_key=PLAN_KEY,
-            review_sanitizer=lambda value: {"reviewed": value["truncated_by_char_budget"]},
-        )
+        for section, expected in (("decisions", []), ("entities", ["record_alpha"])):
+            with self.subTest(section=section):
+                result = self._run(self._args("recall", query="record_alpha", section=[section]))
+                self.assertEqual([row["record_id"] for row in result["results"]], expected)
+
+    def test_recall_budgets_the_disclosed_result_list(self) -> None:
+        self._seed()
         self.assertEqual(
-            result,
-            {"command": "recall", "reviewed": True, "status": "ok"},
+            self._run(self._args("recall", query="record", max_chars=2))["results"], []
         )
+        for budget, expected in ((2, []), (5, ["é"]), (9, ["é"]), (10, ["é", "é"])):
+            with self.subTest(budget=budget):
+                result = v4_cli.handle_v4_command(
+                    self._args("recall", query="record", max_chars=budget, mode="review_safe"),
+                    db_path=self.store_path,
+                    plan_hmac_key=PLAN_KEY,
+                    review_sanitizer=lambda value: {
+                        **value,
+                        "results": ["é" for _ in value["results"]],
+                    },
+                )
+                assert result is not None
+                self.assertEqual(result["results"], expected)
+                self.assertEqual(result["result_count"], len(expected))
+                self.assertEqual("truncated_by_char_budget" in result, len(expected) < 2)
+        with self.assertRaisesRegex(V4CLIError, "budget is too small"):
+            self._run(self._args("recall", query="record", max_chars=1))
 
     def test_empty_read_payloads_match_the_historical_direct_store_contract(self) -> None:
         """This fails if service routing reshapes valid empty read results."""
