@@ -1094,19 +1094,21 @@ def _office_document_page(
     kind: str,
     host: SourceHost | None,
 ) -> dict[str, object]:
-    helpers = args.helpers if isinstance(args, IntakeFileRequest) else args
-    page = args.document_page
-    if page is None:
-        raise SourceArchiveError("capability_unavailable")
     if host is not None and host.reader is not None:
-        if kind != "docx":
+        if kind != "docx" or args.document_page is None:
             raise SourceArchiveError("capability_unavailable")
-        return host.reader.read(ReaderRequest("docx-page", page), payload, host.cancelled)
-    from tedd_knowledge_graph.source_office_host import document_page
+        return host.reader.read(
+            ReaderRequest("docx-page", args.document_page), payload, host.cancelled
+        )
 
     require_worker_boundary()
+    from tedd_knowledge_graph.source_office_host import document_page
+
+    helpers = args.helpers if isinstance(args, IntakeFileRequest) else args
+    page = args.document_page
     if (
-        not helpers.reader_python
+        page is None
+        or not helpers.reader_python
         or not helpers.renderer
         or not helpers.office_converter
         or not helpers.office_work_root
