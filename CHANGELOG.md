@@ -7,6 +7,12 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- The source CLI returns `invalid_request` when it cannot parse a command or its
+  arguments. Setup preview and session checks both report `corrupt` when the
+  saved profile fails validation.
+
 ## 1.2.0-rc.14: 2026-11-17
 
 RC14 packages the CLI recall fix merged in [PR #10](https://github.com/AgentBigBrain/Tedd/pull/10).

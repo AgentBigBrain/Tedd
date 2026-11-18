@@ -34,6 +34,7 @@ include = [
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/**/*.py",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_inspection.py",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
     "tests/**/*.py",
 ]
@@ -70,6 +71,7 @@ files = [
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py",
+    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_inspection.py",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
     "tests/evaluation",
     "tests/knowledge_graph/test_knowledge_graph_source_evidence.py",

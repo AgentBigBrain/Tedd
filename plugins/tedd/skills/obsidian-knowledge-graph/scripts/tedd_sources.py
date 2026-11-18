@@ -66,6 +66,7 @@ from tedd_knowledge_graph.source_contracts import (
 from tedd_knowledge_graph.source_documents import DocumentReading, read_document
 from tedd_knowledge_graph.source_host import SourceHost
 from tedd_knowledge_graph.source_images import ImageReading
+from tedd_knowledge_graph.source_intake import IntakeFileRequest, IntakeHelpers
 from tedd_knowledge_graph.source_macos_host import MacOSWorkerUnavailable, require_worker_boundary
 from tedd_knowledge_graph.source_preview_recovery import IS_LINUX, PreviewRecovery, recovery_report
 from tedd_knowledge_graph.source_reader_contracts import ReaderRequest
@@ -90,7 +91,7 @@ QUALIFIED_PRIVATE_VIEWER_PLATFORMS = frozenset({"win32", "linux"})
 
 class Parser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
-        raise SourceArchiveError("source_corrupt")
+        raise SourceArchiveError("invalid_request")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -294,6 +295,51 @@ def parser() -> argparse.ArgumentParser:
     return result
 
 
+def intake_file_request(
+    args: argparse.Namespace, *, host_helpers: IntakeHelpers | None = None
+) -> IntakeFileRequest:
+    """Bind parsed file-intake arguments once. MCP owns its helpers and workflow state."""
+    helpers = IntakeHelpers(
+        reader_python=args.reader_python,
+        renderer=args.renderer,
+        office_converter=args.office_converter,
+        office_work_root=args.office_work_root,
+        svg_renderer=args.svg_renderer,
+        svg_font=args.svg_font,
+        av1_validator=args.av1_validator,
+    )
+    if host_helpers is not None and helpers != IntakeHelpers():
+        raise SourceArchiveError("scope_denied")
+    return IntakeFileRequest(
+        config=Path(args.config),
+        session=GraphReadSession(
+            args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+        ),
+        subscription_id=args.subscription_id,
+        subject_ids=tuple(args.subject_id),
+        input=Path(args.input),
+        metadata=Path(args.metadata),
+        acquired_sha256=args.acquired_sha256,
+        workflow_state="active" if host_helpers is not None else args.workflow_state,
+        purpose=args.purpose,
+        use_once=args.use_once,
+        whole_file_reason=args.whole_file_reason,
+        byte_start=args.byte_start,
+        byte_end=args.byte_end,
+        relevant_generated=args.relevant_generated,
+        input_root=args.input_root,
+        review_only=args.review_only,
+        owner_review=args.owner_review,
+        image_unit=args.image_unit,
+        document_page=args.document_page,
+        image_rectangle=tuple(args.image_rectangle) if args.image_rectangle is not None else None,
+        image_view=args.image_view,
+        visual_review_sha256=args.visual_review_sha256,
+        visual_pages=args.visual_pages,
+        helpers=helpers if host_helpers is None else host_helpers,
+    )
+
+
 def load_config(path: Path) -> tuple[bytes, dict[str, object]]:
     snapshot = source_files.read_bytes(
         graph.secure_state_path(path, "Source configuration"), MANIFEST_BYTES
@@ -416,14 +462,15 @@ def host_reading_response(
 
 
 def pdf_reading(
-    payload: bytes, args: argparse.Namespace, *, host: SourceHost | None = None
+    payload: bytes, args: argparse.Namespace | IntakeFileRequest, *, host: SourceHost | None = None
 ) -> PdfReading:
     if sha256(args.visual_review_sha256) != digest(payload):
         raise SourceArchiveError("privacy_rejected")
+    helpers = args.helpers if isinstance(args, IntakeFileRequest) else args
     result = (
         host.reader.read(ReaderRequest("pdf-text"), payload, host.cancelled)
         if host is not None and host.reader is not None
-        else host_reading_response(payload, args.reader_python, "source_pdf_host.py")
+        else host_reading_response(payload, helpers.reader_python, "source_pdf_host.py")
     )
     count = positive(result.get("page_count"), maximum=256)
     if count != args.visual_pages or result.get("visual_review_required") is not True:
@@ -441,7 +488,7 @@ def pdf_reading(
 def office_reading(
     payload: bytes,
     kind: str,
-    args: argparse.Namespace,
+    args: argparse.Namespace | IntakeHelpers,
     *,
     sheet_excerpt: bool = False,
     host: SourceHost | None = None,
@@ -480,7 +527,7 @@ def office_reading(
     return reading
 
 
-def _svg_renderer(args: argparse.Namespace) -> SvgRenderer | None:
+def _svg_renderer(args: argparse.Namespace | IntakeHelpers) -> SvgRenderer | None:
     executable, font = getattr(args, "svg_renderer", None), getattr(args, "svg_font", None)
     if executable is None and font is None:
         return None
@@ -489,7 +536,7 @@ def _svg_renderer(args: argparse.Namespace) -> SvgRenderer | None:
     return SvgRenderer(Path(executable), Path(font))
 
 
-def _av1_validator(args: argparse.Namespace) -> Av1Validator | None:
+def _av1_validator(args: argparse.Namespace | IntakeHelpers) -> Av1Validator | None:
     executable = getattr(args, "av1_validator", None)
     if executable is None:
         return None
@@ -589,7 +636,7 @@ def publication_reservation(store_path: Path) -> Iterator[None]:
 @contextmanager
 def _capture_reservation(
     archive: Archive,
-    args: argparse.Namespace,
+    args: argparse.Namespace | IntakeFileRequest,
     scope: SourceScope,
     session: GraphReadSession,
     *,
@@ -617,7 +664,9 @@ def _capture_reservation(
                 raise SourceArchiveError("scope_denied")
         with publication_reservation(store_path), v4.open_store(store_path, readonly=True) as guard:
             graph_scope = GraphReadScope(ReadScopeKind.SUBSCRIPTION, args.subscription_id)
-            subjects = tuple(args.subject_id)
+            subjects = (
+                args.subject_ids if isinstance(args, IntakeFileRequest) else tuple(args.subject_id)
+            )
             with guard.read_snapshot():
                 if authorized_scope(guard, session, graph_scope, subjects).key != scope.key:
                     raise SourceArchiveError("scope_denied")
@@ -629,7 +678,7 @@ def _capture_reservation(
 
 def capture(
     archive: Archive,
-    args: argparse.Namespace,
+    args: argparse.Namespace | IntakeFileRequest,
     scope: SourceScope,
     session: GraphReadSession,
     *,
@@ -637,26 +686,12 @@ def capture(
 ) -> dict[str, object]:
     from tedd_knowledge_graph import source_intake
 
-    selection = None
-    review_only = args.command == "intake-file" and args.review_only
-    owner_review = args.command == "intake-file" and args.owner_review
-    if args.command == "intake-file":
-        if (args.image_unit is not None or args.document_page is not None) and not review_only:
-            raise SourceArchiveError("source_corrupt")
-        if args.document_page is None and any(
-            (args.renderer, args.office_converter, args.office_work_root)
-        ):
-            raise SourceArchiveError("scope_denied")
-        if (args.byte_start is None) != (args.byte_end is None):
-            raise SourceArchiveError("capture_incomplete")
-        selection = source_intake.IntakeSelection(
-            purpose=args.purpose,
-            use_once=args.use_once,
-            whole_file_reason=args.whole_file_reason,
-            byte_range=(args.byte_start, args.byte_end) if args.byte_start is not None else None,
-            relevant_generated=args.relevant_generated,
-            root=args.input_root,
-        )
+    helpers: IntakeHelpers | argparse.Namespace
+    if isinstance(args, IntakeFileRequest):
+        helpers = args.helpers
+        review_only = args.review_only
+        owner_review = args.owner_review
+        selection = args.selection()
         if host is not None:
             if host.authorize_local is None or host.collecting is None:
                 raise SourceArchiveError("capability_unavailable")
@@ -665,6 +700,12 @@ def capture(
         skipped = selection.skip_reason(Path(args.input))
         if skipped is not None:
             return {"status": "not_preserved", "reason": skipped}
+    else:
+        if args.command not in ("capture-chat", "capture-pdf", "capture-file"):
+            raise SourceArchiveError("invalid_request")
+        helpers = args
+        selection = None
+        review_only = owner_review = False
     metadata: SourceMetadata = decode_metadata(
         parse_json(source_files.read_bytes(Path(args.metadata), archive.limits.manifest_bytes))
     )
@@ -729,12 +770,12 @@ def capture(
     if metadata.kind == "image":
         image = image_reading(
             payload,
-            args.reader_python,
+            helpers.reader_python,
             position=args.image_unit if review_only else None,
             rectangle=args.image_rectangle,
             view=args.image_view,
-            svg=_svg_renderer(args),
-            av1=_av1_validator(args),
+            svg=_svg_renderer(helpers),
+            av1=_av1_validator(helpers),
             host=host,
         )
         if metadata.details is None:
@@ -747,7 +788,7 @@ def capture(
         and document is None
     ):
         document = (
-            office_reading(payload, metadata.kind, args, host=host)
+            office_reading(payload, metadata.kind, helpers, host=host)
             if metadata.kind in OFFICE_KINDS
             else read_document(payload, metadata.kind, maximum_bytes=maximum)
         )
@@ -821,7 +862,7 @@ def capture(
             if host is not None and host.reader is not None:
                 raise SourceArchiveError("capability_unavailable")
             png = _render_office_png(
-                payload, metadata.kind, document.units[index - 1], args.reader_python
+                payload, metadata.kind, document.units[index - 1], helpers.reader_python
             )
             reviewed.update(
                 {
@@ -1047,31 +1088,44 @@ def _render_office_png(payload: bytes, kind: str, selected: SourceUnit, reader: 
 
 
 def _office_document_page(
-    archive: Archive, args: argparse.Namespace, payload: bytes, kind: str, host: SourceHost | None
+    archive: Archive,
+    args: argparse.Namespace | IntakeFileRequest,
+    payload: bytes,
+    kind: str,
+    host: SourceHost | None,
 ) -> dict[str, object]:
     if host is not None and host.reader is not None:
-        if kind != "docx":
+        if kind != "docx" or args.document_page is None:
             raise SourceArchiveError("capability_unavailable")
         return host.reader.read(
             ReaderRequest("docx-page", args.document_page), payload, host.cancelled
         )
-    from tedd_knowledge_graph.source_office_host import document_page
 
     require_worker_boundary()
-    if not all((args.reader_python, args.renderer, args.office_converter, args.office_work_root)):
+    from tedd_knowledge_graph.source_office_host import document_page
+
+    helpers = args.helpers if isinstance(args, IntakeFileRequest) else args
+    page = args.document_page
+    if (
+        page is None
+        or not helpers.reader_python
+        or not helpers.renderer
+        or not helpers.office_converter
+        or not helpers.office_work_root
+    ):
         raise SourceArchiveError("capability_unavailable")
     _, config = load_config(Path(args.config))
     store = graph.secure_state_path(config.get("store_path"), "Canonical store")
-    root = archive_path(args.office_work_root, store, config)
+    root = archive_path(helpers.office_work_root, store, config)
     if _paths_overlap(root, archive.root):
         raise SourceArchiveError("privacy_rejected")
     return document_page(
         payload,
         kind,
-        args.document_page,
-        reader=Path(args.reader_python),
-        converter=Path(args.office_converter),
-        renderer=Path(args.renderer),
+        page,
+        reader=Path(helpers.reader_python),
+        converter=Path(helpers.office_converter),
+        renderer=Path(helpers.renderer),
         work_root=root,
         cancelled=host.cancelled if host else None,
     )
@@ -1150,7 +1204,7 @@ def _render_pdf_png(
 
 
 def _execute(
-    args: argparse.Namespace,
+    args: argparse.Namespace | IntakeFileRequest,
     *,
     provider_check: ProviderCheck | None = None,
     host: SourceHost | None = None,
@@ -1187,14 +1241,21 @@ def _execute(
     ) is None:
         return {"status": "inactive"}
     store_path = graph.secure_state_path(config.get("store_path"), "Canonical store")
-    session = GraphReadSession(
-        args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+    session = (
+        args.session
+        if isinstance(args, IntakeFileRequest)
+        else GraphReadSession(
+            args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+        )
     )
     graph_scope = GraphReadScope(ReadScopeKind.SUBSCRIPTION, args.subscription_id)
     with v4.open_store(store_path, readonly=True) as store:
-        scope = authorized_scope(store, session, graph_scope, tuple(args.subject_id))
+        subjects = (
+            args.subject_ids if isinstance(args, IntakeFileRequest) else tuple(args.subject_id)
+        )
+        scope = authorized_scope(store, session, graph_scope, subjects)
         configured_root = config.get("source_archive_root")
-        if args.command == "init":
+        if not isinstance(args, IntakeFileRequest) and args.command == "init":
             maximum = (
                 positive(args.max_bytes, maximum=DEFAULT_QUOTA)
                 if args.max_bytes is not None
@@ -1236,7 +1297,7 @@ def _execute(
                 if args.command == "intake-file" and args.owner_review
                 else "model",
             )
-            if args.command.startswith("capture-") or args.command == "intake-file":
+            if isinstance(args, IntakeFileRequest) or args.command.startswith("capture-"):
                 return capture(archive, args, scope, session, host=host)
             if args.command == "lookup":
                 return {
@@ -1321,8 +1382,14 @@ def _read_reservation(
                     yield
 
 
-def execute(args: argparse.Namespace, *, host: SourceHost | None = None) -> dict[str, object]:
+def execute(
+    args: argparse.Namespace | IntakeFileRequest, *, host: SourceHost | None = None
+) -> dict[str, object]:
     """Fresh release-boundary checks for all source-discovery/read routes."""
+    if isinstance(args, IntakeFileRequest):
+        return _execute(args, host=host)
+    if args.command == "intake-file":
+        return _execute(intake_file_request(args), host=host)
     if args.command == "owner-view":
         return owner_view_command(args, host)
     if args.command == "capture-google":

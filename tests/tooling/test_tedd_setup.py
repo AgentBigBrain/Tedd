@@ -344,6 +344,26 @@ class ExistingBrainSetupTests(unittest.TestCase):
         with storage.open_store(self.store_path, readonly=True) as store:
             self.assertEqual(before, store.state())
 
+    def test_invalid_saved_profile_is_corrupt_in_preview_and_session(self) -> None:
+        graph.atomic_write(self.profile, "{}")
+        for options in ([], ["--session-id", "fresh", "--run-id", "run"]):
+            with self.subTest(options=options), contextlib.redirect_stdout(io.StringIO()) as output:
+                code = setup.main(
+                    [
+                        "--host",
+                        "claude",
+                        "--graph-config",
+                        str(self.config),
+                        "--project",
+                        str(self.project),
+                        "--profile",
+                        str(self.profile),
+                        *options,
+                    ]
+                )
+                self.assertEqual(1, code)
+                self.assertEqual("corrupt", json.loads(output.getvalue())["category"])
+
     def test_unknown_selector_cli_is_invalid_request_without_traceback(self) -> None:
         for argument in ("--record-id", "--entity-id"):
             with self.subTest(argument=argument):

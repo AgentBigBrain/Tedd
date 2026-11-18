@@ -10,6 +10,7 @@ import os
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 from urllib.parse import urlsplit
 
 from . import source_files
@@ -27,6 +28,9 @@ from .source_contracts import (
     text,
 )
 from .source_documents import DocumentReading, read_document
+
+if TYPE_CHECKING:
+    from .v4_application_contracts import GraphReadSession
 
 _EXCLUDED = frozenset(
     {".git", ".codex", ".obsidian", "credentials.json", "auth.json", ".npmrc", ".pypirc"}
@@ -47,6 +51,67 @@ _GENERATED = frozenset(
 _LOCKFILES = frozenset(
     {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "uv.lock", "poetry.lock"}
 )
+
+
+@dataclass(frozen=True, kw_only=True, repr=False)
+class IntakeHelpers:
+    reader_python: str | None = None
+    renderer: str | None = None
+    office_converter: str | None = None
+    office_work_root: str | None = None
+    svg_renderer: str | None = None
+    svg_font: str | None = None
+    av1_validator: str | None = None
+
+
+@dataclass(frozen=True, kw_only=True, repr=False)
+class IntakeFileRequest:
+    command: ClassVar[str] = "intake-file"
+    config: Path
+    session: GraphReadSession
+    subscription_id: str
+    subject_ids: tuple[str, ...]
+    input: Path
+    metadata: Path
+    acquired_sha256: str
+    workflow_state: str
+    purpose: str | None
+    use_once: bool
+    whole_file_reason: str | None
+    byte_start: int | None
+    byte_end: int | None
+    relevant_generated: bool
+    input_root: Path | None
+    review_only: bool
+    owner_review: bool
+    image_unit: int | None
+    document_page: int | None
+    image_rectangle: tuple[int, ...] | None
+    image_view: str
+    visual_review_sha256: str | None
+    visual_pages: int | None
+    helpers: IntakeHelpers
+
+    def selection(self) -> IntakeSelection:
+        # Inactive workflows return before evaluating selection or reading the input.
+        if (self.image_unit is not None or self.document_page is not None) and not self.review_only:
+            raise SourceArchiveError("source_corrupt")
+        if self.document_page is None and any(
+            (self.helpers.renderer, self.helpers.office_converter, self.helpers.office_work_root)
+        ):
+            raise SourceArchiveError("scope_denied")
+        if (self.byte_start is None) != (self.byte_end is None):
+            raise SourceArchiveError("capture_incomplete")
+        return IntakeSelection(
+            purpose=self.purpose,
+            use_once=self.use_once,
+            whole_file_reason=self.whole_file_reason,
+            byte_range=(self.byte_start, self.byte_end)
+            if self.byte_start is not None and self.byte_end is not None
+            else None,
+            relevant_generated=self.relevant_generated,
+            root=self.input_root,
+        )
 
 
 @dataclass(frozen=True, repr=False)

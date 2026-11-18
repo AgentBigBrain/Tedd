@@ -15,7 +15,7 @@ development guidance and historical evidence.
 | [Using saved sources](sources/usage.md) | Preserve and check documents or images, control access, and disconnect Google |
 | [Source setup](sources/setup.md) | Connect Codex to the source archive and configure document readers |
 | [Local source walkthrough](sources/local-example.md) | Try metadata, preservation, reviewed memory binding, and evidence checking on disposable state |
-| [Source reference](sources/reference.md) | Formats, identities, limits, commands, and result meanings |
+| [Source reference](sources/reference.md) | Formats, identities, limits, commands, and how to respond to each result |
 | [Source qualification](sources/qualification.md) | Current versions, source and installation status, verified routes, and platform limits |
 | [Architecture](ARCHITECTURE.md) | How agent instructions, identity, memory, source storage, and generated views fit together |
 | [Identity and private profile](IDENTITY.md) | Operator setup, authorship, and account matching |
