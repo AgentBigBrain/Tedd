@@ -2577,7 +2577,7 @@ class SourceIntakeCommandTests(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertFalse(second.exists())
 
-    def test_cli_and_host_intake_share_the_record_but_only_the_host_selects_helpers(self) -> None:
+    def test_cli_and_mcp_share_the_record_but_the_host_controls_workflow_and_helpers(self) -> None:
         from tedd_knowledge_graph.source_mcp import SourceTurn
         from tedd_sources_mcp import SourceOperations
 
@@ -2592,9 +2592,16 @@ class SourceIntakeCommandTests(unittest.TestCase):
         turn = SourceTurn(local_files=frozenset({source}))
         operation = SourceOperations(self.fixture.config)
         self.addCleanup(operation.close)
-        saved = self.fixture.invoke(*argv)
+        paused = argv.copy()
+        paused[paused.index("--workflow-state") + 1] = "paused"
+        initial = self.archive_bytes()
+        self.assertEqual({"status": "inactive"}, self.fixture.invoke(*paused))
+        self.assertEqual(initial, self.archive_bytes())
+
+        saved = operation("intake-file", paused[1:], turn)
+        self.assertEqual("preserved", saved["status"])
         before = self.archive_bytes()
-        self.assertEqual(saved["ref"], operation("intake-file", argv[1:], turn)["ref"])
+        self.assertEqual(saved["ref"], self.fixture.invoke(*argv)["ref"])
         for flag in (
             "--reader-python",
             "--renderer",

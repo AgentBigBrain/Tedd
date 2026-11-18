@@ -9,8 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
-- Report malformed source command arguments as `invalid_request`. Setup preview and
-  session checks both report `corrupt` when the saved profile fails validation.
+- The source CLI returns `invalid_request` when it cannot parse a command or its
+  arguments. Setup preview and session checks both report `corrupt` when the
+  saved profile fails validation.
 
 ## 1.2.0-rc.14: 2026-11-17
 

@@ -357,6 +357,7 @@ class WindowsPlatformSupportTests(unittest.TestCase):
 
             for child in (child_file, child_directory):
                 snapshot = platform._windows_security_snapshot(child)
+                self.assertFalse(snapshot.dacl_protected)
                 self.assertIn(
                     snapshot.owner_sid,
                     {
@@ -381,6 +382,7 @@ class WindowsPlatformSupportTests(unittest.TestCase):
                 platform.set_private_path_mode(child, mode)
 
                 hardened = platform._windows_security_snapshot(child)
+                self.assertTrue(hardened.dacl_protected)
                 self.assertTrue(any(ace.flags & 0x10 for ace in inherited))
                 self.assertEqual(hardened.owner_sid, platform._current_user_sid())
                 self.assertFalse(platform.mode_has_any(child, 0o077))
