@@ -253,7 +253,7 @@ class SourceEndpointStartupTests(unittest.TestCase):
         for invalid in (["10,20,110,220"], ["10", "20", "110"], ["x", "20", "110", "220"]):
             with (
                 self.subTest(invalid=invalid),
-                self.assertRaisesRegex(SourceArchiveError, "source_corrupt"),
+                self.assertRaisesRegex(SourceArchiveError, "invalid_request"),
             ):
                 tedd_sources.parser().parse_args([*argv, "--image-rectangle", *invalid])
         operation.assert_not_called()

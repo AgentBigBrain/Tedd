@@ -72,6 +72,13 @@ class SetupStateError(ValueError):
     """Saved setup state is malformed, rather than a caller's request."""
 
 
+def validated_profile(document: dict[str, object]) -> tedd_profile.ProfileDocument:
+    try:
+        return tedd_profile.validate_profile(document)
+    except tedd_profile.ProfileError as error:
+        raise SetupStateError("The existing profile is invalid; repair it separately") from error
+
+
 def session_binding(request: SetupRequest, session_id: str, run_id: str) -> dict[str, object]:
     """Read approval and task ownership; never register, subscribe or acknowledge."""
     if request.host not in {"codex", "claude"}:
@@ -82,7 +89,7 @@ def session_binding(request: SetupRequest, session_id: str, run_id: str) -> dict
     project = real_directory(request.project)
     config = private_object(request.graph_config)
     store_path = existing_store_path(request.graph_config, config)
-    profile = tedd_profile.validate_profile(private_object(request.profile))
+    profile = validated_profile(private_object(request.profile))
     with storage.open_store(store_path, readonly=True) as store:
         with store.read_snapshot():
             state = store.state()
@@ -315,10 +322,7 @@ def preview_setup(request: SetupRequest) -> dict[str, object]:
     store_path = existing_store_path(config_path, config)
     profile_bytes = private_bytes(request.profile)
     assert profile_bytes is not None
-    try:
-        profile = tedd_profile.validate_profile(object_document(profile_bytes))
-    except ValueError as error:
-        raise SetupStateError("The existing profile is invalid; repair it separately") from error
+    profile = validated_profile(object_document(profile_bytes))
     operators = [item["operator_id"] for item in profile["operators"]]
     operator = request.operator_id or (operators[0] if len(operators) == 1 else None)
     if operator not in operators:

@@ -29,6 +29,7 @@ from tedd_knowledge_graph.source_contracts import (
 from tedd_knowledge_graph.source_credentials import CredentialStore
 from tedd_knowledge_graph.source_google import GoogleSourceSession
 from tedd_knowledge_graph.source_host import SourceHost
+from tedd_knowledge_graph.source_intake import IntakeFileRequest, IntakeHelpers
 from tedd_knowledge_graph.source_mcp import SOURCE_COMMANDS, SourceMcpServer, SourceTurn
 from tedd_knowledge_graph.source_reader_cold import load_mac_cold_entitlement
 from tedd_knowledge_graph.source_reader_contracts import SourceReader
@@ -166,6 +167,28 @@ class SourceOperations:
             connection, self._account, client.client_id, turn.cancelled, confirm
         )
 
+    def _intake_request(self, args: argparse.Namespace, turn: SourceTurn) -> IntakeFileRequest:
+        from tedd_sources import intake_file_request
+
+        def argument(path: Path | None) -> str | None:
+            return str(path) if path is not None else None
+
+        page = args.document_page
+        helpers = IntakeHelpers(
+            reader_python=argument(self._reader_python),
+            svg_renderer=argument(self._svg_renderer),
+            svg_font=argument(self._svg_font),
+            av1_validator=argument(self._av1_validator),
+            renderer=argument(self._renderer) if page is not None else None,
+            office_converter=argument(self._office_converter) if page is not None else None,
+            office_work_root=argument(self._office_work_root) if page is not None else None,
+        )
+        request = intake_file_request(args, host_helpers=helpers)
+        if page is not None and self._reader is None and self._office_converter is None:
+            raise SourceArchiveError("capability_unavailable")
+        turn.authorize_local(request.input)
+        return request
+
     def __call__(self, command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
         import knowledge_graph_v4 as v4
         import knowledge_graph_v4_capture as graph_capture
@@ -184,7 +207,8 @@ class SourceOperations:
             else tedd_sources.parser()
         )
         args = command_parser.parse_args(["--config", str(self._config), command, *argv])
-        if command in ("intake-file", "render-image", "owner-view"):
+        intake = self._intake_request(args, turn) if command == "intake-file" else None
+        if command in ("render-image", "owner-view"):
             if (
                 args.svg_renderer is not None
                 or args.svg_font is not None
@@ -196,7 +220,7 @@ class SourceOperations:
             args.av1_validator = (
                 str(self._av1_validator) if self._av1_validator is not None else None
             )
-        if command in ("intake-file", "owner-view", "render-document"):
+        if command in ("owner-view", "render-document"):
             if args.office_converter is not None or args.office_work_root is not None:
                 raise SourceArchiveError("scope_denied")
             if args.document_page is not None:
@@ -210,19 +234,16 @@ class SourceOperations:
                 args.office_work_root = (
                     str(self._office_work_root) if self._office_work_root is not None else None
                 )
-            if command in ("intake-file", "render-document"):
+            if command == "render-document":
                 if args.renderer is not None:
                     raise SourceArchiveError("scope_denied")
                 if args.document_page is not None:
                     args.renderer = str(self._renderer)
-        if command in ("intake-file", "render-image", "render-document", "import-exports"):
+        if command in ("render-image", "render-document", "import-exports"):
             # A model cannot select an executable or substitute its workflow state.
             if args.reader_python is not None:
                 raise SourceArchiveError("scope_denied")
             args.reader_python = str(self._reader_python) if self._reader_python else None
-        if command == "intake-file":
-            args.workflow_state = "active"
-            turn.authorize_local(Path(args.input))
         if command in {"capture-google", "list-google"} and self._client is None:
             raise SourceArchiveError("capability_unavailable")
         if command == "owner-view":
@@ -241,8 +262,12 @@ class SourceOperations:
                 args.reader_python = (
                     str(self._reader_python) if self._reader_python is not None else None
                 )
-        expected_session = GraphReadSession(
-            args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+        expected_session = (
+            intake.session
+            if intake is not None
+            else GraphReadSession(
+                args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+            )
         )
 
         def active() -> None:
@@ -322,7 +347,10 @@ class SourceOperations:
 
         @contextmanager
         def collecting(session: GraphReadSession, scope: SourceScope) -> Iterator[None]:
-            subjects = args.source_subject_id if command == "capture" else args.subject_id
+            if intake is not None:
+                subjects = intake.subject_ids
+            else:
+                subjects = args.source_subject_id if command == "capture" else args.subject_id
             if session != expected_session or set(scope.subject_ids) != set(subjects):
                 raise SourceArchiveError("scope_denied")
             with turn.delivery():
@@ -485,7 +513,7 @@ class SourceOperations:
                             raise SourceArchiveError("capability_unavailable")
                         result = dict(response)
                 else:
-                    result = tedd_sources.execute(args, host=host)
+                    result = tedd_sources.execute(intake if intake is not None else args, host=host)
                 active()
                 # The existing CLI's serializer checks data shapes; MCP additionally
                 # bounds the final JSON-RPC response. No arbitrary objects escape.

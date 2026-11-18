@@ -14,6 +14,7 @@ from unittest import mock
 import platform_support as platform  # noqa: E402
 
 from tests.support.paths import GRAPH_SCRIPTS as SCRIPT_DIRECTORY
+from tests.support.paths import PROFILE_SCRIPTS
 
 
 class GuardedMutationTests(unittest.TestCase):
@@ -45,38 +46,33 @@ class GuardedMutationTests(unittest.TestCase):
 
 
 class StandardStreamTests(unittest.TestCase):
-    def test_acl_policy_import_rejects_a_preloaded_module_from_another_path(self) -> None:
+    def test_acl_imports_reject_preloaded_modules_from_other_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            fake_directory = Path(temporary)
-            (fake_directory / "windows_acl_policy.py").write_text(
-                "MARKER = 'unexpected'\n",
-                encoding="utf-8",
-            )
-            code = "\n".join(
-                (
-                    "import sys",
-                    f"sys.path.insert(0, {str(fake_directory)!r})",
-                    "import windows_acl_policy",
-                    f"sys.path.insert(0, {str(SCRIPT_DIRECTORY)!r})",
-                    "try:",
-                    "    import platform_support",
-                    "except ImportError as error:",
-                    "    print(error)",
-                    "else:",
-                    "    raise SystemExit('unexpected ACL policy was accepted')",
-                )
-            )
-
-            result = subprocess.run(
-                [sys.executable, "-c", code],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("refusing unexpected windows_acl_policy module", result.stdout)
+            for name in ("windows_acl_policy", "windows_acl_inspection"):
+                (Path(temporary) / (name + ".py")).write_text("", encoding="utf-8")
+                for caller, directory in (
+                    ("platform_support", SCRIPT_DIRECTORY),
+                    ("tedd_profile", PROFILE_SCRIPTS),
+                ):
+                    with self.subTest(caller=caller, module=name):
+                        code = "\n".join(
+                            (
+                                "import sys",
+                                f"sys.path.insert(0, {temporary!r})",
+                                f"import {name}",
+                                "sys.path.pop(0)",
+                                f"sys.path.insert(0, {str(directory)!r})",
+                                f"import {caller}",
+                            )
+                        )
+                        result = subprocess.run(
+                            [sys.executable, "-I", "-B", "-c", code],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                        )
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn(f"refusing unexpected {name} module", result.stderr)
 
     def test_graph_cli_reconfigures_cp1252_stream_to_utf8(self) -> None:
         private_parent = os.environ.get("LOCALAPPDATA") if os.name == "nt" else None

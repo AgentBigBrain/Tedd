@@ -128,6 +128,11 @@ class SourceCliTests(unittest.TestCase):
         assert isinstance(value, dict)
         return value
 
+    def test_malformed_command_returns_only_invalid_request(self) -> None:
+        self.assertEqual(
+            {"status": "invalid_request"}, self.invoke("unknown-private-path", success=False)
+        )
+
     def test_disabled_capture_never_reads_input_or_creates_an_archive(self) -> None:
         missing = self.root / "does-not-exist"
         result = self.invoke(

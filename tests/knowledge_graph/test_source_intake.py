@@ -2577,6 +2577,40 @@ class SourceIntakeCommandTests(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertFalse(second.exists())
 
+    def test_cli_and_host_intake_share_the_record_but_only_the_host_selects_helpers(self) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceTurn
+        from tedd_sources_mcp import SourceOperations
+
+        argv = [
+            *self.arguments(),
+            "--purpose",
+            "keep",
+            "--whole-file-reason",
+            "Owner selected this note",
+        ]
+        source = argv[argv.index("--input") + 1]
+        turn = SourceTurn(local_files=frozenset({source}))
+        operation = SourceOperations(self.fixture.config)
+        self.addCleanup(operation.close)
+        saved = self.fixture.invoke(*argv)
+        before = self.archive_bytes()
+        self.assertEqual(saved["ref"], operation("intake-file", argv[1:], turn)["ref"])
+        for flag in (
+            "--reader-python",
+            "--renderer",
+            "--office-converter",
+            "--office-work-root",
+            "--svg-renderer",
+            "--svg-font",
+            "--av1-validator",
+        ):
+            with (
+                self.subTest(flag=flag),
+                self.assertRaisesRegex(SourceArchiveError, "scope_denied"),
+            ):
+                operation("intake-file", [*argv[1:], flag, source], turn)
+        self.assertEqual(before, self.archive_bytes())
+
     def test_folder_intake_preserves_separated_conditions_without_archiving_neighbors(
         self,
     ) -> None:
