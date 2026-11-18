@@ -7,16 +7,20 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## 2026-11-17: CLI recall fix on main
+## 1.2.0-rc.14: 2026-11-17
 
-Published on `main` in [PR #10](https://github.com/AgentBigBrain/Tedd/pull/10)
-after the [RC13 prerelease](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.13).
+RC14 packages the CLI recall fix merged in [PR #10](https://github.com/AgentBigBrain/Tedd/pull/10).
 
 - Fix CLI recall so subject matches remain visible at small result limits and
   exact record IDs respect the requested section. The character budget now fits
   the complete displayed result list, including brackets and separators. If
   the first record is too large, recall returns an empty list and sets
   `truncated_by_char_budget` to `true`.
+
+RC14 supports Python 3.10–3.14 on Windows, macOS, and Linux. It uses the same
+v4 graph and Obsidian projection formats and reads the same source archives as
+RC13. Upgrading requires no migration or index rebuild. RC13 can still read
+these data formats if you roll back.
 
 ## 2026-11-11: Repository updates
 
