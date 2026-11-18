@@ -2,21 +2,19 @@
 
 ## Current availability
 
-Tedd **1.2.0-rc.13** adds labeled partial-match search, a current-facts sheet,
-follow-through review, and reviewed decision and commitment outcomes. It retains
-scoped memory, guided setup, shared Codex/Claude memory, selective-saving
-handoffs, overdue review, and dated preferences. The install commands select
-`v1.2.0-rc.13`.
+Tedd **1.2.0-rc.14** fixes command-line recall. A subject filter applies before
+the result limit, exact IDs respect the requested section, and the character
+budget covers the displayed result list. The install commands select
+`v1.2.0-rc.14`.
 
-Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.13)
+Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.14)
 and the [CI results](https://github.com/AgentBigBrain/Tedd/actions/workflows/ci.yml)
 for its exact public commit and verification evidence. After installation,
 compare the package files and complete a scoped read in your host. Hook discovery,
 source readers, and provider access have their own setup checks.
 
-RC13 keeps store schema v4, projection format v4, and the standard-library runtime.
-No graph migration, rebuild, or reindex is required. Existing capture packets
-without the new outcome or observation-reference fields retain their fingerprints.
+RC14 keeps store schema v4, projection format v4, and the standard-library runtime.
+No graph migration, rebuild, or reindex is required.
 Source archive formats and reader contracts are unchanged. Installation leaves
 the graph, source permissions, and Obsidian projection intact.
 
@@ -49,8 +47,8 @@ Task context also returns `current_state` and `waiting` sections. The
 unfinished work and repeated notes. Writes still use the reviewed capture
 workflow. See [current claims](../../plugins/tedd/skills/obsidian-knowledge-graph/references/recall.md#current-claims).
 
-The dated records below describe earlier builds. They are historical evidence,
-not the RC13 test report; use the release and its exact CI run for that report.
+The dated records below describe earlier builds. The release links above cover
+the current package.
 
 | Area | Verified scope and remaining limits |
 | --- | --- |
