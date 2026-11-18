@@ -38,8 +38,7 @@ from typing import (
 )
 
 # The Tedd skill contract requires the sibling knowledge-graph skill.  Resolve
-# its policy leaf exactly so both runtimes enforce one ACL decision without
-# making the profile depend on graph storage or CLI modules.
+# its filesystem helpers from that package without importing graph storage or CLI modules.
 _GRAPH_SCRIPT_DIRECTORY = (
     Path(__file__).resolve().parents[2] / "obsidian-knowledge-graph" / "scripts"
 )
@@ -47,10 +46,12 @@ _graph_script_directory_added = str(_GRAPH_SCRIPT_DIRECTORY) not in sys.path
 if _graph_script_directory_added:
     sys.path.insert(0, str(_GRAPH_SCRIPT_DIRECTORY))
 try:
+    import knowledge_graph_file_io as _file_io
     import windows_acl_inspection as _acl
     import windows_acl_policy as _windows_acl_policy
 
     for name, module in (
+        ("knowledge_graph_file_io", _file_io),
         ("windows_acl_policy", _windows_acl_policy),
         ("windows_acl_inspection", _acl),
     ):
@@ -1441,7 +1442,13 @@ def _atomic_write(path: Path, profile: Mapping[str, object], *, replace: bool) -
                 _check_open_path(existing_fd, path, "profile", 0o600)
             finally:
                 os.close(existing_fd)
-            os.replace(temp_path, path)
+            _file_io.replace_file_with_retry(
+                temp_path,
+                path,
+                timeout_seconds=_file_io.WINDOWS_ATOMIC_REPLACE_TIMEOUT_SECONDS,
+                poll_seconds=_file_io.WINDOWS_ATOMIC_REPLACE_POLL_SECONDS,
+                retry_winerrors=_file_io.WINDOWS_ATOMIC_REPLACE_RETRY_WINERRORS,
+            )
         else:
             try:
                 if _IS_WINDOWS:

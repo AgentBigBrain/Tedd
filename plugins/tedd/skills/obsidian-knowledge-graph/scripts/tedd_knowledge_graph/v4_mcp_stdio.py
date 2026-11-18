@@ -237,7 +237,7 @@ class McpLifecycle(ABC):
             "id": request_id,
             "result": {
                 "protocolVersion": negotiated,
-                "serverInfo": {"name": self._name, "version": "1.2.0-rc.14"},
+                "serverInfo": {"name": self._name, "version": "1.2.0-rc.15"},
                 "instructions": self._instructions,
                 "capabilities": {"tools": {"listChanged": False}},
             },

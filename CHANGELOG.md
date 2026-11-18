@@ -7,18 +7,24 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## 2026-11-18: Source intake and permissions
+## 1.2.0-rc.15: 2026-11-18
 
-These changes merged into `main` in [PR #13](https://github.com/AgentBigBrain/Tedd/pull/13)
-after the [RC14 release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.14).
+RC15 packages the source intake and permissions changes from
+[PR #13](https://github.com/AgentBigBrain/Tedd/pull/13).
 
 - The source CLI returns `invalid_request` when it cannot parse a command or its
   arguments. Setup preview and session checks both report `corrupt` when the
   saved profile fails validation.
 - The CLI and MCP server use the same file intake request. The host controls
   file access and helper selection for MCP calls.
+- Profile updates on Windows now tolerate a reader briefly holding the file open.
 - The profile and graph use the same Windows permission checks. On macOS, Tedd
   checks whether a local Office worker can run before reading its page options.
+
+RC15 supports Python 3.10–3.14 on Windows, macOS, and Linux. The graph and
+Obsidian projection use v4. RC14 and RC15 read the same archive format and
+use the same source reader contracts. Upgrading or rolling back to RC14
+requires no graph migration, index rebuild, or source conversion.
 
 ## 1.2.0-rc.14: 2026-11-17
 
