@@ -16,6 +16,10 @@ from collections.abc import Collection
 from pathlib import Path
 from typing import Protocol, cast
 
+WINDOWS_ATOMIC_REPLACE_TIMEOUT_SECONDS = 1.0
+WINDOWS_ATOMIC_REPLACE_POLL_SECONDS = 0.01
+WINDOWS_ATOMIC_REPLACE_RETRY_WINERRORS = frozenset({5, 32})
+
 DIRECTORY_FSYNC_UNSUPPORTED_ERRNOS = frozenset(
     value
     for value in (

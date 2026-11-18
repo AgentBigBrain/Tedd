@@ -17,6 +17,7 @@ RC15 packages the source intake and permissions changes from
   saved profile fails validation.
 - The CLI and MCP server use the same file intake request. The host controls
   file access and helper selection for MCP calls.
+- Profile updates on Windows now tolerate a reader briefly holding the file open.
 - The profile and graph use the same Windows permission checks. On macOS, Tedd
   checks whether a local Office worker can run before reading its page options.
 

@@ -890,6 +890,26 @@ class TeddProfileCLITests(unittest.TestCase):
         sleep.assert_not_called()
         harden.assert_not_called()
 
+    @unittest.skipUnless(os.name == "nt", "Windows open handles can block atomic replacement")
+    def test_profile_update_survives_a_reader_releasing_its_handle(self) -> None:
+        self.init_profile()
+        before = self.read_profile()
+        updated = {**before, "updated_at": "2099-01-01T00:00:00Z"}
+        real_replace = os.replace
+        with self.profile.open("rb") as reader:
+
+            def replace(source: Path, destination: Path) -> None:
+                try:
+                    real_replace(source, destination)
+                finally:
+                    reader.close()
+
+            with mock.patch.object(os, "replace", side_effect=replace) as attempted:
+                profile_module._atomic_write(self.profile, updated, replace=True)
+
+        self.assertEqual(attempted.call_count, 2)
+        self.assertEqual(self.read_profile(), updated)
+
     def test_concurrent_operator_additions_are_serialized_without_loss(self) -> None:
         self.init_profile()
         processes: list[subprocess.Popen[str]] = []
