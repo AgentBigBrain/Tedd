@@ -45,10 +45,14 @@ from the existing task registration; display names are not substitutes for them.
 3. Use the saved subjects authorized for that task. Read the actual store ID,
    generation, namespace and subscription from the graph/session state. Do not
    invent a client, substitute a display name, or use global scope for convenience.
-4. Select a private local archive outside the repository, canonical graph storage,
-   Obsidian vault, synced folders and network storage. Inputs can come from a
-   synced location; the archive cannot. Keep private metadata and work files out
-   of those public or shared locations too.
+4. For a new archive, prepare a private local parent directory outside the
+   repository, graph storage, Obsidian vault, synced folders and network storage.
+   Choose an unused child path for `--archive-root` and let `init --enable` create
+   it. A pre-created empty child returns `source_unavailable` because Tedd tries
+   to open an existing archive there. To re-enable an initialized archive, use
+   its configured path, matching graph and authorized scope, and existing quota
+   and limits. Input files may come from a synced location. Keep metadata and
+   work files private.
 5. Use a working Python 3.10–3.14 interpreter. Windows operators should follow
    [explicit interpreter binding](../WINDOWS_SETUP.md); a `python3` Store alias is
    not proof that Python works. Verify any optional host helpers separately.
@@ -102,11 +106,18 @@ python3 -B scripts/tedd_sources.py --config "$graph_config" configure \
   --subscription-id "$subscription_id" --subject-id "$subject_id"
 ```
 
-`init` should report `enabled`. It enables explicit capture without starting a
-background collector. The separate `configure` operation grants model access to
-ordinary retained local documents for that scope. Retention, model access and
-owner viewing are separate permissions; enable only the approved operations.
-Repeat `--subject-id` for each authorized subject when more than one is needed.
+`init --enable` opens the archive for explicit capture and reports `enabled`.
+For ordinary local documents, `configure --allow-local-documents` permits
+**both capture and model reading** of eligible documents in the named scope.
+Repeat `--subject-id` for each authorized subject. Each capture still needs
+permission to keep the particular input and the file or byte range selected
+for that task. Choosing **use once** skips retention for that encounter.
+
+To withdraw that scoped policy, repeat the `configure` command with
+`--deny-local-documents`. This blocks new captures and model reads that rely
+on the policy and leaves the saved bytes in place. Erasure requires a separate
+[reviewed forget operation](../../plugins/tedd/skills/tedd/references/source-viewing-and-maintenance.md#pause-forget-and-recover-deliberately). Showing evidence privately to its
+owner requires [separate viewing permission](../../plugins/tedd/skills/tedd/references/source-viewing-and-maintenance.md#private-evidence-viewer).
 
 The initial total quota is 5 GiB. To choose a lower quota, add `--max-bytes` to the
 first `init`; this option cannot change an existing archive's quota. The
@@ -294,6 +305,13 @@ with `--svg-renderer` and `--svg-font`. Check the tested platforms and formats i
 disposable image check below for your selected helpers. Record the interpreter,
 codec, helper versions, and file digests with your private installation notes.
 An installed codec or a supported file extension alone does not qualify a route.
+
+Tedd ships one package across platforms. The native Windows and Linux routes
+require separately supplied helpers. For AVIF, compare the validator with
+the [SHA-256 for your platform](../../plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_av1_host.py).
+For SVG, check the platform's renderer and the fixed Source Sans Pro font against
+the [renderer and font digests](../../plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_svg_host.py).
+On macOS, use the [qualified isolated reader](#optional-isolated-mac-reader) for supported formats.
 
 The source endpoint owns these paths; model tool arguments cannot choose helper
 executables. On Linux, the native-helper path requires a non-root process,

@@ -2,14 +2,14 @@
 
 Use this after an authorized capture/correction when a vault is configured, or for an explicitly requested projection/recovery. Routine reads do not require projection. Source previews are a separate disabled route; this procedure projects compact graph records.
 
-Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows use the qualified `py -3` or `python` launcher and native paths.
+Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows, use `py -3 -B` or the configured Python executable with `-B` and native paths.
 
 ## Projection workflow
 
 Project after successful capture or correction when a vault is configured.
 
 ```bash
-python3 scripts/knowledge_graph.py project --mode review_safe
+python3 -B scripts/knowledge_graph.py project --mode review_safe
 ```
 
 When Obsidian is running, navigate away from any generated `.base` view (or
@@ -62,10 +62,12 @@ Entity note-backed summaries are limited to 25 rows per section and say when the
 are shortened. When a selected section has more than five rows, the first five
 remain visible and the rest appear in one collapsed native callout. Expanding the
 callout does not select new records or alter links. Every omitted permitted child note still links to the entity, so
-backlinks and the local graph can reach it. Bases retain matching claims,
-observations, events, decisions, open loops, and entities. Receipts do not
-currently have a dedicated Base; omitted receipt notes remain reachable through
-backlinks and the local graph. Selected relationships are not shortened; their
+backlinks and the local graph can reach it. Matching claims, observations,
+decisions, open loops, and entities appear in their Bases. The events Base
+lists notes from `12 Incidents and Events`. Release and deployment notes appear
+in `15 Releases` and are reachable through a related entity's recent activity
+or backlinks. Receipts are reachable through backlinks and the local graph.
+Selected relationships are not shortened; their
 complete selected set remains in the note, with rows after the first five folded
 rather than discarded. Their wording preserves stored
 direction, predicate, status, source level, and evidence; the projector never
@@ -114,8 +116,8 @@ Projection materializes the bounded hot set and its forward-reference closure th
 An intentional canonical restore may legitimately have a lower watermark than the existing projection. Run the ordinary projection once; it safely returns `status: stale_projection_skipped` without changing files. Review and fully validate the restored canonical graph, then copy `projection_digest` from that skipped result. This digest covers the bounded projection payload and is not the SQLite file hash or a value returned by `doctor`. Bind the one-time regression to that exact payload:
 
 ```bash
-python3 scripts/knowledge_graph.py project --mode review_safe
-python3 scripts/knowledge_graph.py project --mode review_safe --force-current-digest "<projection_digest from the skipped result>"
+python3 -B scripts/knowledge_graph.py project --mode review_safe
+python3 -B scripts/knowledge_graph.py project --mode review_safe --force-current-digest "<projection_digest from the skipped result>"
 ```
 
 The projector rejects a mismatched digest; do not use this override for ordinary stale-work races.

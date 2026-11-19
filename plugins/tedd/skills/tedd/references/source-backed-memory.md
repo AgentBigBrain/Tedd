@@ -45,7 +45,7 @@ Use the approved configuration and exact registered session values. On Windows,
 replace `python3` with the qualified Python 3.10+ launcher, such as `py -3.10`.
 
 ```bash
-python3 scripts/knowledge_graph.py --config "<approved-config>" source-evidence \
+python3 -B scripts/knowledge_graph.py --config "<approved-config>" source-evidence \
   --id claim_example --consumer-id consumer_example --subscription-id subscription_example \
   --producer-agent-id agent_example --task-id task_example --producer-run-id run_example \
   --subject-id entity_example --max-chars 12000 --max-versions 5
@@ -90,7 +90,7 @@ the configured endpoint so provider access can be checked. The CLI example below
 is for permitted local evidence; it has no Google provider session.
 
 ```bash
-python3 scripts/tedd_sources.py --config "<approved-config>" lookup \
+python3 -B scripts/tedd_sources.py --config "<approved-config>" lookup \
   --source-id manual --source-version v2 \
   --consumer-id consumer_example --subscription-id subscription_example \
   --producer-agent-id agent_example --task-id task_example --producer-run-id run_example \
@@ -119,9 +119,9 @@ those grants through tool arguments. Use-once instructions override retention.
 ## Owner navigation and privacy
 
 Read [viewing and maintenance](source-viewing-and-maintenance.md#owner-navigation-and-privacy)
-before viewing evidence or changing display approval. Retention, owner display,
-model access and vault exposure are separate permissions. The private viewer is
-separate from the unqualified Obsidian source-preview route.
+before viewing evidence or changing display approval. The ordinary local-document
+policy covers capture and model reading of selected evidence. Private owner
+viewing requires its own approval. Obsidian source previews remain unqualified.
 
 ## Pause, forget, and recover deliberately
 

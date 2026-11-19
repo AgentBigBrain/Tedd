@@ -24,7 +24,8 @@ DOCUMENTED_GRAPH_COMMAND = re.compile(
     r"(knowledge_graph\.py|memorybench_knowledge_graph\.py|tedd_sources\.py)\s+(.+)$"
 )
 DOCUMENTED_PROFILE_COMMAND = re.compile(
-    r"^python3 (?:scripts/|/path/to/installed/plugin/skills/tedd/scripts/)(tedd_profile\.py)\s+(.+)$"
+    r"^python3 (?:-B )?(?:scripts/|/path/to/installed/plugin/skills/tedd/scripts/)"
+    r"(tedd_profile\.py)\s+(.+)$"
 )
 ROUTING_EVALUATIONS = ROOT / "docs/evaluations"
 ROUTING_EVALUATOR_SCHEMA = "tedd-routing-observations-v1"

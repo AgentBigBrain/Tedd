@@ -2,7 +2,7 @@
 
 Read this for setup, launcher/configuration changes, backup, migration, index repair, or full validation. Routine reads use [recall](recall.md).
 
-Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows use the qualified `py -3` or `python` launcher and native paths.
+Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows, use `py -3 -B` or the configured Python executable with `-B` and native paths.
 
 ## Paths and configuration
 
@@ -16,7 +16,7 @@ a brain, collect sources, change credentials, project notes or rename a vault ro
 From the `tedd` skill directory, preview your selected configuration and IDs:
 
 ```bash
-python3 scripts/tedd_setup.py --host codex --graph-config "/private/graph/config.json" --project "/work/example-project" --entity-id "entity_example_project"
+python3 -B scripts/tedd_setup.py --host codex --graph-config "/private/graph/config.json" --project "/work/example-project" --entity-id "entity_example_project"
 ```
 
 Review the directory, graph identity, selectors and host command. Re-run the same
@@ -59,7 +59,7 @@ verify each required path in the actual host.
 The read-only session check uses the same entry point:
 
 ```bash
-python3 scripts/tedd_setup.py --host claude --graph-config "/private/graph/config.json" --project "/work/example-project" --session-id "CURRENT_NATIVE_ID" --run-id "CURRENT_RUN_ID"
+python3 -B scripts/tedd_setup.py --host claude --graph-config "/private/graph/config.json" --project "/work/example-project" --session-id "CURRENT_NATIVE_ID" --run-id "CURRENT_RUN_ID"
 ```
 
 Use the freshly resolved ID from Claude skill invocation, not the literal example
@@ -178,10 +178,10 @@ native MCP launcher is qualified. MCP and adaptive routing are optional; neither
 makes subagents mandatory.
 
 ```bash
-python3 scripts/knowledge_graph.py doctor
-python3 scripts/knowledge_graph.py init-v4
-python3 scripts/knowledge_graph.py validate --full
-python3 scripts/knowledge_graph.py configure --vault "/absolute/path/to/vault" --root-name "Tedd Knowledge"
+python3 -B scripts/knowledge_graph.py doctor
+python3 -B scripts/knowledge_graph.py init-v4
+python3 -B scripts/knowledge_graph.py validate --full
+python3 -B scripts/knowledge_graph.py configure --vault "/absolute/path/to/vault" --root-name "Tedd Knowledge"
 ```
 
 Skip the initialization line when `doctor` reports an existing v4 store. `init-v4` is idempotent for an already configured v4 store and can recover only an unbound, fully empty v4 store left by an interrupted first run; it refuses to adopt unbound canonical or coordination data.
@@ -194,26 +194,29 @@ Production Tedd agents always use the configured default store. For an isolated 
 KG_SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/codex-kg.XXXXXX")"
 chmod 700 "$KG_SANDBOX"
 mkdir "$KG_SANDBOX/vault"
-python3 scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" configure --vault "$KG_SANDBOX/vault" --store "$KG_SANDBOX/graph.sqlite3"
-python3 scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" init-v4
-python3 scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" doctor
-python3 scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" validate --full
+python3 -B scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" configure --vault "$KG_SANDBOX/vault" --store "$KG_SANDBOX/graph.sqlite3"
+python3 -B scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" init-v4
+python3 -B scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" doctor
+python3 -B scripts/knowledge_graph.py --config "$KG_SANDBOX/config.json" validate --full
 ```
 
 Never guess a destructive target. Use a new or empty projection root for the first build. The projector only removes files proven to belong to the configured root by its authenticated manifest and root-bound per-file ownership marker. It rejects symlinks, unowned files in managed directories, and non-generated paths, while preserving `40 Review Actions/`. Reconfiguring to another vault or root rotates the projection identity and manifest key.
 
 ## Validation and recovery
 
-Run `validate` after mutations and `doctor` when paths or projection behavior are unclear.
+Run these read-only checks on the configured graph. `doctor` identifies the store, `validate` checks its records and index, and `index-status` reports the state of the recall index.
 
 ```bash
-python3 scripts/knowledge_graph.py validate
-python3 scripts/knowledge_graph.py validate --full
-python3 scripts/knowledge_graph.py doctor
-python3 scripts/knowledge_graph.py index-status
-python3 scripts/knowledge_graph.py reindex
-python3 scripts/knowledge_graph.py reindex --force
-python3 scripts/knowledge_graph.py backup --output /absolute/private/path/graph-YYYYMMDD.sqlite3
+python3 -B scripts/knowledge_graph.py doctor
+python3 -B scripts/knowledge_graph.py validate
+python3 -B scripts/knowledge_graph.py index-status
+```
+
+If validation reports that the v4 full-text index is out of sync with current records, rebuild it once and validate again. `reindex` repopulates the entire derived index and reports `rebuilt` on success. For an empty search result on a healthy index, check the query and task scope first.
+
+```bash
+python3 -B scripts/knowledge_graph.py reindex
+python3 -B scripts/knowledge_graph.py validate
 ```
 
 Run the private, deterministic recall quality suite after changing FTS, recall
@@ -223,7 +226,7 @@ follow [references/memorybench.md](memorybench.md) before curating or
 changing cases; do not auto-accept the current ranked output as ground truth.
 
 ```bash
-python3 scripts/memorybench_knowledge_graph.py \
+python3 -B scripts/memorybench_knowledge_graph.py \
   --config ~/.codex/knowledge-graph/config.json \
   --suite ~/.codex/knowledge-graph/memorybench/cases.json \
   --repeat 2 \
@@ -232,19 +235,51 @@ python3 scripts/memorybench_knowledge_graph.py \
 
 Fast validation checks SQLite integrity, foreign keys, current-revision pointers, typed identity/surface registries, current FTS membership, and the journal head. `validate --full` streams every revision payload hash, mutation-chain link, semantic registry, and current-state root; use it after migration, architecture changes, bulk work, restore, or on a maintenance cadence rather than inside every packet commit. FTS and projection are rebuildable from canonical revisions. Neither is a backup.
 
-`backup` uses SQLite's online backup API, validates one coherent standalone snapshot, and stages both output files before publishing the database followed by its digest/watermark/journal-head manifest. The matching manifest is the completion marker: choose a new destination for every backup, and treat a database without its valid matching manifest as an incomplete orphan. Portable Python cannot atomically force-replace those two pathnames, so the CLI does not offer backup overwrite. Never copy only the main database file while WAL is active. Keep pre-migration plus recent daily and weekly verified snapshots under a byte-budgeted retention policy, and periodically restore one to a new sandbox path before trusting it. A redaction report must account for older backups that may still contain the redacted revision payload.
+### Back up a v4 graph
 
-Schema migration is explicit, side-by-side, digest-gated, and equivalence-checked. Review the deterministic v3-to-v4 plan, then apply only against the exact canonical bytes and transform that were reviewed:
+Choose a new private destination for each backup.
 
 ```bash
-python3 scripts/knowledge_graph.py upgrade-v4 --dry-run
-python3 scripts/knowledge_graph.py upgrade-v4 --apply \
-  --expect-source-sha256 "<source_sha256 from dry run>" \
-  --expect-plan-fingerprint "<plan_fingerprint from dry run>" \
-  --producer-agent-id '<configured-agent-id>' --task-id task_123 --producer-run-id run_456 \
-  --based-on-watermark 42
+python3 -B scripts/knowledge_graph.py backup --output /absolute/private/path/graph-YYYYMMDD.sqlite3
 ```
 
-The apply step briefly quiesces the v3 writer, refuses a changed digest or transform, preserves the exact v3 bytes, builds and validates a temporary standalone database, proves current-state equivalence, runs backup/restore verification, atomically installs the database, and only then switches configuration. The former v3 path becomes a refusal tombstone so a stale process cannot silently fork the brain. Before any v4 mutation, rollback may restore the exact v3 generation; after v4 writes, rollback requires a validated current-state export or an explicitly accepted loss boundary.
+`backup` uses SQLite's online backup API and validates the snapshot. Keep the resulting database and its matching manifest together. The manifest contains the digest, watermark, and journal head and marks the backup complete. Copying the main database alone can lose changes while WAL is active. Keep the pre-migration snapshot and recent daily and weekly backups within your retention budget. Periodically restore one to a new sandbox path. Account for older backups in a redaction report because they can still contain the redacted records.
+
+### Upgrade a v3 graph
+
+Start with a verified backup of the v3 graph. Set `graph_config` to its existing configuration. Run the preview with the build you intend to use for the upgrade.
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" upgrade-v4 --dry-run
+```
+
+For `would_upgrade`, check `plan.source_path` and `plan.target_path`. Save `source_sha256`, `plan_fingerprint`, and `plan.source_watermark` from that preview. Use them below with the actual agent, task, and run IDs. Include `--parent-task-id` when the task has a parent. If you select a custom `--backup-output`, keep that path with the reviewed command.
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" upgrade-v4 --apply \
+  --expect-source-sha256 "$source_sha256" \
+  --expect-plan-fingerprint "$plan_fingerprint" \
+  --producer-agent-id "$agent_id" --task-id "$task_id" \
+  --producer-run-id "$run_id" --based-on-watermark "$source_watermark"
+```
+
+Tedd preserves the exact v3 bytes, builds v4 alongside them, and verifies that the current records match before switching the configuration. It marks the old v3 path to prevent stale writers from using it. Expect `upgraded_and_activated` and `config_switched: true`. Check that the same configuration opens a healthy v4 graph.
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" doctor
+python3 -B scripts/knowledge_graph.py --config "$graph_config" validate --full
+```
+
+Keep the v3 backup, migration manifest, and rollback export. Before any further v4 write, rollback can restore the exact v3 generation. Later writes require a validated current-state export or explicit acceptance of the changes a rollback would lose.
+
+### Resume an interrupted upgrade
+
+If the apply was interrupted, the configuration may already point to the target SQLite database. In that case, `canonical_store_format` is `sqlite_v4_wal` and the configuration names the `v4_migration_manifest` and `legacy_v3_backup_path`. Keep the configuration, database, signing key, v3 backup, rollback export, manifest, and any staging files in place.
+
+Rerun the **same `upgrade-v4 --apply` command** from [Upgrade a v3 graph](#upgrade-a-v3-graph) with the same build and configuration. Reuse the original digest, fingerprint, source watermark, agent, task, parent (if supplied), run ID, and backup location. The CLI reads the saved manifest and checks the original source, target, and published files before completing the switch. A new preview on an activated v4 store cannot recreate those inputs.
+
+Successful recovery reports `upgraded_and_activated`, `config_switched: true`, and `cutover_recovered: true`. Run `doctor` and `validate --full` on the same configuration. If the reviewed inputs are missing, a file or digest differs, or the database has changed since publication, stop and preserve the files for review. Manually repointing the configuration or editing the manifest would discard the evidence needed for recovery.
+
+### Storage and growth
 
 SQLite WAL is the supported same-machine growth architecture for hundreds of thousands to low millions of records when transactions remain packet-sized. Keep global watermarks for total audit order, per-record revisions for concurrency, exact historical payloads for feeds, and hash/root-bound audit checkpoints for verification. Do not compact merely because a count threshold was reached. Introduce immutable archive segments only after measured history size makes backup or full verification miss its service objective, and preserve chain boundaries plus transparent lookup. The moment concurrent writers move to another machine, replace direct file access with one authenticated service (normally PostgreSQL); never add a distributed lock around SQLite.

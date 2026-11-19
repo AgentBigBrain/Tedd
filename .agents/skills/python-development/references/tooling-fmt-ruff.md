@@ -35,22 +35,11 @@ with potentially semantic lint fixes.
 
 ## Corrected Tedd example
 
-```toml
-[tool.ruff]
-target-version = "py310"
-line-length = 100
-force-exclude = true
-include = [
-    "scripts/**/*.py",
-    "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph*.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/platform_support.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/**/*.py",
-]
+Use the formatter scope declared in the repository's `pyproject.toml`.
+To check a single included file, run the pinned Ruff from the repository root.
 
-[tool.ruff.format]
-exclude = []
+```bash
+python -m ruff format --check plugins/tedd/skills/tedd/scripts/tedd_profile.py
 ```
 
 Tedd's current production scope has no formatter exclusions. In an inspected

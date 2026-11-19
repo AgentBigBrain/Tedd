@@ -60,8 +60,9 @@ everything encountered.
 
 The private viewer supports qualified Windows/Linux text and image workflows,
 including selected PDF and rendered Office pages. Native Obsidian source previews
-remain disabled. Saving a source, displaying it to a person and exposing it to a
-model are separate permissions.
+remain disabled. For ordinary local documents, a scoped policy permits both
+capture and model reading. You still select what may be kept. Displaying a
+source to its owner requires separate approval.
 
 Google API sources also need current authorized provider access when read from
 the archive. [Disconnecting Google](usage.md#disconnect-and-recover-google-access)

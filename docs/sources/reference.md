@@ -186,12 +186,13 @@ configured source endpoint and its provider session.
 | `not_preserved` | Selection or retention policy did not produce a saved source |
 | `duplicate` | Exact evidence already exists; use the returned receipt |
 | `partial` | Inspect individual export receipts: earlier files may have committed |
+| `capture_incomplete` | Check the [operation that returned it](#when-an-operation-returns-capture_incomplete) before retrying. |
 | `scope_denied` | Scope or authority does not permit the operation; do not widen it to retry |
 | `privacy_rejected` | A private file, directory or source fails its privacy checks; correct only the intended approved input or work-file setup |
 | `capability_unavailable` | The operation needs a host tool or connection that is missing, unconfigured or unqualified |
 | `source_unavailable` | The selected source or reader is unavailable; check source access and reader recovery state before retrying, without substituting different evidence |
 | `invalid_request` | The CLI could not parse the command or its arguments. Check the command's help for required options and expected types. |
-| `source_corrupt` | The source or its metadata is invalid, unsafe or unsupported. This can also mean a value failed validation after parsing, such as a malformed `--acquired-sha256` digest. |
+| `source_corrupt` | The source or its metadata failed validation. For direct local file capture, check that `--acquired-sha256` is valid and matches the bytes actually acquired. |
 | `limit_exceeded` | The operation exceeded a limit; check which one before choosing a smaller permitted operation |
 | `reauthentication_required` | The provider rejected the saved grant; renew consent through the configured route |
 
@@ -210,6 +211,17 @@ Always inspect coverage, warnings and cleanup/recovery fields as well as status.
 Successful capture can coexist with incomplete export cleanup. Keep edited files
 and pending recovery intact; do not repeat an unchanged blocker or report deletion
 until verified. See [viewing and maintenance](../../plugins/tedd/skills/tedd/references/source-viewing-and-maintenance.md).
+
+### When an operation returns `capture_incomplete`
+
+| Operation | Next step |
+| --- | --- |
+| File or document capture | Supply both bounds for a byte range. For text, check that the reader obtained readable content. For a PDF, complete the required page inspection. |
+| Tool result | Use the output actually delivered to the task, with `capture_method` set to `delivered_output`. |
+| Google capture | If the fetched bytes differ from the acquired digest, obtain and review the current version through the authorized provider route before capturing it. Keep the earlier version's digest with its own evidence. |
+| Paginated `lookup` | Use the same scope and search arguments. Pass the previous page's `next_offset` as `--offset` and its `snapshot_sha256` as `--snapshot-sha256`. If the snapshot changed, restart at the first page. |
+| `forget` | Preview the exact source without `--expect-impact` or `--confirm-forget`. Review the affected versions and memories. After approval, confirm with `--confirm-forget --expect-impact <reviewed digest>` using that preview's `impact_sha256`. If the impact changed, review a fresh preview before confirming. |
+| Interrupted archive write | Preserve existing receipts and follow [archive recovery](../../plugins/tedd/skills/tedd/references/source-viewing-and-maintenance.md#pause-forget-and-recover-deliberately) to determine what was saved. |
 
 ### Image review and preservation results
 

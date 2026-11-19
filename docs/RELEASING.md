@@ -167,8 +167,8 @@ its file set, size, and mode remain stable, so do not claim absolute zero
 filesystem writes.
 
 The launcher always exposes initialization, `ping`, and tool listing before
-opening graph state. A missing, malformed, private, unhealthy, or unavailable
-graph is reported only by an `isError` tool result with a safe category; no
+opening graph state. If the graph is missing, malformed, unhealthy, unavailable,
+or fails its filesystem privacy checks, tool calls return `isError` with a safe category. No
 configuration path, token, SQL detail, or diagnostic is written to stdout or
 stderr. Notifications without an ID are intentionally silent.
 

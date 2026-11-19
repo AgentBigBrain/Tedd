@@ -47,11 +47,11 @@ Installation is side-effect free. In a new task, `$tedd` knows its own name befo
 Run the helper from the installed `skills/tedd` directory, or from `plugins/tedd/skills/tedd` in a repository checkout:
 
 ```bash
-python3 scripts/tedd_profile.py status
-python3 scripts/tedd_profile.py init \
+python3 -B scripts/tedd_profile.py status
+python3 -B scripts/tedd_profile.py init \
   --name "<preferred name>" --email "<confirmed email>"
-python3 scripts/tedd_profile.py validate
-python3 scripts/tedd_profile.py show
+python3 -B scripts/tedd_profile.py validate
+python3 -B scripts/tedd_profile.py show
 ```
 
 The helper returns machine-readable JSON. `show` redacts email strings and provider-principal values unless the operator explicitly requests full local output; provider names remain visible.
@@ -59,14 +59,14 @@ The helper returns machine-readable JSON. `show` redacts email strings and provi
 Add a second operator without creating a global active-user setting, and resolve only an exact confirmed identity:
 
 ```bash
-python3 scripts/tedd_profile.py add-operator \
+python3 -B scripts/tedd_profile.py add-operator \
   --name "<preferred name>" --email "<confirmed email>" \
   --provider-principal "<provider>=<authenticated principal>"
-python3 scripts/tedd_profile.py bind-identity \
+python3 -B scripts/tedd_profile.py bind-identity \
   --operator-id "<operator ID>" \
   --email "<additional confirmed email>" \
   --provider-principal "<provider>=<authenticated principal>"
-python3 scripts/tedd_profile.py resolve \
+python3 -B scripts/tedd_profile.py resolve \
   --provider "<provider>" --principal "<authenticated principal>"
 ```
 

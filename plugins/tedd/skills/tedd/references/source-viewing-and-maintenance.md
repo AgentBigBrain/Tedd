@@ -9,9 +9,9 @@ For Google or browser-export evidence, also apply its
 ## Owner navigation and privacy
 
 Use the private viewer for permitted evidence on qualified Windows/Linux hosts.
-Retention, owner display, model access and vault exposure remain separate
-permissions. Owner-only access cannot be replaced by a model-visible evidence
-call when human display is unavailable.
+Owner display requires its own approval, separate from the scope's policy for
+capturing and reading ordinary local documents. If human-only display is
+unavailable, keep the evidence private. Vault previews have their own controls.
 
 ### Private evidence viewer
 
@@ -65,9 +65,10 @@ grant model access through `render_document`.
 ### Obsidian source previews (disabled)
 
 The design permits readable source notes and selected page images in the owner's
-chosen Obsidian vault. It does not move the authoritative archive there. Retention,
-owner display, model access, and vault sync/sharing are separate permissions.
-Ordinary local sources use a separate vault/scope approval; medical,
+chosen Obsidian vault. The authoritative archive stays private. Permission to
+capture and read an ordinary local source does not authorize copying it into
+the vault or sharing it through sync. Vault exposure requires its own approval
+for the scope. Medical,
 confidential, restricted, or unknown-sensitivity sources must not appear in ordinary
 notes, titles, filenames, or thumbnails.
 

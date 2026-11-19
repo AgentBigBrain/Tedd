@@ -35,8 +35,10 @@ Maintain durable organizational knowledge without treating chat transcripts or O
 
 Read only the relevant procedure below. Resolve `scripts/knowledge_graph.py`
 relative to this skill; examples run from this skill directory. Use the configured
-default store and a qualified Python 3.10+ interpreter (`py -3` or `python` on
-native Windows). Run `doctor` at memory intake or when health/path state is
+default store and a qualified Python 3.10+ interpreter. Pass `-B` when running
+installed scripts (`python3 -B` on macOS/Linux, `py -3 -B` or the configured
+Python executable with `-B` on Windows) to keep bytecode out of the package.
+Run `doctor` at memory intake or when health/path state is
 unclear. A missing or unhealthy graph does not authorize initialization or repair.
 Continue independent work when memory is unavailable and identify any dependent
 action that cannot proceed safely.

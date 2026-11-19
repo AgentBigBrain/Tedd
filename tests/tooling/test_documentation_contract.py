@@ -51,8 +51,8 @@ class DocumentationContractTests(unittest.TestCase):
                 errors, _ = documentation.check_links(files)
                 self.assertEqual(["guide.md: missing link target: old.md"], errors)
 
-    def test_source_cli_examples_validate_subcommands_and_options(self) -> None:
-        """Do not silently skip invalid source commands in operator guides."""
+    def test_cli_examples_validate_subcommands_and_options(self) -> None:
+        """Check source and installed profile commands as written in the guides."""
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -63,16 +63,19 @@ class DocumentationContractTests(unittest.TestCase):
                 "python3 scripts/tedd_sources.py --config config.json inspect "
                 "--source-uri saved --invented-flag\n"
                 "python3 scripts/tedd_sources.py --config config.json invented-command\n"
+                "python3 -B /path/to/installed/plugin/skills/tedd/scripts/tedd_profile.py "
+                "show --invented-flag\n"
                 "```\n",
                 encoding="utf-8",
             )
             with mock.patch.object(documentation, "ROOT", root):
                 errors, count = documentation.check_cli_examples([guide])
 
-        self.assertEqual(3, count)
-        self.assertEqual(2, len(errors))
+        self.assertEqual(4, count)
+        self.assertEqual(3, len(errors))
         self.assertIn("unsupported tedd_sources.py options: ['--invented-flag']", errors[0])
         self.assertIn("tedd_sources.py example has no valid subcommand", errors[1])
+        self.assertIn("unsupported tedd_profile.py options: ['--invented-flag']", errors[2])
 
     @contextlib.contextmanager
     def initialize_repository(self, root: Path) -> Iterator[None]:

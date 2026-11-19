@@ -143,7 +143,7 @@ are disabled because they did not pass the required privacy checks.
 | Use this once | Use permitted content for the task without preserving it |
 | Disable source collection | Stop new capture; keep saved history |
 | Disconnect Google | Disable that API connection and attempt credential removal and provider revocation; keep archive bytes |
-| Deny model access to retained local documents | Keep the archive while preventing the model from reading those documents within the selected scope |
+| Revoke access for ordinary local documents | Block capture and model reads under that scope's local-document policy. Previously saved bytes stay in the archive. |
 | Restrict this source | Deny access across the logical source's versions; there is no unrestrict command |
 | Forget this source | Review the affected memories and source versions, then confirm that deletion |
 | Allow me to view this evidence | Approve viewing for yourself without granting model access |

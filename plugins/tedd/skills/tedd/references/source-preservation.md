@@ -233,14 +233,15 @@ index and does not establish that a remembered interpretation is accurate.
 
 ### Capture a local document
 
-After collection is explicitly enabled, `configure --allow-local-documents` grants
-one exact task scope access to ordinary local retained copies. It does not start
-collection, authorize sensitive sources, or enable cloud capture. Pass the same
-configuration and session/scope flags as below. `--deny-local-documents` removes
-that access without erasing history; this differs from pausing collection.
+After enabling the archive, use `configure --allow-local-documents` to permit
+both capture and model reading of eligible ordinary local documents in one exact
+scope. Each input still needs an authorized selection and retention purpose.
+Use the same configuration and session/scope flags as below. `--deny-local-documents`
+blocks both operations under that policy and preserves the existing archive.
+Sensitive sources, cloud capture, and private owner viewing have their own rules.
 
 ```bash
-python3 scripts/tedd_sources.py --config "<approved-config>" capture-file \
+python3 -B scripts/tedd_sources.py --config "<approved-config>" capture-file \
   --input "<exact-workflow-file>" --metadata "<private-capture-metadata>" \
   --acquired-sha256 "<digest-of-acquired-bytes>" --workflow-state active \
   --consumer-id consumer_example --subscription-id subscription_example \

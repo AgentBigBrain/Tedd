@@ -15,20 +15,20 @@ The private profile is an operational bootstrap pointer. The canonical graph rem
 
 ## First run
 
-Run `python3 scripts/tedd_profile.py status`. A missing profile is a normal unconfigured state, not an installation failure.
+Run `python3 -B scripts/tedd_profile.py status`. A missing profile is a normal unconfigured state, not an installation failure.
 
 1. Say once: `I'm Tedd. What should I call you, and which email should I use to recognize your accounts?`
 2. Let the person defer email. Without a verified email, keep the profile unconfigured and the task unbound for cross-channel identity.
 3. Initialize only after the person explicitly confirms both values:
 
    ```bash
-   python3 scripts/tedd_profile.py init --name "<preferred name>" --email "<confirmed email>"
+   python3 -B scripts/tedd_profile.py init --name "<preferred name>" --email "<confirmed email>"
    ```
 
 4. Validate the private file before using it:
 
    ```bash
-   python3 scripts/tedd_profile.py validate
+   python3 -B scripts/tedd_profile.py validate
    ```
 
 Do not infer or seed an operator from the package author, Git author, OS account, browser session, contact list, prior projected note, or unverified message text. Installation and upgrades must remain side-effect free.

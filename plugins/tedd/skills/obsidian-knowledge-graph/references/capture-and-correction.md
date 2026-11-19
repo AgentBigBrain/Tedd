@@ -2,7 +2,7 @@
 
 Use this for an authorized durable write, correction, redaction, or loop resolution. Read [the capture schema](capture-schema.md) for packet fields and [the coordination protocol](multi-agent-protocol.md) when multiple agents touch the brain. A memory challenge alone authorizes an evidence check, not a correction.
 
-Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows use the qualified `py -3` or `python` launcher and native paths.
+Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows, use `py -3 -B` or the configured Python executable with `-B` and native paths.
 
 ## Capture workflow
 
@@ -34,7 +34,7 @@ Classify every report, proposal review, audit, assessment, or comparable review 
 After applying the packet, query the exact mutation or record IDs and rerun the coverage gate against what actually committed. Before handoff, proactively summarize the record categories captured and any material items intentionally left out so the operator never has to ask whether the graph is complete.
 
 1. Identify bounded source evidence. Prefer a URL, file path, commit, receipt, or concise excerpt over a transcript dump.
-2. Build a packet that follows `capture-schema.md`.
+2. Build a packet using the [capture schema and complete example](capture-schema.md#complete-example).
 3. Mark source tier accurately. Assistant conclusions are `assistant_inference` until verified.
 4. Use temporal claims for current configuration or status. Use events for incidents and releases.
 5. Give durable entities external `identity_keys` when a stable provider, repository, task, account, or other non-secret key exists. Reuse the canonical entity ID for an evidence-backed rename; the former name is retained as an alias.
@@ -54,12 +54,30 @@ review prompt, not a rejection: add an evidenced date when known, or leave it
 unknown. Missing ownership alone and updates to existing loops do not trigger
 this adjustment.
 
+For the sample restore check, set `graph_config` to the disposable graph's configuration. Set `packet` to the JSON file and `plan_file` to a new filename in the same private directory. On POSIX, use `chmod 600 "$packet"` and an owner-only parent directory (`0700`). On Windows, both need current-user-only ACLs.
+
+Use the agent, task, and consumer from registration, the current run ID, and the watermark the task actually read. The Bash array keeps those inputs identical for both commands. Include `--parent-task-id` if the consumer was registered with a parent.
+
 ```bash
-chmod 600 /absolute/path/to/private/capture.json
-python3 scripts/knowledge_graph.py capture --input /absolute/path/to/private/capture.json --dry-run --plan-output /absolute/path/to/private/capture.plan.json --consumer-id codex_task_123 --authority-ceiling validated_structured_candidate --allow-replace --producer-agent-id '<configured-agent-id>' --task-id task_123 --producer-run-id run_456 --discovery-kind verification --based-on-watermark 42
-python3 scripts/knowledge_graph.py capture --input /absolute/path/to/private/capture.json --consumer-id codex_task_123 --expect-fingerprint "<fingerprint from reviewed dry run>" --expect-plan-file /absolute/path/to/private/capture.plan.json --authority-ceiling validated_structured_candidate --allow-replace --producer-agent-id '<configured-agent-id>' --task-id task_123 --producer-run-id run_456 --discovery-kind verification --based-on-watermark 42
-python3 scripts/knowledge_graph.py validate
+capture_args=(
+  --input "$packet" --consumer-id "$consumer_id"
+  --authority-ceiling validated_structured_candidate --discovery-kind verification
+  --producer-agent-id "$agent_id" --task-id "$task_id"
+  --producer-run-id "$run_id" --based-on-watermark "$watermark"
+)
+python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
+  "${capture_args[@]}" --dry-run --plan-output "$plan_file"
 ```
+
+Review the summary. For `would_capture`, set `fingerprint` to the returned `fingerprint` and apply the reviewed plan.
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
+  "${capture_args[@]}" --expect-fingerprint "$fingerprint" --expect-plan-file "$plan_file"
+python3 -B scripts/knowledge_graph.py --config "$graph_config" validate
+```
+
+For `captured`, use `get --id` with the `record_id` from each `changed` entry. For this example, check the observation's wording and subject, then the title of the record in `sources`. The default output withholds the observation's `source_ref`.
 
 These file options are v4-only. Use a private current-user directory
 (0700 on POSIX, equivalent private Windows ACL), with no symlink/reparse path
@@ -85,8 +103,8 @@ that own the session. `--session` is that consumer's exact task ID. These comman
 are v4-only and do not change canonical records or inbox state.
 
 ```bash
-python3 scripts/knowledge_graph.py handoff --check --session '<current-task-id>' --prompt '<current-native-prompt-id>' --consumer-id '<registered-consumer-id>' --producer-agent-id '<configured-agent-id>'
-python3 scripts/knowledge_graph.py handoff --check --reconstruct --session '<current-task-id>' --prompt '<current-native-prompt-id>' --consumer-id '<registered-consumer-id>' --producer-agent-id '<configured-agent-id>'
+python3 -B scripts/knowledge_graph.py handoff --check --session '<current-task-id>' --prompt '<current-native-prompt-id>' --consumer-id '<registered-consumer-id>' --producer-agent-id '<configured-agent-id>'
+python3 -B scripts/knowledge_graph.py handoff --check --reconstruct --session '<current-task-id>' --prompt '<current-native-prompt-id>' --consumer-id '<registered-consumer-id>' --producer-agent-id '<configured-agent-id>'
 ```
 
 Check reports `verified` only when the receipt's store generation, ownership,
@@ -155,7 +173,9 @@ bookkeeping; stop the substantive work too if missing knowledge makes it unsafe.
 Further graph repair needs an explicitly scoped debugging request, not an escalating
 workaround loop during closure.
 
-The capture command normalizes strings and timestamps before fingerprinting, redacts recognized secret forms, rejects oversized or deeply nested packets, rejects semantic credential fields, fingerprints the packet plus its authority policy for replay safety, upserts stable and namespaced entities, preserves temporal history, and writes atomically. Redaction is defense in depth, so inspect the bounded packet and omit credential material at the source. `sensitive: true` controls display; it never permits credentials to be stored.
+Omit credentials from the input. Within a valid packet, capture redacts recognized secret patterns and the values of credential fields such as `api_key` and `password`. Invalid packet structure, excessive size, or excessive nesting can cause the CLI to reject the packet outright. `sensitive: true` controls display.
+
+Capture normalizes strings and timestamps, fingerprints the packet with its authority policy for safe retries, and creates or updates the identified entities and records in one transaction. Their revisions preserve the history.
 
 ## Answer the review queue
 
@@ -277,10 +297,10 @@ Do not edit generated notes as a way to change canonical knowledge.
 - Destructive entity merges and historical rekeying remain unsupported. A redirect is an identity-resolution edge, not permission to erase or rewrite the losing record.
 
 ```bash
-python3 scripts/knowledge_graph.py redact --id claim_... \
+python3 -B scripts/knowledge_graph.py redact --id claim_... \
   --producer-agent-id '<configured-agent-id>' --task-id task_123 --producer-run-id run_456 \
   --discovery-kind redaction --based-on-watermark 42
-python3 scripts/knowledge_graph.py resolve-loop --id loop_... \
+python3 -B scripts/knowledge_graph.py resolve-loop --id loop_... \
   --resolution "Completed and verified" \
   --producer-agent-id '<configured-agent-id>' --task-id task_123 --producer-run-id run_456 \
   --discovery-kind loop_resolution --based-on-watermark 42

@@ -105,15 +105,15 @@ is not a successful call; running the Python server directly is not desktop
 integration proof. Test scoped reads only with an existing, authorized
 subscription; never invent scope identifiers or broaden access to make a test pass.
 
-## Check handoff hooks in an RC9.2 test installation
+## Check handoff hooks in a test installation
 
-RC9.2 adds handoff receipts and reminders; RC8 has neither. In the tested Codex
-CLI 0.163.0, installing Tedd's portable package does not load its bundled hooks.
-Keep the package intact and configure the three hooks below. User-level hooks
-need setting up once; project hooks are an alternative for one workspace. See the
-[qualification record](CLAUDE_CODE_QUALIFICATION.md#codex-hook-setup) for the host limit.
+Handoff receipts and reminders first shipped in RC9.2. In the recorded RC9.2
+test, Codex CLI 0.163.0 needed explicit hook configuration. Check `/hooks` in
+your host first. If Tedd's handlers are missing, configure the three below at
+user level or for the test project. See the [qualification record](CLAUDE_CODE_QUALIFICATION.md#codex-hook-setup)
+for the package and host versions that were tested.
 
-First verify the installed RC9.2 package and complete a scoped graph read in
+First verify the installed package and complete a scoped graph read in
 the approved test project. The test profile and project binding must already
 exist in the selected process home. Selecting a graph file alone does not
 isolate profile, binding, or receipt storage.
@@ -143,13 +143,13 @@ test graph's configuration file when prompted. This prints JSON for review;
 it does not change Codex settings.
 
 ```powershell
-$teddPluginRoot = (Resolve-Path -LiteralPath (Read-Host 'Absolute installed RC9.2 Tedd directory') -ErrorAction Stop).Path
+$teddPluginRoot = (Resolve-Path -LiteralPath (Read-Host 'Absolute installed Tedd directory') -ErrorAction Stop).Path
 $teddGraphConfig = (Resolve-Path -LiteralPath (Read-Host 'Absolute approved test graph config.json') -ErrorAction Stop).Path
 $teddAdapter = Join-Path $teddPluginRoot 'hooks/codex_handoff.ps1'
 $teddChecker = Join-Path $teddPluginRoot 'skills/tedd/scripts/tedd_handoff_hook.py'
 if (-not (Test-Path -LiteralPath $teddAdapter -PathType Leaf) -or
     -not (Test-Path -LiteralPath $teddChecker -PathType Leaf)) {
-    throw 'The selected installation is missing the RC9.2 handoff files.'
+    throw 'The selected installation is missing the Tedd handoff files.'
 }
 $teddConfigLiteral = $teddGraphConfig.Replace("'", "''")
 $teddAdapterLiteral = $teddAdapter.Replace("'", "''")
@@ -217,11 +217,32 @@ sign-in or Office converter. Add qualified document helpers only for the formats
 that need them. If Codex uses a non-default `CODEX_HOME`, explicitly pass the same
 value to the source server so it can recognize selected managed attachments.
 
-After a package update, both explicit endpoint paths may need rebinding. Starting
-a fresh task and checking a graph tool alone does not verify the source endpoint.
-Confirm it is connected before the user supplies a source selection. The
-[qualification page](sources/qualification.md) distinguishes the recorded Windows
-staging checks from default installation behavior.
+Confirm that the source endpoint is connected before supplying a source
+selection. The [qualification page](sources/qualification.md) lists the
+recorded Windows checks and their limits.
+
+## Verify an update
+
+1. [Compare the installed files](#install-the-reviewed-package) with the
+   selected source commit. Use the actual installed directory reported by Codex.
+   When running Python commands from that package, use `-B` so Python leaves
+   its bytecode cache out of the installed tree.
+2. If you configured `tedd-graph` explicitly, inspect `codex mcp get tedd-graph
+   --json`. Check the interpreter, server script, and graph configuration. Follow
+   [interpreter binding](#bind-a-working-windows-interpreter) if the script
+   still points to the old package.
+3. If you use sources, inspect `codex mcp get tedd_sources --json` separately.
+   Check its interpreter, package path, graph configuration, and source task/turn
+   hooks against the version selected for sources. Keep a deliberate source
+   version pin. Use [source setup](sources/setup.md) to correct a stale path.
+4. If you use handoff reminders, check each handler's path. After a path change,
+   restart Codex, review the definitions in `/hooks`, and confirm each intended
+   handler appears once and is trusted. See the [handoff hook checks](#check-handoff-hooks-in-a-test-installation).
+5. In a fresh task in the approved project, call native `brain_status`. Compare
+   `graph.store_id` with `doctor` from the installed CLI on the same graph
+   configuration. Retrieve a familiar decision or project record by ID within
+   the task's subscription. If sources are enabled, confirm that `tedd_sources`
+   is connected and offers `intake_file` before selecting a file.
 
 ## Keep installation separate from graph maintenance
 
@@ -232,8 +253,6 @@ rehearsal. Do not confuse SQLite's internal schema version with Tedd's canonical
 v4 graph format, and do not run the v3-to-v4 migration against an existing v4
 database. Installation never upgrades graph state automatically.
 
-After a later approved package update, repeat the file comparison and rebind
-the explicit server to the new cache path. Then repeat fresh-task acceptance.
 For rollback, restore the recorded previous binding and bundled-server setting;
 removing the explicit entry with `codex mcp remove tedd-graph` does not restore
 the old settings for you. Keep configuration backups private.

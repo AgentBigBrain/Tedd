@@ -125,12 +125,12 @@ Restart Codex and start a fresh task. Invoke `$tedd` and follow
 [identity setup](IDENTITY.md) if needed. Give Tedd the test configuration path and
 state that the default graph must not be initialized or written.
 
-Verify that the active endpoint uses the installed code and explicit test
-configuration, then call native `brain_status`. It returns a public health flag;
-it does not expose the store ID or prove which configuration was selected.
-Use the endpoint configuration and the CLI diagnostic above to verify that
-binding. Listing the tool or launching its Python script is not a successful
-Desktop tool call.
+Check that the endpoint command uses the installed code and explicit test
+configuration. Call native `brain_status` and compare `graph.store_id` with
+the ID from `doctor` above. Once the test project has a saved record and an
+approved subscription, retrieve that record by its exact ID through the host.
+The matching ID checks which graph opened. Reading the record checks the
+task's access.
 
 The basic check passes when the expected skills load, the native graph call
 succeeds, and your existing configuration and data remain unchanged apart from

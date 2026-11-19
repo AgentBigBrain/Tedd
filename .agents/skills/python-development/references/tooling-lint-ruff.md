@@ -29,22 +29,12 @@ preserved, and temporary ignores have an owner and removal path.
 
 ## Corrected Tedd example
 
-```toml
-[tool.ruff]
-target-version = "py310"
-line-length = 100
-force-exclude = true
-include = [
-    "scripts/**/*.py",
-    "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph*.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/platform_support.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/windows_acl_policy.py",
-    "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/**/*.py",
-]
+The repository's `pyproject.toml` lists the included files and enabled rules.
+From the repository root, check one included file with the pinned Ruff in your
+development environment.
 
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "B"]
+```bash
+python -m ruff check plugins/tedd/skills/tedd/scripts/tedd_profile.py
 ```
 
 Tedd's current production scope has no import-order exemptions. New production

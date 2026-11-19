@@ -24,7 +24,11 @@ Each person or project note groups the records Tedd has connected to it:
   without implying that the person or project has no other saved records.
 - **Relationships** explains the direction and status of each saved connection,
   how it was recorded, and its evidence. Tedd does not infer the reverse connection.
-- **Decisions** separates accepted decisions from proposals and historical items.
+- **Decisions** groups choices by status. A `candidate` authority flag always
+  puts a choice under **Proposed or needs checking**, even when its status is
+  `accepted`. A decision saved without a status gets `recorded` and also
+  appears there, along with proposals and unfamiliar statuses. Rejected,
+  superseded, withdrawn, and historical decisions appear in history.
 - **Open commitments** shows the recorded owner and next action for active work,
   a proposed action for candidate work, and the outcome and completion date for
   resolved work. Earlier actions remain in the technical details as history.
@@ -63,7 +67,7 @@ The notes preserve distinctions that matter:
 | Remembered statement | Tedd's compact claim. Its lifecycle says whether it is current, uncertain, or replaced. |
 | Citation | The saved evidence lineage for a record; it does not prove Tedd interpreted it correctly. |
 | Proposed decision | A suggested choice awaiting approval. |
-| Accepted decision | A decision stored with accepted authority. |
+| Accepted decision | A choice recorded with `accepted` status. |
 | Resolved commitment | A closed loop with its recorded resolution; it remains part of history. |
 
 When wording matters, ask Tedd, “Are you sure that is what the source says?” Tedd
@@ -85,12 +89,12 @@ point back to them are not automatically added.
 
 Entity note summaries show at most 25 permitted linked notes per section. When a
 summary has more than five selected rows, expand its **More…** callout to see the
-rest. A shortened-summary notice stays outside the fold. Every omitted permitted child note still
-links to the entity, so backlinks and the local graph can reach it. Matching
-entities, claims, observations, events, decisions, and open loops also remain in
-their Bases. Receipts do not currently have a dedicated Base; omitted receipt
-notes remain reachable through backlinks and the local graph. Selected
-relationships are not shortened.
+rest. A notice tells you when a summary is shortened. Backlinks and the local
+graph still lead to the permitted child notes, including receipts. Matching
+entities, claims, observations, decisions, and open loops also appear in their
+Bases. The events Base lists notes in `12 Incidents and Events`. For release
+and deployment notes, open `15 Releases` or follow a link from the entity's
+**Recent activity** or backlinks. Selected relationships are shown in full.
 
 ## Use the tables as questions
 

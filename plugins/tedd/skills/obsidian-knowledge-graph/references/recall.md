@@ -2,7 +2,7 @@
 
 Use this for routine reads and memory challenges. Load the coordination procedure below only when resuming or changing consumers/subscriptions or coordinating shared-brain work. A read does not require a new registration or a closing write.
 
-Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows use the qualified `py -3` or `python` launcher and native paths.
+Read the [graph skill](../SKILL.md) for the shared invariants. Run command examples from the `obsidian-knowledge-graph` skill directory, using its configured store and a supported interpreter; `scripts/` paths are relative to that directory. On Windows, use `py -3 -B` or the configured Python executable with `-B` and native paths.
 
 ## Recall workflow
 
@@ -17,14 +17,14 @@ Use recall before working on an established client, site, repository, incident, 
 5. Reverify current production state when it may have changed.
 
 ```bash
-python3 scripts/knowledge_graph.py recall "Test Client Alpha hosting incident" --limit 10
-python3 scripts/knowledge_graph.py changes --since-watermark 42 --limit 100
-python3 scripts/knowledge_graph.py changes --since-watermark 42 --through-watermark 57 --cursor '<cursor-from-prior-page>' --limit 100
-python3 scripts/knowledge_graph.py get --id claim_...
-python3 scripts/knowledge_graph.py history --id claim_... --limit 25
+python3 -B scripts/knowledge_graph.py recall "Test Client Alpha hosting incident" --limit 10
+python3 -B scripts/knowledge_graph.py changes --since-watermark 42 --limit 100
+python3 -B scripts/knowledge_graph.py changes --since-watermark 42 --through-watermark 57 --cursor '<cursor-from-prior-page>' --limit 100
+python3 -B scripts/knowledge_graph.py get --id claim_...
+python3 -B scripts/knowledge_graph.py history --id claim_... --limit 25
 ```
 
-`recall` uses transactionally current FTS candidate lookup, then returns review-safe canonical records with ranked reasons, ordered recall sections, and stable record IDs. `get` performs an exact current or requested-revision lookup; `history` returns immutable revisions for one exact record. Use returned IDs when explaining or correcting remembered knowledge. Use `--mode operator_full` only when the user explicitly requests it and the local environment is private.
+On v4, `recall` searches current records and returns a ranked `results` list with stable record IDs. `--section` filters the collections searched. Read each result's record to interpret the match. V4 supplies neither a separate ranking explanation nor grouped sections. Use `get --id` for the current record or a specific revision, and `history --id` for its revision history. Keep `review_safe` as the default. Use `--mode operator_full` only when the user explicitly authorizes it in a private local environment.
 
 For a lossless global audit catch-up, use `changes --since-watermark`. The first page returns `snapshot_watermark`, an authenticated continuation, `complete`, and `advance_to_watermark`; continue only with its cursor. Each change embeds the exact record revision written at that mutation, so paging remains historically stable while current records advance. Normal task awareness should use persistent exact-scope `inbox` subscriptions instead of repeatedly ingesting this global feed.
 
@@ -98,9 +98,9 @@ Restating the same current value from validated evidence moves
 claim was last checked; it does not show that the claim is still true. Reverify
 unstable or high-risk state before acting on it.
 
-The section holds at most 12 items and 2,400 characters after sanitization,
-and never more than a quarter of the caller's `max_chars`. That space is
-reserved before recent records. Read `truncated`, `omitted` and
+Tedd considers up to 12 eligible claims. The serialized, sanitized section,
+including IDs and dates, must fit within `min(2400, max_chars // 4)`. Even short
+claims can be omitted. This space is reserved before recent records. Read `truncated`, `omitted` and
 `reason: budget_exhausted` together: an omitted section is missing
 information, not evidence that no claim exists. An optional context plan covers
 the disclosed claims. A build that returns no `current_state` section predates
@@ -405,15 +405,15 @@ Inspect a stable task consumer with `consumer-status` before registration. Resum
 For every v4 command that exposes the collaboration envelope, pass the required caller-controlled agent, task, run, and based-on-watermark provenance; include the optional parent task when one exists. A genuinely new Tedd consumer uses the stable opaque agent-instance ID from the shared private profile, not its display name, an operator name, or an email address. An existing consumer keeps the exact owner returned by `consumer-status` until an optional coordinated `consumer-rebind`:
 
 ```bash
-python3 scripts/knowledge_graph.py consumer-status --consumer-id codex_task_123
-python3 scripts/knowledge_graph.py consumer-register --consumer-id codex_task_123 \
+python3 -B scripts/knowledge_graph.py consumer-status --consumer-id codex_task_123
+python3 -B scripts/knowledge_graph.py consumer-register --consumer-id codex_task_123 \
   --producer-agent-id '<configured-agent-id>' --task-id task_123 --parent-task-id task_parent \
   --producer-run-id run_456 --based-on-watermark 42
-python3 scripts/knowledge_graph.py subscribe --consumer-id codex_task_123 \
+python3 -B scripts/knowledge_graph.py subscribe --consumer-id codex_task_123 \
   --record-id entity_client_alpha --subject-id entity_client_alpha \
   --record-id loop_client_alpha_review
-python3 scripts/knowledge_graph.py inbox --subscription-id '<returned subscription_id>' --limit 100
-python3 scripts/knowledge_graph.py context --subscription-id '<returned subscription_id>' --max-chars 12000
+python3 -B scripts/knowledge_graph.py inbox --subscription-id '<returned subscription_id>' --limit 100
+python3 -B scripts/knowledge_graph.py context --subscription-id '<returned subscription_id>' --max-chars 12000
 ```
 
 `--producer-agent-id`, `--task-id`, `--parent-task-id`, `--producer-run-id`, `--discovery-kind`, and `--based-on-watermark` describe the caller, durable outcome, and snapshot it actually used. Captured source text cannot populate or raise these fields. Use the dry-run fingerprint plus v4 plan token to protect reviewed writes. The mutation feed and record history retain provenance so another agent can audit who wrote a change and which snapshot informed it.
