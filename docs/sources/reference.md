@@ -191,7 +191,7 @@ configured source endpoint and its provider session.
 | `privacy_rejected` | A private file, directory or source fails its privacy checks; correct only the intended approved input or work-file setup |
 | `capability_unavailable` | The operation needs a host tool or connection that is missing, unconfigured or unqualified |
 | `source_unavailable` | The selected source or reader is unavailable; check source access and reader recovery state before retrying, without substituting different evidence |
-| `invalid_request` | The CLI could not parse the command or its arguments. For MCP `bind_memory` and `check_memory`, pass an `argv` list of strings and check the corresponding graph command's help for required options and value types. |
+| `invalid_request` | Check the command's help for required flags and value types. For MCP tools that take `argv`, pass an object containing only `argv`, with up to 64 strings of at most 8,192 characters each. |
 | `source_corrupt` | The source or its metadata failed validation. For direct local file capture, check that `--acquired-sha256` is valid and matches the bytes actually acquired. |
 | `limit_exceeded` | The operation exceeded a limit; check which one before choosing a smaller permitted operation |
 | `reauthentication_required` | The provider rejected the saved grant; renew consent through the configured route |

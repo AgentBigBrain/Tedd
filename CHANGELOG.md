@@ -7,6 +7,12 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- All source MCP tools that take `argv` now return `invalid_request` when an
+  authorized caller sends malformed arguments. The host integration guide
+  documents the metadata for lifecycle hooks and tool calls.
+
 ## 1.2.0-rc.16: 2026-11-19
 
 - The source MCP tools `bind_memory` and `check_memory` return

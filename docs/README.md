@@ -13,7 +13,7 @@ development guidance and historical evidence.
 | [Follow saved connections in Obsidian](OBSIDIAN_CONNECTIONS.md) | Find people, project records, decisions, release notes, and evidence in Obsidian |
 | [Source-backed memory](sources/README.md) | How preserved evidence relates to compact memories |
 | [Using saved sources](sources/usage.md) | Preserve and check documents or images, control access, and disconnect Google |
-| [Source setup](sources/setup.md) | Open a private archive, authorize ordinary local documents, connect Codex, and configure readers |
+| [Source setup](sources/setup.md) | Open a private archive, authorize local documents, connect Codex, and find the host call metadata and reader settings |
 | [Local source walkthrough](sources/local-example.md) | Try metadata, preservation, reviewed memory binding, and evidence checking on disposable state |
 | [Source reference](sources/reference.md) | Formats, identities, limits, commands, and how to respond to each result |
 | [Source qualification](sources/qualification.md) | Current versions, source and installation status, verified routes, and platform limits |
