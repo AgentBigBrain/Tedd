@@ -7,11 +7,19 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## Unreleased
+## 1.2.0-rc.16: 2026-11-19
 
 - The source MCP tools `bind_memory` and `check_memory` return
-  `invalid_request` for malformed arguments in an active turn. Callers can
-  correct the request and retry.
+  `invalid_request` for malformed arguments in an authorized active turn.
+  Callers can correct the request and retry. Calls outside that turn still
+  return `scope_denied`. [PR #17](https://github.com/AgentBigBrain/Tedd/pull/17)
+- Updated the guides for saving memories, setting up sources, recovering from
+  errors, and verifying an upgrade. [PR #16](https://github.com/AgentBigBrain/Tedd/pull/16)
+
+RC16 supports Python 3.10–3.14 on Windows, macOS, and Linux. It uses graph
+schema v4 and Obsidian projection format v4. RC15 and RC16 use the same
+source archive format and readers. Upgrading or rolling back to RC15 requires
+no graph migration, index rebuild, or archive conversion.
 
 ## 1.2.0-rc.15: 2026-11-18
 
