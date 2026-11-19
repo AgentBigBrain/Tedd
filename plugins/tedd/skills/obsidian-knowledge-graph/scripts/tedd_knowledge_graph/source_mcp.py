@@ -595,7 +595,14 @@ class SourceMcpServer(McpLifecycle):
         }:
             raise McpProtocolError(METHOD_NOT_FOUND, "tool is not supported")
         try:
-            if not isinstance(arguments, dict) or not isinstance(metadata, dict):
+            memory_tool = name in {"bind_memory", "check_memory"}
+            if not isinstance(metadata, dict):
+                raise SourceArchiveError("scope_denied")
+            if not isinstance(arguments, dict):
+                if memory_tool:
+                    # Only a caller with an active turn can receive argument diagnostics.
+                    self.lifecycle.acquire(metadata)
+                    raise SourceArchiveError("invalid_request")
                 raise SourceArchiveError("scope_denied")
             if name in _HOOKS:
                 hook = {
@@ -652,7 +659,9 @@ class SourceMcpServer(McpLifecycle):
                         or len(argv) > 64
                         or any(not isinstance(item, str) or len(item) > 8192 for item in argv)
                     ):
-                        raise SourceArchiveError("source_corrupt")
+                        raise SourceArchiveError(
+                            "invalid_request" if memory_tool else "source_corrupt"
+                        )
                     payload = self._operation(_COMMANDS[name], cast(list[str], argv), turn)
             if "review_id" in payload and "png_base64" not in payload:
                 raise SourceArchiveError()

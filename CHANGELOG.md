@@ -7,6 +7,12 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- The source MCP tools `bind_memory` and `check_memory` return
+  `invalid_request` for malformed arguments in an active turn. Callers can
+  correct the request and retry.
+
 ## 1.2.0-rc.15: 2026-11-18
 
 RC15 packages the source intake and permissions changes from

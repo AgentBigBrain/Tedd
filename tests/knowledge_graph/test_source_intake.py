@@ -32,7 +32,7 @@ from tedd_knowledge_graph.source_contracts import (
 )
 from tedd_knowledge_graph.source_host import SourceHost
 from tedd_knowledge_graph.source_mcp import SourceTurn
-from tedd_knowledge_graph.v4_application_contracts import JsonObject
+from tedd_knowledge_graph.v4_application_contracts import JsonObject, JsonValue
 
 
 class SourceIntakeTests(unittest.TestCase):
@@ -586,7 +586,7 @@ class SourceIntakeCommandTests(unittest.TestCase):
             {"session_id": "thread", "turn_id": turn_id}, {"threadId": "thread"}
         )
 
-    def _source_call(self, name: str, arguments: JsonObject) -> JsonObject:
+    def _source_call(self, name: str, arguments: JsonValue) -> JsonObject:
         metadata = {
             "threadId": "thread",
             "callId": name,
@@ -614,6 +614,7 @@ class SourceIntakeCommandTests(unittest.TestCase):
         response = replies.get(timeout=10)
         self.assertTrue(self._source_server._busy.acquire(timeout=5))
         self._source_server._busy.release()
+        self.assertIn("result", response)
         result = response["result"]
         assert isinstance(result, dict)
         return result
@@ -623,6 +624,24 @@ class SourceIntakeCommandTests(unittest.TestCase):
         value = result["structuredContent"]
         assert isinstance(value, dict)
         return value
+
+    def test_memory_tools_report_malformed_arguments_as_invalid_requests(self) -> None:
+        self._start_source_endpoint()
+        for tool, option in (
+            ("bind_memory", "--based-on-watermark"),
+            ("check_memory", "--revision"),
+        ):
+            cases: tuple[JsonValue, ...] = (
+                None,
+                {"argv": "bad"},
+                {"argv": []},
+                {"argv": [option, "bad-int"]},
+            )
+            for arguments in cases:
+                with self.subTest(tool=tool, arguments=arguments):
+                    result = self._source_call(tool, arguments)
+                    self.assertTrue(result["isError"])
+                    self.assertEqual(result["structuredContent"], {"status": "invalid_request"})
 
     def assert_macos_reader_refusal(
         self,
