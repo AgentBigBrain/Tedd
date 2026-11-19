@@ -2,19 +2,19 @@
 
 ## Current availability
 
-Tedd **1.2.0-rc.15** shares file intake between the CLI and MCP server and
-reports source command syntax errors and damaged setup profiles separately.
-The profile and graph share Windows permission checks. On macOS, Tedd checks
-whether the local Office worker can run before it reads the page options.
-The install commands select `v1.2.0-rc.15`.
+Tedd **1.2.0-rc.16** helps callers correct malformed requests to
+`bind_memory` and `check_memory`. In an authorized active turn, both tools
+return `invalid_request` when they cannot parse the arguments. If your source
+endpoint uses a separate version pin, its behavior follows that version.
+The install commands select `v1.2.0-rc.16`.
 
-Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.15)
+Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.16)
 and the [CI results](https://github.com/AgentBigBrain/Tedd/actions/workflows/ci.yml)
 for its exact public commit and verification evidence. After installation,
 compare the package files and complete a scoped read in your host. Hook discovery,
 source readers, and provider access have their own setup checks.
 
-RC15 keeps store schema v4, projection format v4, and the standard-library runtime.
+RC16 keeps store schema v4, projection format v4, and the standard-library runtime.
 No graph migration, rebuild, or reindex is required.
 Source archive formats and reader contracts are unchanged. Installation leaves
 the graph, source permissions, and Obsidian projection intact.
