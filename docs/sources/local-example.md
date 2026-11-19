@@ -18,8 +18,13 @@ attachment selection and cancellation need their separate host checks.
 
 ## 1. Prepare the note and metadata
 
-Save this synthetic text as `support-note.txt` in the approved private work
-directory, encoded as UTF-8:
+Save the following text as UTF-8 in `support-note.txt` in an ordinary private
+work directory. The walkthrough reads the whole file, so choose a directory
+outside dependency and build folders such as `node_modules` and `dist`.
+Intake returns `not_preserved` with `excluded_input` for a note under `.git`,
+`.obsidian` or ordinary `.codex` state, and for inputs such as `.env` or
+`credentials.json`. The `.codex` directory rule has one exception for the
+individual file selected from `<CODEX_HOME>/attachments/<group>/<file>`.
 
 ```text
 Synthetic documentation fixture.
@@ -30,8 +35,8 @@ Exception: it may stop after every queued job finishes.
 Use `doctor` on the selected graph and `consumer-status` for the registered task:
 
 ```bash
-python3 scripts/knowledge_graph.py --config "$graph_config" doctor
-python3 scripts/knowledge_graph.py --config "$graph_config" consumer-status \
+python3 -B scripts/knowledge_graph.py --config "$graph_config" doctor
+python3 -B scripts/knowledge_graph.py --config "$graph_config" consumer-status \
   --consumer-id "$consumer_id"
 ```
 
@@ -179,7 +184,7 @@ memory_packet='/absolute/private/work/memory-packet.json'
 review_plan='/absolute/private/work/reviewed-memory-plan.json'
 based_on_watermark='ACTUAL_GRAPH_WATERMARK_READ'
 
-python3 scripts/knowledge_graph.py --config "$graph_config" capture \
+python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
   --input "$memory_packet" --consumer-id "$consumer_id" \
   --producer-agent-id "$agent_id" --task-id "$task_id" --producer-run-id "$run_id" \
   --discovery-kind verification --based-on-watermark "$based_on_watermark" \
@@ -195,7 +200,7 @@ output. Use the returned fingerprint and exact plan with the unchanged packet:
 ```bash
 fingerprint='FINGERPRINT_FROM_REVIEWED_DRY_RUN'
 
-python3 scripts/knowledge_graph.py --config "$graph_config" capture \
+python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
   --input "$memory_packet" --consumer-id "$consumer_id" \
   --producer-agent-id "$agent_id" --task-id "$task_id" --producer-run-id "$run_id" \
   --discovery-kind verification --based-on-watermark "$based_on_watermark" \
@@ -213,7 +218,7 @@ follow the returned conflict/replanning instructions; do not bypass the plan che
 ```bash
 claim_id='CLAIM_ID_FROM_CAPTURE'
 
-python3 scripts/knowledge_graph.py --config "$graph_config" source-evidence \
+python3 -B scripts/knowledge_graph.py --config "$graph_config" source-evidence \
   --id "$claim_id" \
   --consumer-id "$consumer_id" --producer-agent-id "$agent_id" \
   --task-id "$task_id" --producer-run-id "$run_id" \

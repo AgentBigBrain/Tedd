@@ -8,7 +8,7 @@ Use this protocol when two or more Tedd tasks, child agents, monitors, or email 
 - Production Tedd work uses the configured default graph and its stable `store_id`. Do not pass a custom `--store` or alternate config. Custom stores are allowed only in an explicit, isolated sandbox used for tests or migration rehearsal.
 - Keep the canonical SQLite database on the same machine and on a local filesystem. SQLite WAL coordinates local processes; it is not a distributed database and must not be placed in iCloud, OneDrive, Dropbox, a network share, or another synchronized folder.
 - Canonical facts are entities, identity assertions, relations, observations, claim surfaces and revisions, events, decisions, receipts, open-loop episodes, source lineage, immutable record revisions, and the hash-chained mutation log.
-- Consumer registrations, subscriptions, inbox delivery state, acknowledgements, cached context, and short-lived plan tokens are operational coordination state. They are not evidence or authority, are not projected to Obsidian, and may be rebuilt or re-registered without changing canonical truth.
+- Consumer registrations, subscriptions, inbox delivery state, acknowledgements, cached context, and signed plans coordinate tasks. They stay outside the Obsidian projection and grant no authority to change records.
 - Obsidian notes and exports are read models. They never become mutation authority or a round-trip backup.
 - Pulling `inbox` is the awareness mechanism. This protocol does not claim that sleeping or active agents receive automatic push notifications. Push or task wakeups require separate Codex runtime or background-service integration.
 
@@ -17,7 +17,7 @@ Use this protocol when two or more Tedd tasks, child agents, monitors, or email 
 Each concurrent task has one stable consumer identity. Inspect that exact ID before registration so an upgraded task can resume its persisted owner and cursor instead of guessing or forking coordination state:
 
 ```bash
-python3 scripts/knowledge_graph.py consumer-status \
+python3 -B scripts/knowledge_graph.py consumer-status \
   --consumer-id "codex:<opaque-thread-id>"
 ```
 
@@ -29,7 +29,7 @@ python3 scripts/knowledge_graph.py consumer-status \
 Register a genuinely new consumer, or idempotently refresh an exact existing owner, before recall or capture:
 
 ```bash
-python3 scripts/knowledge_graph.py consumer-register \
+python3 -B scripts/knowledge_graph.py consumer-register \
   --consumer-id "codex:<opaque-thread-id>" \
   --producer-agent-id '<configured-agent-id>' \
   --task-id "<opaque-thread-id>" \
@@ -54,7 +54,7 @@ Rebinding is a coordinated maintenance operation, not an install hook or automat
 Before rebinding, finish or explicitly abandon in-flight inbox pages, context plans, and capture dry runs. Verify the exact current owner with `consumer-status`, then run:
 
 ```bash
-python3 scripts/knowledge_graph.py consumer-rebind \
+python3 -B scripts/knowledge_graph.py consumer-rebind \
   --consumer-id "codex:<opaque-thread-id>" \
   --existing-task-id "<opaque-thread-id>" \
   --expected-old-agent-id "<persisted agent ID>" \
@@ -76,7 +76,7 @@ that approved selection and requires a new reviewed binding.
 For separately approved manual scope, use canonical IDs returned by exact recall. Use `--subject-id` for dependents of an entity or scope root; it matches current records whose references directly target that entity, but it does not match the entity's own record. Use `--record-id` for the approved scope entity itself and when an exact claim-surface, loop, decision, receipt, or other approved record must be included. Do not create subscriptions from free-text search results alone.
 
 ```bash
-python3 scripts/knowledge_graph.py subscribe \
+python3 -B scripts/knowledge_graph.py subscribe \
   --consumer-id "codex:<opaque-thread-id>" \
   --record-id entity_client_alpha \
   --subject-id entity_client_alpha \
@@ -103,36 +103,57 @@ At task start:
 5. Inspect and prioritize overdue subscribed loops, conflicts, quarantine items, and relevant changes before planning new work.
 
 ```bash
-python3 scripts/knowledge_graph.py inbox \
+python3 -B scripts/knowledge_graph.py inbox \
   --subscription-id "<returned-subscription-id>" --limit 100
 
-python3 scripts/knowledge_graph.py context \
+python3 -B scripts/knowledge_graph.py context \
   --subscription-id "<returned-subscription-id>" \
   --max-chars 12000
 ```
 
-The context pack returns matching current record payloads ordered by most recent record watermark, then record ID. It is bounded by item and character limits and reports `truncated: true` when either limit prevents a complete result. It does not semantically rank conflicts, loops, decisions, or receipts, does not add an inbox digest, and does not return omission IDs. The agent must prioritize the returned records and separately reconcile the inbox.
+The `records` list shows matching current records, newest watermark first, with record ID breaking ties. Check `truncated` to see whether the item or character limit shortened the list. The same response can also show [stated preferences, current claims, waiting counts, and overdue items](recall.md#stated-preferences) within the subscription. Review the inbox separately for changes since the last acknowledgement.
 
 Exact selectors keep unrelated clients out; broad collection or `--all` subscriptions do not. Current evidence payloads are included when they match the selector, while historical revisions require `history --id <record-id>`. If a context pack is truncated, narrow or version the subscription and retrieve materially relevant exact records by stable ID rather than increasing context without review. Follow at most one relationship hop unless the task requires more.
 
 ## Inbox delivery and acknowledgement
 
-`inbox` is a relevance-filtered view over immutable mutation membership and materialized canonical subject IDs. It must not derive past membership from a record's mutable current text.
+`inbox` returns changes that matched the subscription when they were written. If `complete` is false, request the next page with the same subscription, `--through-watermark` set to the first page's `snapshot_watermark`, and `--cursor` set to the latest `next_cursor`. Repeat until `complete` is true. After reviewing every page, use the final `advance_to_watermark` as the point the task has read through.
 
-- Each page is bound to the consumer, `store_id`, subscription version, snapshot watermark, and an opaque continuation token.
-- Continue only with the returned token. Do not manually skip offsets.
-- A crash or interruption before acknowledgement must redeliver the unacknowledged changes.
-- Acknowledgement is idempotent for the same completed watermark and advances only through a complete, authenticated delivery boundary.
-- Call `inbox-ack` only after the task has read and reconciled every delivered change it is accepting.
-- A filtered ad hoc recall never advances inbox state or `based_on_watermark`.
-- Suppress same-task changes from normal notifications when useful, but retain them in history and provenance. Never suppress another task merely because both producers display the public name Tedd.
+Check the subscription's `last_ack_watermark` with `consumer-status --consumer-id <registered-consumer-id>`. If it is below the point you read through, report that watermark and mark acknowledgement pending. The default `review_safe` output hides `ack_token`, even on the final page. A later inbox read can therefore deliver those changes again.
 
-```bash
-python3 scripts/knowledge_graph.py inbox-ack \
-  --subscription-id "<returned-subscription-id>" \
-  --through-watermark "<complete-snapshot-watermark>" \
-  --ack-token "<ack-token-from-complete-inbox-snapshot>"
+### Acknowledge a reconciled delivery privately
+
+Use this route only when the operator explicitly authorizes [`operator_full` output](recall.md#recall-workflow) for this delivery and the task has reconciled every page. Keep `review_safe` for ordinary reads. If the private route is unavailable or lacks approval, leave acknowledgement pending.
+
+Open a private PowerShell session in the installed `obsidian-knowledge-graph` skill directory. Set `$python` to the approved executable and `$graphConfig` to the configuration used for the read. Reuse the registered `$consumerId` and `$subscriptionId` and the original `$pageSize`.
+
+Set `$readFrom` to the first page's `since_watermark` and `$readThrough` to the final `advance_to_watermark`. Set `$finalCursor` to the cursor **used to request** the final page, or to `$null` for a one-page delivery.
+
+The example reads that same final page into memory. `inbox-ack` takes its `--subscription-id`, the completed `--through-watermark`, and the signed `--ack-token`. The token is a process argument. Use a private host with tracing and transcripts off, where other users and logging tools cannot inspect those arguments.
+
+```powershell
+& {
+    $kg = @('-B', 'scripts/knowledge_graph.py', '--config', $graphConfig)
+    $scope = @('--subscription-id', $subscriptionId, '--through-watermark', "$readThrough")
+    $delivery = @('--limit', "$pageSize")
+    if ($finalCursor) { $delivery += @('--cursor', $finalCursor) }
+    $page = & $python @kg inbox @scope @delivery --mode operator_full | ConvertFrom-Json -ErrorAction Stop
+    if ($LASTEXITCODE -ne 0 -or $page.complete -ne $true -or
+        $page.consumer_id -cne $consumerId -or $page.subscription_id -cne $subscriptionId -or
+        $page.since_watermark -ne $readFrom -or
+        $page.snapshot_watermark -ne $readThrough -or $page.advance_to_watermark -ne $readThrough -or
+        [string]::IsNullOrEmpty($page.ack_token)) {
+        throw 'The final page does not match the reviewed delivery. Acknowledgement is pending.'
+    }
+    & $python @kg inbox-ack @scope --ack-token $page.ack_token
+    if ($LASTEXITCODE -ne 0) { throw 'Acknowledgement is pending.' }
+    & $python @kg consumer-status --consumer-id $consumerId
+}
 ```
+
+Find the same subscription in `active_subscriptions` and verify that its `last_ack_watermark` equals `$readThrough`. Acknowledging the same completed boundary twice is safe. A filtered recall leaves the saved position untouched.
+
+If you skip notifications for your own changes, use the task ID to distinguish producers. Other agents can share your display name. The journal keeps the changes and their provenance.
 
 Prioritize identity redirects or ambiguity, conflicting/quarantined claims, decisions, current-claim replacements, and loop ownership/status/checkpoint changes. Routine corroborating observations may remain in history without consuming normal task context.
 
@@ -149,7 +170,7 @@ Pull `inbox` and refresh `context --plan` immediately before:
 - applying production or infrastructure work whose plan relies on recalled decisions;
 - consolidating results from parallel child agents.
 
-After bounded context review, the capture dry run returns the authoritative short-lived plan token bound to the store generation, normalized packet fingerprint, exact relevant record revisions, and uniqueness predicates. Apply that packet with `--expect-fingerprint` and `--expect-plan-token`. `context --plan --fingerprint <fingerprint>` can additionally protect a non-capture planning read set, but it is not a substitute for the semantic capture dry run.
+After reviewing context, follow the [capture workflow](capture-and-correction.md#capture-workflow). Run `capture --dry-run` with `--plan-output` pointing to a new private file. Apply the reviewed packet with `--expect-fingerprint` and `--expect-plan-file`. A signed plan has no time limit. A different store, generation, signing key, or packet fingerprint invalidates it, as does a change to a protected revision or uniqueness check. For a separate planning read, `context --plan --fingerprint <fingerprint>` can protect the records that plan uses.
 
 - The global watermark remains a causality and change-feed boundary.
 - Per-record revisions decide write conflicts. Unrelated Client Beta activity must not invalidate a Client Alpha change.
@@ -183,10 +204,9 @@ Every capture must:
 1. pass the registered `--consumer-id` whose agent/task/parent ownership matches the producer envelope;
 2. use exact canonical subject IDs and stable provider identity keys when available;
 3. include bounded source evidence and an accurate authority ceiling;
-4. include the dry-run plan token for the reviewed relevant revisions and absence predicates;
-5. run a dry run, inspect policy adjustments, and apply only its exact fingerprint;
-6. commit all packet records and revisions in one transaction or none;
-7. leave projection to the coordinator for a parallel batch.
+4. review the dry run and its policy adjustments, then apply the exact fingerprint and signed plan file together;
+5. commit all packet records and revisions in one transaction or none;
+6. leave projection to the coordinator for a parallel batch.
 
 Use `substantial_analysis` for a durable proposal, audit, assessment, or report whose conclusions span several semantic categories. It requires the v1 top-level coverage ledger documented in `capture-schema.md`. Explicit proposal-review aliases and completed/outcome compound review kinds also require the ledger even when a producer incorrectly submits `milestone`, so classification cannot bypass the completeness contract; pending, started, requested, failed, and narrow `review` events remain routine. Exact `existing` ledger IDs join the signed v4 read set; resolved IDs, disposition counts, and the coverage digest remain as structural mutation details without free-text summaries or explanations for post-commit reconciliation.
 
@@ -222,7 +242,7 @@ The coordinating task must:
 1. wait for all bounded workers or record the missing handoff;
 2. pull its inbox and refresh context across the union of batch subjects;
 3. reconcile per-record conflicts, duplicate identity candidates, and overlapping claim surfaces;
-4. acknowledge only the changes it actually integrated;
+4. record the boundary it reconciled and [check whether acknowledgement is pending](#inbox-delivery-and-acknowledgement);
 5. run one incremental `review_safe` projection after the batch;
 6. run incremental validation, followed by full validation when the batch is large or changes identity, authority, privacy, schema, or projection behavior;
 7. capture one concise batch verification receipt when justified.

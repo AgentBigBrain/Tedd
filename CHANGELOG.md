@@ -116,8 +116,9 @@ Task context now reserves space for the waiting counts and the current-claims
 sheet before recent records, so a tight `max_chars` can return fewer recent
 records than before. Overdue details and preferences keep their limits and
 still follow recent records. Review the budgets of a private MemoryBench
-context suite after upgrading. The four MCP tools and their arguments are
-unchanged. A capture packet that uses none of `observation_refs`,
+context suite after upgrading. The context changes keep the existing
+`recall_context` arguments. This release also adds the optional `match`
+argument to `search_memory`. A capture packet that uses none of `observation_refs`,
 `superseded_by` or `resolution` keeps its earlier fingerprint. Recent records
 are selected as before until a claim cites an observation. The projection
 format is unchanged.

@@ -36,7 +36,9 @@ override task cancellation. Credentials and secret material are not permitted
 source evidence. Screening and bounded readers are defenses, not a guarantee that
 an arbitrary document is safe or an operating-system sandbox.
 
-Retention, model access and owner-only viewing are separate permissions.
+For ordinary local documents, one scoped policy permits capture and model
+reading. Each input still needs selection and permission to keep it. Owner-only
+viewing requires separate approval.
 Provider-checked sources require current provider access. Owner-confirmed browser
 exports have a distinct retained-copy policy and do not independently establish
 current Google permissions or revisions. An ordinary-content browser-cache

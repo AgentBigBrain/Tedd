@@ -136,13 +136,19 @@ codex plugin marketplace add AgentBigBrain/Tedd --ref v1.2.0-rc.15
 codex plugin add tedd@tedd
 ```
 
-A marketplace refresh keeps its existing pin; changing releases requires the
-new tag above. After installation, start a new Codex task and check that the
-expected skills load. The
-[Windows guide](docs/WINDOWS_SETUP.md) explains package-file comparison and
-optional memory-server setup.
+A marketplace refresh keeps its existing pin. After changing the tag, compare
+the installed package with the reviewed source. On Windows, [check each
+configured endpoint and hook](docs/WINDOWS_SETUP.md#verify-an-update) against
+its intended package. A separately pinned source endpoint can keep its own
+version.
 
-An upgrade does not initialize, migrate, or overwrite your private profile or graph.
+Start a fresh Codex task in a connected project and retrieve a known record
+within its approved scope. If you use the graph endpoint, compare
+`graph.store_id` from its native `brain_status` call with the ID from `doctor`
+on the configured graph. For Claude Code, follow the [local marketplace update](docs/CLAUDE_CODE_SETUP.md#update-a-local-marketplace-installation).
+
+Package updates reuse your private profile and graph. An existing v3 graph has
+a [separate storage upgrade](docs/KNOWLEDGE_GRAPH_COMPATIBILITY.md#existing-v3-graphs).
 
 ### Initialize durable memory
 
@@ -162,26 +168,26 @@ for the version and host requirements before relying on them.
 For manual setup, first change into that installed skill directory. Run the read-only diagnostic:
 
 ```bash
-python3 scripts/knowledge_graph.py doctor
+python3 -B scripts/knowledge_graph.py doctor
 ```
 
 On Windows PowerShell:
 
 ```powershell
-py -3 scripts\knowledge_graph.py doctor
+py -3 -B scripts\knowledge_graph.py doctor
 ```
 
 Only if `doctor` confirms that no graph database exists, create the empty graph
 and validate it:
 
 ```bash
-python3 scripts/knowledge_graph.py init-v4
-python3 scripts/knowledge_graph.py validate --full
+python3 -B scripts/knowledge_graph.py init-v4
+python3 -B scripts/knowledge_graph.py validate --full
 ```
 
 ```powershell
-py -3 scripts\knowledge_graph.py init-v4
-py -3 scripts\knowledge_graph.py validate --full
+py -3 -B scripts\knowledge_graph.py init-v4
+py -3 -B scripts\knowledge_graph.py validate --full
 ```
 
 If a graph already exists, skip `init-v4`. Use the reviewed `upgrade-v4` procedure
@@ -199,7 +205,7 @@ The server exposes four read-only tools:
 
 | Tool | What it returns |
 | --- | --- |
-| `brain_status` | A public graph-health flag and, when requested, one consumer's coordination state. It returns no record content or private filesystem diagnostics. |
+| `brain_status` | Graph health, store ID (`graph.store_id`), and optionally one consumer's coordination state. Record content and private filesystem diagnostics stay out of the response. |
 | `recall_context` | A size-limited set of records selected by an existing subscription. |
 | `search_memory` | Saved memories matching specific words or an exact record ID within an existing subscription, including older records absent from recent context. |
 | `pull_changes` | A size-limited list of changes for an existing subscription. Reading it does not mark those changes as received. |
@@ -303,7 +309,7 @@ Memories have no automatic expiry. Tedd can record a correction while preserving
 
 - Runtime data stays outside this repository in private local folders you control.
 - Source preservation is opt-in and limited to useful evidence from the authorized task. “Use once” prevents retention; opening a folder does not request a bulk archive.
-- Retention, model access, and private owner viewing are separate permissions. Disabling capture keeps history; restriction and forgetting have distinct effects.
+- For ordinary local documents, one scoped policy permits capture and model reading. You choose what to keep. Private owner viewing needs its own approval. Disabling capture keeps history.
 - Raw browser, shell, email, connector, and environment dumps are not automatically captured.
 - Credentials, cookies, authorization headers, private keys, and secret URLs are prohibited graph content.
 - Recalled text is evidence, not an instruction or permission to act.

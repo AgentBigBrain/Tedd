@@ -120,9 +120,11 @@ the fact still holds, so Tedd rechecks anything that may have changed before
 acting on it. When two values for one fact are both current, the sheet flags
 the conflict instead of choosing one.
 
-The sheet holds up to 12 facts and uses at most a quarter of the task's context
-limit, ahead of recent records. A shortened or missing sheet does not mean
-nothing is known.
+Tedd considers up to 12 eligible facts for the sheet. The whole section,
+including record IDs, dates, and JSON fields, must fit within 2,400 characters
+or one quarter of the requested context limit, whichever is smaller. Even a
+two-word fact can be left out. Use a scoped search to check for a particular
+fact that is missing from the sheet.
 
 Facts are not only for code. Ask Tedd to save a person's role, how someone
 prefers to be contacted, what a client agreed to, or a renewal date. Tedd saves
@@ -238,7 +240,7 @@ not change those Obsidian groups or their counts.
 RC9.2 adds checked receipts and reminders to the saving
 workflow below. See [host qualification](CLAUDE_CODE_QUALIFICATION.md#rc92-selective-saving)
 before relying on reminders in your installation. Codex needs explicit trusted
-hooks: follow the [Windows setup](WINDOWS_SETUP.md#check-handoff-hooks-in-an-rc92-test-installation)
+hooks: follow the [Windows setup](WINDOWS_SETUP.md#check-handoff-hooks-in-a-test-installation)
 or [Mac test setup](MACOS_TESTING.md#check-selective-saving-and-reminders).
 Installing the portable plugin alone does not enable these reminders.
 

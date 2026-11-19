@@ -2,8 +2,8 @@
 
 Connect Claude Code to Tedd's graph, a private local database of project knowledge,
 then check that you can retrieve a known project record. Codex and Claude Code can
-share this graph on one computer. Each task has its own selection of approved
-records and tracks which updates it has received.
+share this graph on one computer. Each task reads within its approved project
+scope and tracks its own reading position.
 
 ## Before you start
 
@@ -33,10 +33,9 @@ git -C tedd-source rev-parse HEAD
 claude plugin marketplace add ./tedd-source
 ```
 
-Record the reported commit with your installation; it is the revision the
-release tag resolves to. Keep this checkout unchanged and in place: Claude can
-load a local marketplace plugin directly from it. Do development work in another
-checkout.
+Record the reported commit with your installation. Claude can load Tedd directly
+from this checkout, so keep it in place between upgrades and do development work
+in another checkout.
 
 Next, change into the project where you want memory and install for that project:
 
@@ -53,6 +52,43 @@ Claude's [installation scopes](https://code.claude.com/docs/en/discover-plugins#
 The shell installer leaves two required settings, `python` and `graph_config`,
 for the [configuration step](#configure-the-plugin). Installation itself creates
 no private profile, graph, project records, or credentials.
+
+## Update a local marketplace installation
+
+Use this procedure for the dedicated `tedd-source` checkout and `local` install
+above. From the checkout's parent directory, record the current commit for
+rollback and confirm that `status --short` prints nothing.
+
+```bash
+git -C tedd-source rev-parse HEAD
+git -C tedd-source status --short
+git -C tedd-source remote get-url origin
+```
+
+Check that `origin` is the Tedd repository you installed from. Fetch the chosen
+release tag and compare the resulting commit with the reviewed release. These
+commands use RC15 as the target.
+
+```bash
+git -C tedd-source fetch origin tag v1.2.0-rc.15
+git -C tedd-source checkout --detach v1.2.0-rc.15
+git -C tedd-source rev-parse HEAD
+```
+
+In the project where you installed Tedd, refresh the local marketplace and
+update the plugin at the same scope.
+
+```bash
+cd "<absolute-project-directory>"
+claude plugin marketplace update tedd
+claude plugin update tedd@tedd --scope local
+claude plugin list --json
+```
+
+Check that `tedd@tedd` shows the expected version and local scope for this
+project. Confirm its `python` and `graph_config` options still point to the
+intended files. Start a fresh session and [retrieve a known project record](#begin-a-scoped-task-and-check-a-memory).
+For other installation scopes, see [Claude's plugin update reference](https://code.claude.com/docs/en/plugins/cli-reference#plugin-update).
 
 ## Prepare the private profile and graph
 
@@ -75,15 +111,15 @@ macOS, use `python3`; on Windows, replace it with a supported launcher such as
 Check for an existing profile:
 
 ```bash
-python3 skills/tedd/scripts/tedd_profile.py status
+python3 -B skills/tedd/scripts/tedd_profile.py status
 ```
 
 Only if no profile exists, initialize it with the name and email you choose for
 account recognition, then validate it:
 
 ```bash
-python3 skills/tedd/scripts/tedd_profile.py init --name "<your preferred name>" --email "<your email>"
-python3 skills/tedd/scripts/tedd_profile.py validate
+python3 -B skills/tedd/scripts/tedd_profile.py init --name "<your preferred name>" --email "<your email>"
+python3 -B skills/tedd/scripts/tedd_profile.py validate
 ```
 
 If you defer email, leave memory setup pending and continue other work that does
@@ -92,15 +128,15 @@ not need it. See [private identity](IDENTITY.md#first-run) for the profile's rol
 Check the graph before creating anything:
 
 ```bash
-python3 skills/obsidian-knowledge-graph/scripts/knowledge_graph.py doctor
+python3 -B skills/obsidian-knowledge-graph/scripts/knowledge_graph.py doctor
 ```
 
 Only if the diagnostic confirms that no graph database exists, create the empty
 graph and validate it:
 
 ```bash
-python3 skills/obsidian-knowledge-graph/scripts/knowledge_graph.py init-v4
-python3 skills/obsidian-knowledge-graph/scripts/knowledge_graph.py validate --full
+python3 -B skills/obsidian-knowledge-graph/scripts/knowledge_graph.py init-v4
+python3 -B skills/obsidian-knowledge-graph/scripts/knowledge_graph.py validate --full
 ```
 
 An inaccessible or unhealthy graph needs diagnosis, not initialization. An
@@ -173,13 +209,13 @@ into `plugins/tedd/skills/tedd` in the dedicated source checkout. Replace each
 placeholder with the existing path or saved ID you just checked:
 
 ```bash
-python3 scripts/tedd_setup.py --host claude --graph-config "<absolute-config-path>" --project "<absolute-project-directory>" --record-id "<saved-project-id>" --entity-id "<saved-project-id>"
+python3 -B scripts/tedd_setup.py --host claude --graph-config "<absolute-config-path>" --project "<absolute-project-directory>" --record-id "<saved-project-id>" --entity-id "<saved-project-id>"
 ```
 
 On PowerShell, use the interpreter path reported above:
 
 ```powershell
-& "<absolute-python-executable>" scripts\tedd_setup.py --host claude --graph-config "<absolute-config-path>" --project "<absolute-project-directory>" --record-id "<saved-project-id>" --entity-id "<saved-project-id>"
+& "<absolute-python-executable>" -B scripts\tedd_setup.py --host claude --graph-config "<absolute-config-path>" --project "<absolute-project-directory>" --record-id "<saved-project-id>" --entity-id "<saved-project-id>"
 ```
 
 `--record-id` includes the project record itself; `--entity-id` includes records

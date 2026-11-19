@@ -101,7 +101,7 @@ recorded.
 
 Tedd retains its portable root manifest. On Codex CLI 0.163.0, the supported
 reminder route uses explicit hooks reviewed through `/hooks`. Installing
-the plugin alone does not enable the reminders. Follow the [Windows guide](WINDOWS_SETUP.md#check-handoff-hooks-in-an-rc92-test-installation)
+the plugin alone does not enable the reminders. Follow the [Windows guide](WINDOWS_SETUP.md#check-handoff-hooks-in-a-test-installation)
 or [Mac test guide](MACOS_TESTING.md#check-selective-saving-and-reminders).
 
 An isolated normal marketplace install reported Tedd enabled and available but

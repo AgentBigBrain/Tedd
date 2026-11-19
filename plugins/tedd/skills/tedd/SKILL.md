@@ -28,11 +28,11 @@ This precedence is between skills. System and developer instructions, explicit u
 
 Treat the plugin author and publisher as package metadata, never as the runtime operator. Resolve the following script relative to this `SKILL.md`, then load the private local profile before personalized communication, cross-channel identity matching, or consequential action:
 
-The command examples use `python3` on macOS and Linux. On native Windows, use `py -3` or the configured Python 3.10+ `python` command with the same script-relative arguments.
+Run installed scripts with `-B` to keep bytecode out of the package. Use `python3 -B` on macOS and Linux, or `py -3 -B` or your configured Python executable with `-B` on Windows.
 
 ```bash
-python3 scripts/tedd_profile.py status
-python3 scripts/tedd_profile.py validate
+python3 -B scripts/tedd_profile.py status
+python3 -B scripts/tedd_profile.py validate
 ```
 
 - The profile belongs outside Git, the knowledge graph, and Obsidian. Installation must never create it or seed example people.

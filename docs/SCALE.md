@@ -57,15 +57,15 @@ Never put the SQLite database or private profile on a network share or synchroni
 From the installed `skills/obsidian-knowledge-graph` directory, or from `plugins/tedd/skills/obsidian-knowledge-graph` in a repository checkout, the default command uses a disposable temporary store and does not touch the configured graph:
 
 ```bash
-python3 scripts/benchmark_knowledge_graph_v4.py
+python3 -B scripts/benchmark_knowledge_graph_v4.py
 ```
 
-On Windows, use `py -3 scripts\benchmark_knowledge_graph_v4.py`; the benchmark applies the same protected local file permissions as the runtime while keeping all data disposable.
+On Windows, use `py -3 -B scripts\benchmark_knowledge_graph_v4.py`; the benchmark applies the same protected local file permissions as the runtime while keeping all data disposable.
 
 Larger targets and multi-writer runs are optional:
 
 ```bash
-python3 scripts/benchmark_knowledge_graph_v4.py --full-targets --writers 8,16,32
+python3 -B scripts/benchmark_knowledge_graph_v4.py --full-targets --writers 8,16,32
 ```
 
 Record the machine, Python and SQLite versions, target population, revisions, writer count, database size, and latency percentiles with any result. A pass on one corpus and machine is evidence for that run, not a blanket production guarantee.

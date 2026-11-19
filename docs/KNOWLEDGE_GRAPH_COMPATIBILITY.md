@@ -1,8 +1,11 @@
 # Graph storage compatibility
 
-Tedd uses a local SQLite database for its current graph format, schema v4.
-It also retains compatibility with older v3 JSON graphs and an explicit upgrade
-command. New graphs should use v4.
+New graphs use local SQLite (v4). Older v3 graphs use JSON. Both formats
+support `doctor`, `validate`, `get`, `recall`, `capture`, `index-status`, and
+`reindex`. Some familiar commands have different options or output on v3.
+The legacy CLI also has its own paths for operations such as projection and
+JSON schema migration. Shared-task inboxes and per-record revision history
+require v4. Use the explicit storage upgrade below to move a v3 graph to v4.
 
 ## Existing v4 graphs
 
@@ -12,30 +15,30 @@ to check its records. Run these commands from the installed
 `obsidian-knowledge-graph` skill directory with your supported Python interpreter:
 
 ```bash
-python3 scripts/knowledge_graph.py doctor
-python3 scripts/knowledge_graph.py validate
+python3 -B scripts/knowledge_graph.py doctor
+python3 -B scripts/knowledge_graph.py validate
 ```
 
-On Windows, use `py -3` or the qualified absolute Python path from your setup.
+On Windows, keep `-B` and replace `python3` with `py -3` or the qualified Python path from your setup.
 
 ## Existing v3 graphs
 
-Keep your original graph and a verified backup before an upgrade. The
-`upgrade-v4` workflow previews the change, binds it to the source graph's digest,
-builds v4 beside the original, and switches configuration only after an explicit
-apply. It preserves record identities, history, and mutation order.
+The [v3 upgrade procedure](../plugins/tedd/skills/obsidian-knowledge-graph/references/setup-and-recovery.md#upgrade-a-v3-graph)
+builds v4 beside the original and switches the configuration after you approve
+and apply the preview. Current records keep their IDs and values. V4 retains
+the ordered v3 journal headers and creates a baseline revision for each imported
+record. `history --id` shows that baseline and subsequent v4 revisions. For
+evidence from before the upgrade, consult the exact v3 JSON backup. The importer
+cannot reconstruct earlier per-record values from journal headers.
 
-Follow [setup and recovery](../plugins/tedd/skills/obsidian-knowledge-graph/references/setup-and-recovery.md#validation-and-recovery)
-for the complete procedure. Installation does not run this upgrade.
-
-If a switch is interrupted, use the saved recovery manifest and the documented
-recovery command. Preserve an ambiguous state for review rather than replacing
-either graph or editing the manifest.
+If the upgrade stops after the configuration already points to v4, keep the
+database, backup and manifest in place. Follow [Resume an interrupted upgrade](../plugins/tedd/skills/obsidian-knowledge-graph/references/setup-and-recovery.md#resume-an-interrupted-upgrade)
+to finish with the original reviewed command.
 
 ## Backups and source archives
 
-An Obsidian vault is a readable view, not a graph backup. Graph backups and the
-optional source archive have separate backup and recovery procedures. Before
+The Obsidian vault is a readable view of the graph. Keep a [verified graph backup](../plugins/tedd/skills/obsidian-knowledge-graph/references/setup-and-recovery.md#back-up-a-v4-graph)
+and back up the optional source archive separately. Before
 rolling back Tedd, check [source-archive compatibility](sources/setup.md#choose-the-build-and-preserve-a-rollback-path)
 so older software cannot restore access to restricted or forgotten evidence.
 
