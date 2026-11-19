@@ -1127,6 +1127,7 @@ class SourceLifecycleTests(unittest.TestCase):
         for name, arguments in (
             ("begin_turn", {"session_id": "thread", "turn_id": "turn"}),
             ("capture_google", {"argv": [], "_meta": self.hook}),
+            ("check_memory", None),
         ):
             result = server.dispatch_line(
                 json.dumps(
@@ -1142,6 +1143,7 @@ class SourceLifecycleTests(unittest.TestCase):
             response = result["result"]
             assert isinstance(response, dict)
             self.assertTrue(response["isError"])
+            self.assertEqual(response["structuredContent"], {"status": "scope_denied"})
         operation.assert_not_called()
 
     def test_broken_output_revokes_turn_without_waiting_for_input_eof(self) -> None:

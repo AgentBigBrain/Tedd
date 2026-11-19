@@ -206,7 +206,10 @@ class SourceOperations:
             if command in {"capture", "source-evidence"}
             else tedd_sources.parser()
         )
-        args = command_parser.parse_args(["--config", str(self._config), command, *argv])
+        try:
+            args = command_parser.parse_args(["--config", str(self._config), command, *argv])
+        except tedd_sources.graph.CLIArgumentError as error:
+            raise SourceArchiveError("invalid_request") from error
         intake = self._intake_request(args, turn) if command == "intake-file" else None
         if command in ("render-image", "owner-view"):
             if (
