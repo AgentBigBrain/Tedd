@@ -2,19 +2,20 @@
 
 ## Current availability
 
-Tedd **1.2.0-rc.16** helps callers correct malformed requests to
-`bind_memory` and `check_memory`. In an authorized active turn, both tools
-return `invalid_request` when they cannot parse the arguments. If your source
-endpoint uses a separate version pin, its behavior follows that version.
-The install commands select `v1.2.0-rc.16`.
+Tedd **1.2.0-rc.17** reports `invalid_request` when an authorized caller
+passes a malformed `argv` list to a source tool such as `intake_file` or
+`lookup`. The [host integration guide](../../plugins/tedd/skills/tedd/references/source-host-integration.md)
+shows how to attach the required task and turn metadata. If you pin the source
+endpoint separately, its behavior follows the version you selected for it.
+The install commands select `v1.2.0-rc.17`.
 
-Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.16)
+Check the [release](https://github.com/AgentBigBrain/Tedd/releases/tag/v1.2.0-rc.17)
 and the [CI results](https://github.com/AgentBigBrain/Tedd/actions/workflows/ci.yml)
 for its exact public commit and verification evidence. After installation,
 compare the package files and complete a scoped read in your host. Hook discovery,
 source readers, and provider access have their own setup checks.
 
-RC16 keeps store schema v4, projection format v4, and the standard-library runtime.
+RC17 keeps store schema v4, projection format v4, and the standard-library runtime.
 No graph migration, rebuild, or reindex is required.
 Source archive formats and reader contracts are unchanged. Installation leaves
 the graph, source permissions, and Obsidian projection intact.
