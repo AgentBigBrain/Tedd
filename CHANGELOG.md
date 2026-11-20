@@ -7,11 +7,19 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
-## Unreleased
+## 1.2.0-rc.17: 2026-11-20
 
-- All source MCP tools that take `argv` now return `invalid_request` when an
-  authorized caller sends malformed arguments. The host integration guide
-  documents the metadata for lifecycle hooks and tool calls.
+- An authorized caller now receives `invalid_request` when a source MCP tool
+  such as `intake_file` or `lookup` receives a malformed argument object or
+  `argv` list. Calls outside an active authorized turn still return
+  `scope_denied`. [PR #19](https://github.com/AgentBigBrain/Tedd/pull/19)
+- The [host integration guide](plugins/tedd/skills/tedd/references/source-host-integration.md)
+  shows where to send the task and turn metadata for hooks and tool calls.
+
+RC17 supports Python 3.10–3.14 on Windows, macOS, and Linux. RC16 and RC17
+share graph schema v4, Obsidian projection format v4, and the same source
+archive and reader contracts. Upgrading or rolling back to RC16 requires no
+migration, reindexing, or archive conversion.
 
 ## 1.2.0-rc.16: 2026-11-19
 

@@ -28,7 +28,7 @@ that directory, run these commands in Bash or PowerShell:
 
 ```bash
 git clone --no-checkout https://github.com/AgentBigBrain/Tedd.git tedd-source
-git -C tedd-source checkout --detach v1.2.0-rc.16
+git -C tedd-source checkout --detach v1.2.0-rc.17
 git -C tedd-source rev-parse HEAD
 claude plugin marketplace add ./tedd-source
 ```
@@ -67,11 +67,11 @@ git -C tedd-source remote get-url origin
 
 Check that `origin` is the Tedd repository you installed from. Fetch the chosen
 release tag and compare the resulting commit with the reviewed release. These
-commands use RC16 as the target.
+commands use RC17 as the target.
 
 ```bash
-git -C tedd-source fetch origin tag v1.2.0-rc.16
-git -C tedd-source checkout --detach v1.2.0-rc.16
+git -C tedd-source fetch origin tag v1.2.0-rc.17
+git -C tedd-source checkout --detach v1.2.0-rc.17
 git -C tedd-source rev-parse HEAD
 ```
 
