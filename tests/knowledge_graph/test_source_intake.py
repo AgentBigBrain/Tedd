@@ -643,6 +643,23 @@ class SourceIntakeCommandTests(unittest.TestCase):
                     self.assertTrue(result["isError"])
                     self.assertEqual(result["structuredContent"], {"status": "invalid_request"})
 
+    def test_source_tools_report_malformed_argv_as_invalid_request(self) -> None:
+        self._start_source_endpoint()
+        cases: tuple[tuple[str, str, JsonValue], ...] = (
+            ("lookup", "non-object arguments", None),
+            ("intake_file", "missing argv", {}),
+            ("lookup", "extra property", {"argv": [], "extra": True}),
+            ("intake_file", "non-list argv", {"argv": "bad"}),
+            ("lookup", "non-string item", {"argv": [1]}),
+            ("intake_file", "too many items", {"argv": ["x"] * 65}),
+            ("lookup", "overlong item", {"argv": ["x" * 8193]}),
+        )
+        for tool, case, arguments in cases:
+            with self.subTest(tool=tool, case=case):
+                result = self._source_call(tool, arguments)
+                self.assertTrue(result["isError"])
+                self.assertEqual(result["structuredContent"], {"status": "invalid_request"})
+
     def assert_macos_reader_refusal(
         self,
         result: JsonObject,

@@ -1128,6 +1128,7 @@ class SourceLifecycleTests(unittest.TestCase):
             ("begin_turn", {"session_id": "thread", "turn_id": "turn"}),
             ("capture_google", {"argv": [], "_meta": self.hook}),
             ("check_memory", None),
+            ("lookup", None),
         ):
             result = server.dispatch_line(
                 json.dumps(

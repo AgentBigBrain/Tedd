@@ -155,6 +155,7 @@ hooks on the same server:
 
 Use the exact hook inputs and integration rules in
 [source host integration](../../plugins/tedd/skills/tedd/references/source-host-integration.md#source-endpoint-and-lifecycle-hooks).
+If you are integrating a host, see the [call metadata for hooks and tool requests](../../plugins/tedd/skills/tedd/references/source-host-integration.md#host-metadata-for-source-calls).
 These hooks also apply to local intake. The notifications must come from the
 Codex host; a model-generated call cannot grant source access. Hooks do not start
 a disconnected server. Wait for connection before supplying the source, and

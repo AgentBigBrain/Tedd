@@ -44,6 +44,39 @@ happens, wait for connection and ask the user to resend the link once. Do not
 retry the same denied capture, replay a prompt as a model hook, or widen access.
 The endpoint does not recover missing authority from conversation logs.
 
+### Host metadata for source calls
+
+When a host sends an MCP `tools/call` request, it puts the tool input in
+`params.arguments` and supplies the call identity separately in `params._meta`.
+Codex supplies this metadata. A person or model calling a tool supplies only
+the tool arguments.
+
+For the trusted `link_sources`, `begin_turn`, and `end_turn` hooks,
+`_meta.threadId` must match the hook's `session_id` argument. The host omits
+`callId` and `x-codex-turn-metadata` from hook metadata.
+
+This example shows `params._meta` for a tool call in a turn the host has
+already opened.
+
+```json
+{
+  "threadId": "session-1",
+  "callId": "call-1",
+  "x-codex-turn-metadata": {
+    "session_id": "session-1",
+    "thread_id": "session-1",
+    "turn_id": "turn-1"
+  }
+}
+```
+
+The host supplies a string `callId` for the call. Both nested session and
+thread IDs must equal the outer `threadId`. The `turn_id` must identify an
+active turn for that session. If `_meta` is absent, the IDs disagree, or the
+turn has ended, the endpoint returns `scope_denied`. If the metadata object
+lacks a string `callId` or the nested turn object, it returns
+`capability_unavailable`. Check the host integration when either occurs.
+
 ## Optional isolated Mac reader
 
 Supported PDF, Office and image operations on macOS require a separately prepared
