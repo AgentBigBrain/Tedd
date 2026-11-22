@@ -455,15 +455,10 @@ def unittest_command() -> tuple[str, ...]:
 
 @contextmanager
 def isolated_test_environment(inherited: dict[str, str]) -> Iterator[dict[str, str]]:
-    """Keep disposable Windows fixtures out of potentially untrusted AppData ancestry.
+    """Give test children a disposable home and temp directory for Tedd's default paths."""
 
-    Only a newly allocated directory receives private permissions. Existing home,
-    AppData, and system temporary directories are never modified. The environment
-    override belongs to child test processes, not the caller or installed Tedd.
-    """
-
-    parent = Path.home() if os.name == "nt" else None
-    with tempfile.TemporaryDirectory(prefix=".tedd-release-test-", dir=parent) as temporary:
+    # Reader fixtures need trusted ancestors and short paths for Unix sockets.
+    with tempfile.TemporaryDirectory(prefix=".tr-", dir=Path.home()) as temporary:
         root = Path(temporary).resolve(strict=True)
         if os.name == "nt":
             scripts = ROOT / "plugins/tedd/skills/obsidian-knowledge-graph/scripts"
@@ -480,6 +475,11 @@ def isolated_test_environment(inherited: dict[str, str]) -> Iterator[dict[str, s
         environment = inherited.copy()
         for variable in ("TEMP", "TMP", "TMPDIR", "LOCALAPPDATA"):
             environment[variable] = str(root)
+        home = root / "home"
+        home.mkdir(mode=0o700)
+        environment.update(HOME=str(home), USERPROFILE=str(home), CODEX_HOME=str(home / ".codex"))
+        for variable in ("TEDD_GRAPH_CONFIG", "TEDD_PRIVATE_TEMP_PARENT", "TEDD_NO_LOCAL_WRITES"):
+            environment.pop(variable, None)
         yield environment
 
 
