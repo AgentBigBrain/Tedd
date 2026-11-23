@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest import mock
 
 import verify_release  # noqa: E402
-from platform_support import set_private_path_mode
+from platform_support import owner_is_current_user, set_private_path_mode
 
 from tests.support.paths import GRAPH_SCRIPTS
 
@@ -67,6 +67,7 @@ class VerifyReleaseTests(unittest.TestCase):
             self.assertEqual(str(root), environment["LOCALAPPDATA"])
             home = root / "home"
             self.assertTrue(home.is_dir())
+            self.assertTrue(owner_is_current_user(home))
             self.assertEqual(str(home), environment["HOME"])
             self.assertEqual(str(home), environment["USERPROFILE"])
             self.assertEqual(str(home / ".codex"), environment["CODEX_HOME"])
