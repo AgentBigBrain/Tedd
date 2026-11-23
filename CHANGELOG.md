@@ -7,6 +7,11 @@ for source and installation status; older entries retain their original test lim
 Tedd commit identifiers from before the public repository was created refer to records
 in the maintainers' private archive and are kept as historical references.
 
+## Unreleased
+
+- The release verifier gives tests a disposable home on Windows, macOS, and
+  Linux. A test that omits the graph store path now looks inside that home.
+
 ## 1.2.0-rc.17: 2026-11-20
 
 - An authorized caller now receives `invalid_request` when a source MCP tool

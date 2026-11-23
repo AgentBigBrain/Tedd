@@ -15,6 +15,7 @@ from pathlib import Path
 from unittest import mock
 
 import verify_release  # noqa: E402
+from platform_support import set_private_path_mode
 
 from tests.support.paths import GRAPH_SCRIPTS
 
@@ -104,6 +105,7 @@ class VerifyReleaseTests(unittest.TestCase):
 
                 config = root / "config.json"
                 config.touch(mode=0o600)
+                set_private_path_mode(config, 0o600)
                 config.write_text("{}", encoding="utf-8")
                 report = json.loads(
                     subprocess.check_output(

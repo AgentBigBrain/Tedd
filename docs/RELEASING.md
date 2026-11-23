@@ -20,11 +20,17 @@ override a failed platform gate recorded in the qualification evidence.
 
 The [Windows setup guide](WINDOWS_SETUP.md) covers explicit interpreter binding,
 complete installed-file comparison, upgrade rebinding, and fresh-task acceptance.
-The release wrapper creates private disposable fixture storage and passes it
-only to child tests through `TEMP`, `TMP`, `TMPDIR`, and `LOCALAPPDATA`. It does
-not change the caller's environment or existing directory permissions. This
-avoids treating a Windows AppData directory with extra write permissions as a
-private test root; production path checks remain unchanged.
+The release verifier creates a private temporary directory under your home
+directory and removes it after the tests finish. For the test processes, it
+points `TEMP`, `TMP`, `TMPDIR`, and `LOCALAPPDATA` there. It sets `HOME` and
+`USERPROFILE` to a new home inside that directory and `CODEX_HOME` to its
+`.codex` path. It clears `TEDD_GRAPH_CONFIG`, `TEDD_PRIVATE_TEMP_PARENT`,
+and `TEDD_NO_LOCAL_WRITES` for those processes.
+
+When you run `unittest` or a graph command directly, it inherits your shell
+environment. For manual tests, use a disposable home and a configuration with
+an explicit disposable store path. Install the developer dependencies in a
+virtual environment so the coverage tool remains available under the test home.
 
 ## Release gates
 
