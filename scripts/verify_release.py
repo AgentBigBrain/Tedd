@@ -455,16 +455,12 @@ def unittest_command() -> tuple[str, ...]:
 
 @contextmanager
 def isolated_test_environment(inherited: dict[str, str]) -> Iterator[dict[str, str]]:
-    """Keep disposable Windows fixtures out of potentially untrusted AppData ancestry.
+    """Give test children a disposable home and temp directory for Tedd's default paths."""
 
-    Only a newly allocated directory receives private permissions. Existing home,
-    AppData, and system temporary directories are never modified. The environment
-    override belongs to child test processes, not the caller or installed Tedd.
-    """
-
-    parent = Path.home() if os.name == "nt" else None
-    with tempfile.TemporaryDirectory(prefix=".tedd-release-test-", dir=parent) as temporary:
+    # Reader fixtures need trusted ancestors and short paths for Unix sockets.
+    with tempfile.TemporaryDirectory(prefix=".tr-", dir=Path.home()) as temporary:
         root = Path(temporary).resolve(strict=True)
+        home = root / "home"
         if os.name == "nt":
             scripts = ROOT / "plugins/tedd/skills/obsidian-knowledge-graph/scripts"
             old_path = sys.path[:]
@@ -475,11 +471,19 @@ def isolated_test_environment(inherited: dict[str, str]) -> Iterator[dict[str, s
                 if Path(str(support.__file__)).resolve(strict=True) != expected:
                     raise RuntimeError("Refusing a shadowed platform permission helper")
                 support.set_private_path_mode(root, 0o700)
+                # An elevated token can give new children the Administrators group as owner.
+                home.mkdir(mode=0o700)
+                support.set_private_path_mode(home, 0o700)
             finally:
                 sys.path[:] = old_path
+        else:
+            home.mkdir(mode=0o700)
         environment = inherited.copy()
         for variable in ("TEMP", "TMP", "TMPDIR", "LOCALAPPDATA"):
             environment[variable] = str(root)
+        environment.update(HOME=str(home), USERPROFILE=str(home), CODEX_HOME=str(home / ".codex"))
+        for variable in ("TEDD_GRAPH_CONFIG", "TEDD_PRIVATE_TEMP_PARENT", "TEDD_NO_LOCAL_WRITES"):
+            environment.pop(variable, None)
         yield environment
 
 

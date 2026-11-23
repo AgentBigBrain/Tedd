@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import types
@@ -14,6 +15,9 @@ from pathlib import Path
 from unittest import mock
 
 import verify_release  # noqa: E402
+from platform_support import owner_is_current_user, set_private_path_mode
+
+from tests.support.paths import GRAPH_SCRIPTS
 
 
 def quality_configuration(
@@ -50,7 +54,10 @@ def write_python(path: Path, content: str = '"""Temporary quality-scope fixture.
 
 class VerifyReleaseTests(unittest.TestCase):
     def test_test_environment_uses_a_disposable_private_root_without_changing_parent(self) -> None:
-        inherited = {"PATH": "unchanged", "LOCALAPPDATA": "untrusted-parent", "TEMP": "old-temp"}
+        overrides = ("TEDD_GRAPH_CONFIG", "TEDD_PRIVATE_TEMP_PARENT", "TEDD_NO_LOCAL_WRITES")
+        inherited = dict.fromkeys((*overrides, "HOME", "USERPROFILE", "CODEX_HOME"), "outside")
+        inherited.update(PATH="unchanged", LOCALAPPDATA="untrusted-parent", TEMP="old-temp")
+        inherited["TEDD_BASH"] = "chosen-bash"
         before = inherited.copy()
         with verify_release.isolated_test_environment(inherited) as environment:
             root = Path(environment["TEMP"])
@@ -58,11 +65,66 @@ class VerifyReleaseTests(unittest.TestCase):
             self.assertEqual(str(root), environment["TMP"])
             self.assertEqual(str(root), environment["TMPDIR"])
             self.assertEqual(str(root), environment["LOCALAPPDATA"])
+            home = root / "home"
+            self.assertTrue(home.is_dir())
+            self.assertTrue(owner_is_current_user(home))
+            self.assertEqual(str(home), environment["HOME"])
+            self.assertEqual(str(home), environment["USERPROFILE"])
+            self.assertEqual(str(home / ".codex"), environment["CODEX_HOME"])
+            self.assertTrue(set(overrides).isdisjoint(environment))
+            self.assertEqual("chosen-bash", environment["TEDD_BASH"])
             self.assertEqual("unchanged", environment["PATH"])
             self.assertEqual(before, inherited)
             if os.name != "nt":
                 self.assertEqual(0o700, root.stat().st_mode & 0o777)
         self.assertFalse(root.exists())
+
+    def test_graph_defaults_and_doctor_use_the_disposable_home(self) -> None:
+        with tempfile.TemporaryDirectory() as decoy:
+            inherited = {
+                key: os.environ[key] for key in ("SystemRoot", "WINDIR") if key in os.environ
+            }
+            inherited.update(HOME=decoy, USERPROFILE=decoy, CODEX_HOME=str(Path(decoy) / ".codex"))
+            with verify_release.isolated_test_environment(inherited) as environment:
+                root = Path(environment["TEMP"])
+                defaults = subprocess.check_output(
+                    [
+                        sys.executable,
+                        "-B",
+                        "-c",
+                        "import knowledge_graph as g; "
+                        "print(g.DEFAULT_HOME, g.DEFAULT_CONFIG_PATH, g.DEFAULT_STORE_PATH, "
+                        "g.DEFAULT_V4_STORE_PATH, sep='\\n')",
+                    ],
+                    cwd=GRAPH_SCRIPTS,
+                    env=environment,
+                    text=True,
+                    timeout=30,
+                )
+                for path in defaults.splitlines():
+                    self.assertTrue(Path(path).is_relative_to(root), path)
+
+                config = root / "config.json"
+                config.touch(mode=0o600)
+                set_private_path_mode(config, 0o600)
+                config.write_text("{}", encoding="utf-8")
+                report = json.loads(
+                    subprocess.check_output(
+                        [
+                            sys.executable,
+                            "-B",
+                            str(GRAPH_SCRIPTS / "knowledge_graph.py"),
+                            "--config",
+                            str(config),
+                            "doctor",
+                        ],
+                        env=environment,
+                        text=True,
+                        timeout=30,
+                    )
+                )
+                self.assertTrue(Path(report["store"]).is_relative_to(root), report["store"])
+                self.assertFalse(report["store_exists"])
 
     def test_test_environment_cleans_up_when_a_test_process_fails(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "synthetic failure"):

@@ -58,7 +58,7 @@ class MacRuntimeFixture:
     """Synthetic unit double for a measured Lima 2.2.0/VZ runtime."""
 
     def __init__(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory(prefix=".tedd-runtime-", dir=Path.home())
+        self.temporary = tempfile.TemporaryDirectory(prefix=".rt-", dir=Path.home())
         self.base = Path(self.temporary.name)
         self.base.chmod(0o700)
         try:
@@ -322,7 +322,7 @@ class MacRuntimeBindingTests(unittest.TestCase):
         self.addCleanup(self.fixture.close)
 
     def test_socket_capability_refusal_removes_the_fixture_root(self) -> None:
-        temporary = tempfile.TemporaryDirectory(prefix=".tedd-runtime-", dir=Path.home())
+        temporary = tempfile.TemporaryDirectory(prefix=".rt-", dir=Path.home())
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         with (
