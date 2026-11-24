@@ -102,12 +102,20 @@ At task start:
 4. Request a bounded `context` pack for the subscribed subjects.
 5. Inspect and prioritize overdue subscribed loops, conflicts, quarantine items, and relevant changes before planning new work.
 
-```bash
-python3 -B scripts/knowledge_graph.py inbox \
-  --subscription-id "<returned-subscription-id>" --limit 100
+Use the path to your graph configuration for `graph_config` and the ID returned by `subscribe` for `subscription_id`. Choose a page size, for example `page_size=100`.
 
-python3 -B scripts/knowledge_graph.py context \
-  --subscription-id "<returned-subscription-id>" \
+<!-- procedure: first-inbox-page -->
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" inbox \
+  --subscription-id "$subscription_id" --limit "$page_size"
+```
+
+Read the context for that subscription:
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" context \
+  --subscription-id "$subscription_id" \
   --max-chars 12000
 ```
 
@@ -117,7 +125,17 @@ Exact selectors keep unrelated clients out; broad collection or `--all` subscrip
 
 ## Inbox delivery and acknowledgement
 
-`inbox` returns changes that matched the subscription when they were written. If `complete` is false, request the next page with the same subscription, `--through-watermark` set to the first page's `snapshot_watermark`, and `--cursor` set to the latest `next_cursor`. Repeat until `complete` is true. After reviewing every page, use the final `advance_to_watermark` as the point the task has read through.
+`inbox` returns changes that matched the subscription when they were written. If `complete` is false, request the next page with the same subscription, `--through-watermark` set to the first page's `snapshot_watermark`, and `--cursor` set to the latest `next_cursor`. Use the same page size each time:
+
+<!-- procedure: next-inbox-page -->
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" inbox \
+  --subscription-id "$subscription_id" --limit "$page_size" \
+  --through-watermark "$snapshot_watermark" --cursor "$next_cursor"
+```
+
+Repeat until `complete` is true. After reviewing every page, use the final `advance_to_watermark` as the point the task has read through.
 
 Check the subscription's `last_ack_watermark` with `consumer-status --consumer-id <registered-consumer-id>`. If it is below the point you read through, report that watermark and mark acknowledgement pending. The default `review_safe` output hides `ack_token`, even on the final page. A later inbox read can therefore deliver those changes again.
 

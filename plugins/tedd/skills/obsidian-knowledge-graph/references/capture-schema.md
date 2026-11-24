@@ -6,6 +6,8 @@ Use one JSON object with a `source` and the records you want to save. Include `c
 
 This packet records a restore check for a fictional project. To try it, save the whole block as `capture.json` and follow the [capture workflow](capture-and-correction.md#capture-workflow) with a disposable v4 graph and a registered task consumer. The other JSON blocks on this page illustrate individual fields and collections.
 
+<!-- procedure: restore-packet -->
+
 ```json
 {
   "source": {
