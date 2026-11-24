@@ -9,6 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Start the Office upload deadline test after the worker reads its first byte
+  so slower CI runners exercise the same cleanup path.
+
 - Check documented Bash and PowerShell calls with Tedd’s CLI parsers and verify
   MCP tool and input names against both servers’ published interfaces.
 
