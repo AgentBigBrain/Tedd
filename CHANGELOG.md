@@ -12,6 +12,8 @@ in the maintainers' private archive and are kept as historical references.
 - Graph commands now return `store_missing` when the configured graph file is
   absent. A save can no longer create an empty v3 graph at that path. Run
   `doctor` to see which file Tedd looked for.
+- Opening a v4 graph for writing now requires the database file to exist when
+  SQLite connects. If the file moves during a save, the old path stays empty.
 
 - The release verifier gives tests a disposable home on Windows, macOS, and
   Linux. A test that omits the graph store path now looks inside that home.

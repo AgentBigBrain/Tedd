@@ -63,6 +63,30 @@ def normalize_export(graph: dict[str, Any]) -> dict[str, Any]:
 
 
 class PathBoundaryTests(V4TestCase):
+    def test_writable_open_does_not_recreate_a_store_moved_after_path_checks(self) -> None:
+        path = self.root / "graph #50%.sqlite3"
+        moved = self.root / "moved.sqlite3"
+        with self.create_store(path):
+            pass
+        with v4.open_store(path) as store:
+            store_id = store.state()["store_id"]
+
+        check_mode = v4.mode_has_any
+
+        def move_after_check(subject: Path | int, mask: int) -> bool:
+            result = check_mode(subject, mask)
+            if subject == path and mask == 0o077:
+                path.rename(moved)
+            return result
+
+        with mock.patch.object(v4, "mode_has_any", move_after_check):
+            with self.assertRaises(sqlite3.OperationalError), v4.open_store(path):
+                pass
+
+        self.assertFalse(path.exists(), "The failed writer recreated the graph file")
+        with v4.open_store(moved, readonly=True) as original:
+            self.assertEqual(original.state()["store_id"], store_id)
+
     def _plan_key_publication_race(self, winner: bytes) -> Any:
         real_link = os.link
 

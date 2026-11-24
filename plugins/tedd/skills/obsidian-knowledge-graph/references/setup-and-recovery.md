@@ -96,13 +96,17 @@ Defaults:
 Keep the config and canonical store outside the Obsidian vault. The CLI rejects vault-backed state so projection rebuilds, synchronization, and human note edits cannot mutate canonical knowledge.
 
 Run `doctor` first. When it reports `store_state: missing`, compare the reported
-store and configuration paths with the graph you intended to open. If you already
-have a graph, check the path and restore or sync the existing file before retrying
-a save. Graph commands return `store_missing` until that file is available.
+store and configuration paths with the graph the user intended to open. If a
+capture returns `store_missing`, tell the user the memory was not saved. If
+they already have a graph, help them check the path and restore or sync the
+existing file before retrying the save.
 
-For a first installation, run `init-v4` to create a private empty SQLite graph and
-its plan key. For an existing v3 graph, follow the reviewed `upgrade-v4` procedure.
-You can save and recall memories before configuring an Obsidian vault.
+Only the user should start a new graph. On a first installation, have them
+explicitly run `init-v4` to create the empty SQLite graph and its private plan
+key. For an existing v3 graph, follow the reviewed `upgrade-v4` procedure.
+
+Saving and recall work before a vault is configured. When the user wants to
+view memories in Obsidian and no vault is configured, ask for their vault path.
 The vault must be owned by the current user and neither it nor its non-sticky ancestry may be group/world writable.
 
 ### Optional global preferences
@@ -186,12 +190,27 @@ makes subagents mandatory.
 
 ```bash
 python3 -B scripts/knowledge_graph.py doctor
+```
+
+If the user confirms this is a first installation, give them this command to run.
+
+```bash
 python3 -B scripts/knowledge_graph.py init-v4
+```
+
+Once the intended graph is available, validate it.
+
+```bash
 python3 -B scripts/knowledge_graph.py validate --full
+```
+
+To configure Obsidian, substitute the vault path the user supplied.
+
+```bash
 python3 -B scripts/knowledge_graph.py configure --vault "/absolute/path/to/vault" --root-name "Tedd Knowledge"
 ```
 
-Skip the initialization line when `doctor` reports an existing v4 store. `init-v4` is idempotent for an already configured v4 store and can recover only an unbound, fully empty v4 store left by an interrupted first run; it refuses to adopt unbound canonical or coordination data.
+`init-v4` is idempotent for an already configured v4 store and can recover only an unbound, fully empty v4 store left by an interrupted first run; it refuses to adopt unbound canonical or coordination data.
 
 Every configuration mutation uses the same local config lock. An operation that must also lock canonical state always acquires locks in `config -> store` order; do not add a path that reverses that order or writes configuration outside the shared lock.
 
