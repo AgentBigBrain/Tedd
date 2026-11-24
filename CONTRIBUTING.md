@@ -74,6 +74,12 @@ python scripts/verify_release.py --quality
 
 The PEP 735 group contains development tools only. Tedd's normal verifier and runtime remain dependency-free beyond the Python standard library.
 
+If the quality check reports a function that grew, its message gives the path,
+function name, rule, measured count, and limit. Follow the
+[function growth guide](.agents/skills/python-development/references/tooling-lint-ruff.md#reviewing-function-growth)
+to review the design or document why the higher limit is warranted.
+The Linux 3.10, Windows 3.14, and macOS 3.14 matrix runs each measure branch coverage.
+
 CI runs on pull requests and pushes to `main`, `fix/**`, and `tedd-*-beta.*`.
 Check the run for the exact commit being proposed. A green run on an earlier
 commit does not qualify later changes, and CI does not prove desktop discovery

@@ -29,6 +29,7 @@ MARKETPLACE_MANIFEST = ROOT / ".agents/plugins/marketplace.json"
 CLAUDE_PLUGIN_MANIFEST = PLUGIN_ROOT / ".claude-plugin/plugin.json"
 CLAUDE_MARKETPLACE_MANIFEST = ROOT / ".claude-plugin/marketplace.json"
 ALLOWED_JSON = {
+    (ROOT / "scripts/function_growth_baseline.json").resolve(),
     PLUGIN_MANIFEST.resolve(),
     PORTABLE_PLUGIN_MANIFEST.resolve(),
     PORTABLE_MCP_MANIFEST.resolve(),

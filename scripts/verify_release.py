@@ -529,6 +529,7 @@ def run_quality_checks(*, env: dict[str, str]) -> None:
     validate_repository_skill_yaml()
     validate_python_quality_scope()
     run((sys.executable, "-m", "ruff", "check", "."), env=env)
+    run((sys.executable, "scripts/check_function_growth.py"), env=env)
     run((sys.executable, "-m", "ruff", "format", "--check", "."), env=env)
     run((sys.executable, "-m", "mypy"), env=env)
 

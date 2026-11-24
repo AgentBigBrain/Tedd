@@ -9,6 +9,10 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- The developer quality check reports new or growing functions above the reviewed
+  complexity and statement limits. The full suite now requires 70% coverage
+  with branches enabled on Linux, Windows, and macOS.
+
 - Graph commands now return `store_missing` when the configured graph file is
   absent. A save can no longer create an empty v3 graph at that path. Run
   `doctor` to see which file Tedd looked for.

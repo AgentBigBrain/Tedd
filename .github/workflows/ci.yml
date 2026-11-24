@@ -15,13 +15,14 @@ jobs:
   verify:
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ matrix.os == 'windows-latest' && 45 || 30 }}
+    timeout-minutes: ${{ matrix.quality && 60 || matrix.os == 'windows-latest' && 45 || 30 }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             python-version: "3.10"
+            quality: true
           - os: ubuntu-latest
             python-version: "3.11"
           - os: ubuntu-latest
@@ -34,10 +35,12 @@ jobs:
             python-version: "3.10"
           - os: windows-latest
             python-version: "3.14"
+            quality: true
           - os: macos-26-intel
             python-version: "3.10"
           - os: macos-26-intel
             python-version: "3.14"
+            quality: true
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,9 +52,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install pinned tools for the cross-platform coverage runs
+        if: matrix.quality
+        run: |
+          python -m pip install --disable-pip-version-check pip==26.1.2
+          python -m pip install --group dev
+
       - name: Verify infrastructure boundary and tests (Unix)
         if: runner.os != 'Windows'
-        run: ./scripts/verify-release.sh --expected-python "${{ matrix.python-version }}"
+        run: ./scripts/verify-release.sh --expected-python "${{ matrix.python-version }}" ${{ matrix.quality && '--quality' || '' }}
 
       - name: Check Windows handoff transport before the full suite
         if: runner.os == 'Windows'
@@ -76,7 +85,7 @@ jobs:
       - name: Verify infrastructure boundary and tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\scripts\verify-release.ps1 --expected-python "${{ matrix.python-version }}"
+        run: .\scripts\verify-release.ps1 --expected-python "${{ matrix.python-version }}" ${{ matrix.quality && '--quality' || '' }}
 
   dev-environment:
     name: Developer dependencies / ${{ matrix.os }} / Python ${{ matrix.python-version }}
