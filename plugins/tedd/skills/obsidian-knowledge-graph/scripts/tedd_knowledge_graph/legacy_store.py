@@ -22,6 +22,14 @@ AtomicWriter = Callable[[Path, str], None]
 Clock = Callable[[], str]
 
 
+class MissingGraphStore(FileNotFoundError):
+    """The canonical graph file was absent when it was needed."""
+
+    def __init__(self, path: Path) -> None:
+        super().__init__(f"No graph exists at {path}.")
+        self.path = path
+
+
 def blank_graph(*, clock: Clock = legacy_values.utc_now) -> JsonObject:
     now = clock()
     return {
@@ -70,27 +78,13 @@ def load_config(config_path: Path) -> JsonObject:
 def load_graph_with_digest(
     store_path: Path,
     *,
-    blank_factory: Callable[[], JsonObject] = blank_graph,
     prepare: PrepareGraph = legacy_migrations.prepare_graph,
 ) -> tuple[JsonObject, str, str]:
-    if not store_path.exists():
-        graph = blank_factory()
-        content = (
-            json.dumps(
-                graph,
-                indent=2,
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-            + b"\n"
-        )
-        return (
-            graph,
-            hashlib.sha256(content).hexdigest(),
-            legacy_migrations.GRAPH_SCHEMA_VERSION,
-        )
     try:
         payload = store_path.read_bytes()
+    except FileNotFoundError as error:
+        raise MissingGraphStore(store_path) from error
+    try:
         raw_graph: object = json.loads(payload.decode("utf-8"))
     except json.JSONDecodeError as error:
         raise ValueError(f"Invalid JSON at {store_path}: {error}") from error
@@ -101,12 +95,10 @@ def load_graph_with_digest(
 def load_graph(
     store_path: Path,
     *,
-    blank_factory: Callable[[], JsonObject] = blank_graph,
     prepare: PrepareGraph = legacy_migrations.prepare_graph,
 ) -> JsonObject:
     graph, _, _ = load_graph_with_digest(
         store_path,
-        blank_factory=blank_factory,
         prepare=prepare,
     )
     return graph

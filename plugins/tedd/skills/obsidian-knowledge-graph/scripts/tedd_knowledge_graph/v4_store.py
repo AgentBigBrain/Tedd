@@ -1059,7 +1059,10 @@ def open_store(
             timeout=dependencies.busy_timeout_ms / 1000,
         )
     else:
-        connection = dependencies.connect(store_path, timeout=dependencies.busy_timeout_ms / 1000)
+        # Require the existing file even if it moves after the checks above.
+        connection = dependencies.connect(
+            store_path.as_uri() + "?mode=rw", uri=True, timeout=dependencies.busy_timeout_ms / 1000
+        )
     connection.row_factory = sqlite3.Row
     try:
         dependencies.configure_connection(connection, readonly=readonly, wal=not readonly)

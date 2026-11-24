@@ -3443,6 +3443,8 @@ class KnowledgeGraphTests(unittest.TestCase):
             make_private_directory(vault)
             config = root / "config.json"
             store = root / "graph.json"
+            kg.save_graph(store, kg.blank_graph())
+            initial_bytes = store.read_bytes()
             capture_file = root / "capture.json"
             capture_file.write_text(
                 json.dumps(packet("Initial", "2026-07-01T12:00:00-04:00", "1.0")),
@@ -3500,7 +3502,7 @@ class KnowledgeGraphTests(unittest.TestCase):
                 text=True,
             )
             self.assertNotEqual(mismatch.returncode, 0)
-            self.assertFalse(store.exists())
+            self.assertEqual(store.read_bytes(), initial_bytes)
             command.extend(
                 [
                     "--expect-fingerprint",

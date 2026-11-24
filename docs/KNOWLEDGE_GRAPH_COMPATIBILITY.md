@@ -7,6 +7,16 @@ The legacy CLI also has its own paths for operations such as projection and
 JSON schema migration. Shared-task inboxes and per-record revision history
 require v4. Use the explicit storage upgrade below to move a v3 graph to v4.
 
+## If the graph file is missing
+
+Run `doctor` to see the configured path. It reports `store_state: missing`
+when the file is absent. If you expect an existing graph, check the path in
+the configuration and restore the file or let it finish syncing. If this is
+your first installation, run `init-v4` to create an empty v4 graph.
+Commands that need a graph return `store_missing` with the store and
+configuration paths. A refused capture has saved nothing. Retry it after
+the graph is available.
+
 ## Existing v4 graphs
 
 An ordinary plugin update leaves your graph, private profile, and Obsidian

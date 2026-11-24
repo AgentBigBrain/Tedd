@@ -4,14 +4,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 import knowledge_graph as kg  # noqa: E402
-from tedd_knowledge_graph import legacy_migrations, legacy_store  # noqa: E402
+from tedd_knowledge_graph import legacy_migrations  # noqa: E402
 
 
 class LegacyStoreServiceTests(unittest.TestCase):
@@ -19,24 +17,6 @@ class LegacyStoreServiceTests(unittest.TestCase):
         self.assertEqual(kg.GRAPH_SCHEMA_VERSION, legacy_migrations.GRAPH_SCHEMA_VERSION)
         self.assertIs(kg.SOURCE_TIERS, legacy_migrations.SOURCE_TIERS)
         self.assertIs(kg.COLLECTIONS, legacy_migrations.COLLECTIONS)
-
-    def test_missing_store_resolves_facade_blank_factory_at_call_time(self) -> None:
-        graph = legacy_store.blank_graph(clock=lambda: "2026-08-03T12:00:00Z")
-        with (
-            tempfile.TemporaryDirectory() as temporary,
-            mock.patch.object(kg, "blank_graph", return_value=graph) as blank_graph,
-        ):
-            loaded, digest, stored_version = kg.load_graph_with_digest(
-                Path(temporary) / "missing.json"
-            )
-
-        expected = (
-            json.dumps(graph, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8") + b"\n"
-        )
-        self.assertIs(loaded, graph)
-        self.assertEqual(digest, hashlib.sha256(expected).hexdigest())
-        self.assertEqual(stored_version, kg.GRAPH_SCHEMA_VERSION)
-        blank_graph.assert_called_once_with()
 
     def test_save_resolves_facade_clock_and_writer_at_call_time(self) -> None:
         graph = kg.blank_graph()

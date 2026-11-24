@@ -477,3 +477,12 @@ class HandoffHookTests(HandoffFixture):
         with v4.open_store(self.store_path, readonly=True) as store:
             self.assertEqual(before, store.state())
             self.assertTrue(store.validate(full=True)["valid"])
+
+        # The same approved project must stop writing handoffs if its graph goes missing.
+        self.store_path.rename(self.root / "moved.sqlite3")
+        before_files = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        response = run_event("UserPromptSubmit")
+        self.assertNotIn("decision", response)
+        self.assertEqual(
+            {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}, before_files
+        )
