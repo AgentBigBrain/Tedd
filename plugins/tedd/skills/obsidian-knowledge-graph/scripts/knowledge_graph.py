@@ -539,7 +539,6 @@ def prepare_graph(raw_graph: object) -> tuple[dict[str, object], str]:
 def load_graph_with_digest(store_path: Path) -> tuple[dict[str, object], str, str]:
     return _legacy_store.load_graph_with_digest(
         store_path,
-        blank_factory=blank_graph,
         prepare=prepare_graph,
     )
 
@@ -547,7 +546,6 @@ def load_graph_with_digest(store_path: Path) -> tuple[dict[str, object], str, st
 def load_graph(store_path: Path) -> dict[str, object]:
     return _legacy_store.load_graph(
         store_path,
-        blank_factory=blank_graph,
         prepare=prepare_graph,
     )
 

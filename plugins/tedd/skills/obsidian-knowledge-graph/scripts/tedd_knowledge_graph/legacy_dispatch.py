@@ -23,6 +23,7 @@ from .legacy_dispatch_contracts import (
     LegacyDispatchDependencies,
     V4Bindings,
 )
+from .legacy_store import MissingGraphStore
 
 _capture_response = _mutation_commands.capture_response
 _mutation_response = _mutation_commands.mutation_response
@@ -38,6 +39,14 @@ _index_status_response = _read_commands.index_status_response
 _recall_response = _read_commands.recall_response
 _reindex_response = _read_commands.reindex_response
 _validate_response = _read_commands.validate_response
+
+
+def _missing_store_guidance(config_path: Path, store_path: Path) -> str:
+    return (
+        f"No graph exists at {store_path}. If you already have a graph, check the store "
+        f"path in {config_path} and restore or sync the file before creating anything. "
+        "For a first installation, run init-v4."
+    )
 
 
 def _render(response: CommandResponse) -> None:
@@ -143,10 +152,8 @@ def _dispatch(
     args: argparse.Namespace,
     parser: argparse.ArgumentParser,
     dependencies: LegacyDispatchDependencies,
+    config_path: Path,
 ) -> CommandResponse:
-    if args.lock_timeout < 0 or args.lock_timeout > 300:
-        raise ValueError("--lock-timeout must be between 0 and 300 seconds")
-    config_path = dependencies.secure_state_path(args.config, "Configuration")
     if args.command == "configure":
         return _configured_response(args, config_path, dependencies)
 
@@ -165,6 +172,19 @@ def _dispatch(
 
     bindings = dependencies.load_v4_bindings()
     detected_store = bindings.detect_store(store_path)
+    if detected_store == "missing" and args.command != "init-v4":
+        if args.command == "doctor":
+            return CommandResponse(
+                {
+                    "store": str(store_path),
+                    "store_exists": False,
+                    "store_state": "missing",
+                    "config": str(config_path),
+                    "privacy_warnings": privacy_warnings,
+                    "guidance": _missing_store_guidance(config_path, store_path),
+                }
+            )
+        raise MissingGraphStore(store_path)
     if args.command == "upgrade-v4":
         if detected_store == "json_v3":
             return _v4_upgrade_response(
@@ -287,9 +307,27 @@ def run_cli(
     argument_error = dependencies.argument_error
     try:
         args = parser.parse_args()
-        response = _dispatch(args, parser, dependencies)
+        if args.lock_timeout < 0 or args.lock_timeout > 300:
+            raise ValueError("--lock-timeout must be between 0 and 300 seconds")
+        config_path = dependencies.secure_state_path(args.config, "Configuration")
+        response = _dispatch(args, parser, dependencies, config_path)
         _render(response)
         return int(response.exit_code)
+    except MissingGraphStore as missing:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "error_code": "store_missing",
+                    "error": _missing_store_guidance(config_path, missing.path),
+                    "store_path": str(missing.path),
+                    "config_path": str(config_path),
+                },
+                indent=2,
+            ),
+            file=sys.stderr,
+        )
+        return 1
     except argument_error as error:
         print(
             json.dumps(

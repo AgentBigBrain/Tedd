@@ -658,6 +658,7 @@ class KnowledgeGraphGrowthTests(unittest.TestCase):
             root = Path(temporary)
             config = root / "config.json"
             unique_store = root / "unique-graph.json"
+            kg.save_graph(unique_store, kg.blank_graph())
             unique_commands: list[list[str]] = []
             for index in range(4):
                 packet_path = root / f"unique-{index}.json"
@@ -708,6 +709,7 @@ class KnowledgeGraphGrowthTests(unittest.TestCase):
             self.assertTrue(kg.validate_graph(unique_graph)["valid"])
 
             duplicate_store = root / "duplicate-graph.json"
+            kg.save_graph(duplicate_store, kg.blank_graph())
             duplicate_packet = root / "duplicate.json"
             duplicate_packet.write_text(
                 json.dumps(

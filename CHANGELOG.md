@@ -9,6 +9,10 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Graph commands now return `store_missing` when the configured graph file is
+  absent. A save can no longer create an empty v3 graph at that path. Run
+  `doctor` to see which file Tedd looked for.
+
 - The release verifier gives tests a disposable home on Windows, macOS, and
   Linux. A test that omits the graph store path now looks inside that home.
 

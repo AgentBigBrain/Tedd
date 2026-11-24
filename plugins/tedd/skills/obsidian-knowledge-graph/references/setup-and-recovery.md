@@ -95,7 +95,14 @@ Defaults:
 
 Keep the config and canonical store outside the Obsidian vault. The CLI rejects vault-backed state so projection rebuilds, synchronization, and human note edits cannot mutate canonical knowledge.
 
-Run `doctor` first. On a fresh installation with no canonical store, the operator must explicitly run `init-v4`; it creates and configures a private empty SQLite-WAL store and plan key without creating sample records, revisions, mutations, consumers, or subscriptions. Never use it on an existing v3 graph: use the reviewed `upgrade-v4` workflow instead. If no vault is configured and projection is needed, ask the user for the Obsidian vault path. Canonical capture and recall can work before a vault is configured.
+Run `doctor` first. When it reports `store_state: missing`, compare the reported
+store and configuration paths with the graph you intended to open. If you already
+have a graph, check the path and restore or sync the existing file before retrying
+a save. Graph commands return `store_missing` until that file is available.
+
+For a first installation, run `init-v4` to create a private empty SQLite graph and
+its plan key. For an existing v3 graph, follow the reviewed `upgrade-v4` procedure.
+You can save and recall memories before configuring an Obsidian vault.
 The vault must be owned by the current user and neither it nor its non-sticky ancestry may be group/world writable.
 
 ### Optional global preferences
