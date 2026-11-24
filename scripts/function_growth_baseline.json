@@ -137,13 +137,6 @@
     "C901": 26,
     "PLR0915": 106
   },
-  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py::SourceOperations.__call__": {
-    "owner": "Source MCP maintainers",
-    "reason": "Dispatches tool operations and enforces their turn and access requirements.",
-    "review_when": "Lower or remove limits when tool handlers are separated.",
-    "C901": 63,
-    "PLR0915": 190
-  },
   "plugins/tedd/skills/tedd/scripts/tedd_setup.py::preview_setup": {
     "owner": "Setup maintainers",
     "reason": "Checks the host, project bindings and configuration before proposing changes.",
