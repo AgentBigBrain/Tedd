@@ -48,10 +48,6 @@ source = [
     "plugins/tedd/skills/tedd/scripts",
     "plugins/tedd/skills/obsidian-knowledge-graph/scripts",
 ]
-
-[tool.coverage.report]
-fail_under = 55
-show_missing = true
 ```
 
 Run the checked-in release wrapper; its quality mode combines the standard-library
@@ -62,10 +58,9 @@ owned runtime code without a broad ignore list.
 
 ## Caveats and edge cases
 
-- Read the exact candidate's report for measured coverage. The 55 percent floor
-  is the established cross-platform regression gate; change it only after a
-  verified baseline is stable on every blocking operating system. Neither number
-  is a universal target or proof of comprehensive testing.
+- Read `tool.coverage.report.fail_under` in the repository's `pyproject.toml` for
+  the enforced floor. Read the exact candidate's full quality reports for the
+  measured totals on Linux, Windows, and macOS before changing that floor.
 - Test discovery imports repository-controlled Python. Inspect an unfamiliar
   checkout before running unittest, coverage, pytest, or plugins.
 - Treat owned-code deprecations as failures. If a future test-only dependency

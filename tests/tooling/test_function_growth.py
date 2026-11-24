@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from importlib.util import find_spec
@@ -57,19 +60,39 @@ class FunctionGrowthTests(unittest.TestCase):
                     )
                     with self.assertRaisesRegex(ValueError, "example.py::read"):
                         growth.read_baseline(path)
+            del entry["C901"]
+            path.write_text(json.dumps({"example.py::read": entry}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "no measured rule"):
+                growth.read_baseline(path)
 
-    @unittest.skipUnless(find_spec("ruff"), "Ruff runs in the developer quality environment")
-    def test_real_ruff_findings_use_qualified_names_even_with_inline_ignores(self) -> None:
+    @unittest.skipUnless(
+        find_spec("ruff") and (sys.version_info >= (3, 11) or find_spec("tomli")),
+        "requires Ruff and TOML support from the developer environment",
+    )
+    def test_cli_reports_in_scope_growth_despite_lint_suppressions(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()
-            # The disposable directory can sit beneath a checkout with its own Ruff include list.
             (root / "pyproject.toml").write_text(
-                '[tool.ruff]\ninclude = ["sample.py"]\n', encoding="utf-8"
+                '[tool.ruff]\ninclude = ["sample.py"]\n'
+                '[tool.ruff.lint]\nexclude = ["sample.py"]\n'
+                'per-file-ignores = {"sample.py" = ["C901"]}\n'
+                'extend-per-file-ignores = {"sample.py" = ["PLR0915"]}\n',
+                encoding="utf-8",
             )
             body = "        if value:\n            pass\n" * 25
             source = "class First:\n    async def read(self, value):  # noqa: C901\n" + body
             source += "def outer():\n    def read():\n" + "        pass\n" * 101
             (root / "sample.py").write_text(source, encoding="utf-8")
-            findings = growth.ruff_findings(root)
-            self.assertIn(("sample.py::First.read", "C901", 26), findings)
-            self.assertIn(("sample.py::outer.read", "PLR0915", 101), findings)
+            (root / "outside.py").write_text(source, encoding="utf-8")
+            scripts = root / "scripts"
+            scripts.mkdir()
+            checker = shutil.copy(growth.__file__, scripts)
+            (scripts / "function_growth_baseline.json").write_text("{}", encoding="utf-8")
+            result = subprocess.run([sys.executable, checker], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("sample.py::First.read: C901 measured 26", result.stderr)
+            self.assertIn("sample.py::outer.read: PLR0915 measured 101", result.stderr)
+            self.assertNotIn("outside.py", result.stderr)
+            (root / "sample.py").write_text("def small(): pass\n", encoding="utf-8")
+            result = subprocess.run([sys.executable, checker], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

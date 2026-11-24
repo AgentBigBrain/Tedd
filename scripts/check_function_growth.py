@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+from importlib.util import find_spec
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +71,38 @@ def function_names(path: Path) -> dict[int, str]:
     return names
 
 
+def discovery_options(root: Path) -> list[str]:
+    """Carry the repository's file selection into a Ruff run without lint suppressions."""
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:
+        import tomli as tomllib
+
+    with (root / "pyproject.toml").open("rb") as stream:
+        tool = tomllib.load(stream).get("tool", {})
+    config = tool.get("ruff") if isinstance(tool, dict) else None
+    if not isinstance(config, dict) or not config.get("include"):
+        raise ValueError("Expected a nonempty tool.ruff.include in pyproject.toml")
+    keys = (
+        "include",
+        "extend-include",
+        "exclude",
+        "extend-exclude",
+        "respect-gitignore",
+        "target-version",
+    )
+    return [
+        f"--config={key}={json.dumps(config[key], ensure_ascii=False)}"
+        for key in keys
+        if key in config
+    ]
+
+
 def ruff_findings(root: Path) -> list[Finding]:
+    if find_spec("ruff") is None:
+        raise ValueError(
+            "Ruff is required. Install the development tools with python -m pip install --group dev"
+        )
     result = subprocess.run(
         [
             sys.executable,
@@ -78,6 +110,8 @@ def ruff_findings(root: Path) -> list[Finding]:
             "ruff",
             "check",
             ".",
+            "--isolated",
+            *discovery_options(root),
             "--no-fix",
             "--ignore-noqa",
             "--select",
@@ -130,7 +164,7 @@ def main() -> int:
     try:
         baseline = read_baseline(ROOT / "scripts/function_growth_baseline.json")
         findings = ruff_findings(ROOT)
-    except (OSError, ValueError, SyntaxError) as error:
+    except (OSError, ValueError, SyntaxError, ModuleNotFoundError) as error:
         print(f"Function growth check failed: {error}", file=sys.stderr)
         return 1
     errors = growth_errors(findings, baseline)

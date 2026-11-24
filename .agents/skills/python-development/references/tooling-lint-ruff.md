@@ -63,6 +63,8 @@ lower count can make the sequence harder to review.
 
 Run `python scripts/check_function_growth.py` to compare the counts with the
 reviewed entries in `scripts/function_growth_baseline.json`.
+The checker uses the repository's Ruff file selection and measures those files
+independently of inline ignores, per-file ignores, and lint exclusions.
 It identifies a function by repository path and qualified name, so moving a
 definition up or down the file preserves its limits. New functions and previously
 unlisted metrics use the trial thresholds. For a reported increase, review the
