@@ -493,6 +493,7 @@ class VerifyReleaseTests(unittest.TestCase):
             [call.args[0] for call in run.call_args_list],
             [
                 (sys.executable, "-m", "ruff", "check", "."),
+                (sys.executable, "scripts/check_function_growth.py"),
                 (sys.executable, "-m", "ruff", "format", "--check", "."),
                 (sys.executable, "-m", "mypy"),
             ],

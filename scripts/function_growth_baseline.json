@@ -1,0 +1,185 @@
+{
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v3_validation.py::_ValidationState.validate_journal": {
+    "owner": "Graph storage maintainers",
+    "reason": "Checks ordering, revision continuity and references across journal entries.",
+    "review_when": "Revisit when the journal format or its compatibility rules change.",
+    "C901": 26
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/knowledge_graph_v4_cli.py::register_v4_subcommands": {
+    "owner": "Graph CLI maintainers",
+    "reason": "Registers command options and defaults in one command catalog.",
+    "review_when": "Review when a group of commands gains its own registration module.",
+    "PLR0915": 165
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/legacy_dispatch.py::_dispatch": {
+    "owner": "Graph CLI maintainers",
+    "reason": "Routes graph commands and handles store availability before dispatch.",
+    "review_when": "Review when a command family moves out of the legacy dispatcher.",
+    "C901": 26
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_archive.py::Archive.publish": {
+    "owner": "Source archive maintainers",
+    "reason": "Coordinates archive publication with its ownership and recovery checks.",
+    "review_when": "Review when the publication sequence changes.",
+    "C901": 27
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_google_oauth.py::_authorization_form": {
+    "owner": "Source integrations maintainers",
+    "reason": "Coordinates the browser authorization exchange, including state verification and cancellation.",
+    "review_when": "Review when the authorization flow changes.",
+    "C901": 27
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_bmff.py::validate_relationships": {
+    "owner": "Image readers maintainers",
+    "reason": "Checks references between container items and their declared roles.",
+    "review_when": "Review when the supported item relationships change.",
+    "C901": 29
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_bmff.py::_property": {
+    "owner": "Image readers maintainers",
+    "reason": "Decodes the supported container property types.",
+    "review_when": "Review when adding a new property type.",
+    "C901": 29
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_bmff.py::inspect_bmff": {
+    "owner": "Image readers maintainers",
+    "reason": "Walks container boxes and validates their sizes, nesting and relationships.",
+    "review_when": "Review when changing the supported box set or traversal.",
+    "C901": 69,
+    "PLR0915": 214
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_containers.py::inspect_gif": {
+    "owner": "Image readers maintainers",
+    "reason": "Walks GIF blocks and checks boundaries for each block type.",
+    "review_when": "Review when extending the supported GIF blocks.",
+    "C901": 26
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_containers.py::inspect_jpeg": {
+    "owner": "Image readers maintainers",
+    "reason": "Walks JPEG segments and validates marker-specific fields.",
+    "review_when": "Review when the accepted marker set changes.",
+    "C901": 35
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_heif.py::decode_heif": {
+    "owner": "Image readers maintainers",
+    "reason": "Coordinates decoding and validates helper results before accepting pixels.",
+    "review_when": "Review when the decoder contract changes.",
+    "C901": 28
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_host.py::_png_sequence": {
+    "owner": "Image readers maintainers",
+    "reason": "Checks ordering and boundaries in a sequence of PNG chunks.",
+    "review_when": "Review when the supported chunk sequence changes.",
+    "C901": 31
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_metadata.py::inspect_exif_field": {
+    "owner": "Image readers maintainers",
+    "reason": "Handles the supported EXIF field types and their bounds.",
+    "review_when": "Review when metadata support changes.",
+    "C901": 40
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_svg.py::_attribute": {
+    "owner": "Image readers maintainers",
+    "reason": "Applies the accepted SVG attribute and value rules.",
+    "review_when": "Review when extending the supported attributes.",
+    "C901": 33
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_svg.py::inspect_svg": {
+    "owner": "Image readers maintainers",
+    "reason": "Traverses SVG elements and checks structure and accepted content.",
+    "review_when": "Review when extending the supported element set.",
+    "C901": 30
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_image_tiff.py::inspect_tiff": {
+    "owner": "Image readers maintainers",
+    "reason": "Walks TIFF directories and checks offset, length and field constraints.",
+    "review_when": "Review when directory traversal or allowed field types change.",
+    "C901": 47,
+    "PLR0915": 129
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_office.py::_package": {
+    "owner": "Office readers maintainers",
+    "reason": "Inspects package members and reconciles the required document structure.",
+    "review_when": "Review when Office package support changes.",
+    "C901": 29
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/source_reader_cold.py::MacColdEntitlement.check_persistent": {
+    "owner": "Reader host maintainers",
+    "reason": "Checks persistent host resources before admitting a cold reader job.",
+    "review_when": "Review when the host entitlement contract changes.",
+    "C901": 28
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_knowledge_graph/v4_capture.py::_execute_capture": {
+    "owner": "Graph storage maintainers",
+    "reason": "Coordinates validation, projection of changes and the capture transaction.",
+    "review_when": "Review when the capture lifecycle changes.",
+    "C901": 39,
+    "PLR0915": 114
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py::parser": {
+    "owner": "Source CLI maintainers",
+    "reason": "Declares the source commands and their options in one parser.",
+    "review_when": "Review when a command family gains its own parser.",
+    "C901": 30,
+    "PLR0915": 116
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py::capture": {
+    "owner": "Source archive maintainers",
+    "reason": "Coordinates source acquisition, validation and persistence.",
+    "review_when": "Review when intake responsibilities change.",
+    "C901": 39,
+    "PLR0915": 125
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources.py::_publish_owner_preview": {
+    "owner": "Source archive maintainers",
+    "reason": "Coordinates publication checks for an owner preview.",
+    "review_when": "Review when the owner preview contract changes.",
+    "C901": 26,
+    "PLR0915": 106
+  },
+  "plugins/tedd/skills/obsidian-knowledge-graph/scripts/tedd_sources_mcp.py::SourceOperations.__call__": {
+    "owner": "Source MCP maintainers",
+    "reason": "Dispatches tool operations and enforces their turn and access requirements.",
+    "review_when": "Lower or remove limits when tool handlers are separated.",
+    "C901": 63,
+    "PLR0915": 190
+  },
+  "plugins/tedd/skills/tedd/scripts/tedd_setup.py::preview_setup": {
+    "owner": "Setup maintainers",
+    "reason": "Checks the host, project bindings and configuration before proposing changes.",
+    "review_when": "Review when adding or separating setup stages.",
+    "C901": 28,
+    "PLR0915": 106
+  },
+  "scripts/check_repository_boundary.py::python_skill_contract_errors": {
+    "owner": "Repository tooling maintainers",
+    "reason": "Checks the local Python skill layout, routing and upstream mappings.",
+    "review_when": "Review when changing the skill contract.",
+    "C901": 26
+  },
+  "scripts/check_repository_boundary.py::manifest_errors": {
+    "owner": "Repository tooling maintainers",
+    "reason": "Checks compatibility across package manifests, entry points and metadata.",
+    "review_when": "Review when packaging contracts change.",
+    "C901": 45,
+    "PLR0915": 120
+  },
+  "tests/knowledge_graph/test_knowledge_graph_v4_integration.py::CapturePlanIntegrationTests.test_reviewed_capture_recall_and_projection_preserve_navigable_lineage": {
+    "owner": "Graph tests maintainers",
+    "reason": "Exercises a complete reviewed capture through recall and Obsidian projection.",
+    "review_when": "Review when the end-to-end lineage contract changes.",
+    "PLR0915": 106
+  },
+  "tests/knowledge_graph/test_source_host.py::SourceHostTests._adapter_disconnect": {
+    "owner": "Source host tests maintainers",
+    "reason": "Exercises the reader adapter lifecycle across a disconnect.",
+    "review_when": "Review when disconnect handling changes.",
+    "PLR0915": 123
+  },
+  "tests/knowledge_graph/test_source_intake.py::SourceIntakeCommandTests._reviewed_image_source_flow": {
+    "owner": "Source intake tests maintainers",
+    "reason": "Exercises a reviewed image through the public intake workflow.",
+    "review_when": "Review when image intake or review semantics change.",
+    "PLR0915": 139
+  }
+}

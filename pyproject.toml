@@ -183,10 +183,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# The full isolated suite measured 70% branch coverage during the responsibility
-# decomposition. Retain the established 55% cross-platform regression floor until
-# the higher baseline is stable on every blocking operating system; raise it only
-# with meaningful tests.
-fail_under = 55
+# Compare the branch-enabled totals on Linux 3.10, Windows 3.14 and macOS 3.14
+# before adjusting this shared floor for the isolated suite.
+fail_under = 70
 show_missing = true
 skip_covered = true
