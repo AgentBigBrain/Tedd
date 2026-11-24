@@ -76,8 +76,8 @@ active turn, so changed bytes or a later turn require fresh review before saving
 
 Tedd's MCP endpoints are local services whose tools Codex calls through Model
 Context Protocol. The `tedd-graph` endpoint exposes four read tools: graph health
-(`brain_status`), recent subscription context (`recall_context`), memory search
-(`search_memory`) and the change inbox (`pull_changes`).
+(`brain_status`<!-- mcp:graph -->), recent subscription context (`recall_context`<!-- mcp:graph -->), memory search
+(`search_memory`<!-- mcp:graph -->) and the change inbox (`pull_changes`<!-- mcp:graph -->).
 The graph endpoint does not initialize a graph, collect sources or write memories.
 The separately configured `tedd_sources` endpoint supports acquisition,
 evidence checks, reviewed memory

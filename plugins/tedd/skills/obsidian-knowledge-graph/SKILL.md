@@ -62,8 +62,8 @@ Installation never initializes a user's profile, graph or vault.
 
 ## Optional MCP and CLI fallback
 
-The `tedd-graph` endpoint exposes `brain_status`, `recall_context`, `search_memory`
-and `pull_changes`. Use search only when the connected server advertises it.
+The `tedd-graph` endpoint exposes `brain_status`<!-- mcp:graph -->, `recall_context`<!-- mcp:graph -->, `search_memory`<!-- mcp:graph -->
+and `pull_changes`<!-- mcp:graph -->. Use search only when the connected server advertises it.
 None of these tools acknowledges or changes
 durable state. Reads may update an existing SQLite `-shm` coordination file.
 Use [recall](references/recall.md) for

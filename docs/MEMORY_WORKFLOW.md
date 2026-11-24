@@ -317,7 +317,7 @@ it is not a filesystem restriction on the host or other tools.
 ## Find an older memory
 
 Use the optional graph connection for memory search. Check that the connected
-server advertises `search_memory` before following this procedure.
+server advertises `search_memory`<!-- mcp:graph --> before following this procedure.
 
 Recent context is a starting point, not a complete project history. Ask:
 "Find the recorded logo approval for this project." Tedd can
@@ -336,7 +336,7 @@ records that contain the most of the remaining words first. The result is
 marked `match_mode: any_terms`, and each record shows the words it matched.
 Treat a partial match as a lead to check: a record that matched `logo` but not
 `approved` does not show that the logo was approved. To accept full matches
-only, ask Tedd to search with `match` set to `all`.
+only, ask Tedd to search with `match`<!-- mcp:graph.search_memory --> set to `all`.
 
 Partial matches are newer than the 1.2.0-rc.12 package, which returns an empty
 list when a word is missing. Check [current availability](sources/qualification.md#current-availability)

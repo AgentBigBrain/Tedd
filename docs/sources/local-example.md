@@ -240,8 +240,8 @@ plan after verifying the result. Dispose of only the synthetic fixtures you
 created; use the reviewed [maintenance procedure](../../plugins/tedd/skills/tedd/references/source-viewing-and-maintenance.md)
 for an archive that must be retained or contains other sources.
 
-In Codex, `intake_file`, `inspect`, `bind_memory` and `check_memory` use these
-operation flags in `argv`, without the CLI subcommand or `--config`. Their endpoint
+In Codex, `intake_file`<!-- mcp:source -->, `inspect`<!-- mcp:source -->, `bind_memory`<!-- mcp:source --> and `check_memory`<!-- mcp:source --> use these
+operation flags in `argv`<!-- mcp:source.intake_file,inspect,bind_memory,check_memory -->, without the CLI subcommand or `--config`. Their endpoint
 must already be connected with trusted task-selection/turn hooks. Provider-checked
 Google evidence requires that configured source endpoint and its provider session;
 the local CLI walkthrough does not qualify that route.

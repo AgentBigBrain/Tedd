@@ -9,6 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Check documented Bash and PowerShell calls with Tedd’s CLI parsers and verify
+  MCP tool and input names against both servers’ published interfaces.
+
 - Exercise the documented save, inbox, source archive, upgrade recovery, fact sheet, and missing-store procedures against disposable fixtures in the test suite.
 
 - The developer quality check reports new or growing functions above the reviewed

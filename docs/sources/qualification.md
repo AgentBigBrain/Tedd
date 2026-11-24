@@ -3,8 +3,8 @@
 ## Current availability
 
 Tedd **1.2.0-rc.17** reports `invalid_request` when an authorized caller
-passes a malformed `argv` list to a source tool such as `intake_file` or
-`lookup`. The [host integration guide](../../plugins/tedd/skills/tedd/references/source-host-integration.md)
+passes a malformed `argv`<!-- mcp:source.intake_file,lookup --> list to a source tool such as `intake_file`<!-- mcp:source --> or
+`lookup`<!-- mcp:source -->. The [host integration guide](../../plugins/tedd/skills/tedd/references/source-host-integration.md)
 shows how to attach the required task and turn metadata. If you pin the source
 endpoint separately, its behavior follows the version you selected for it.
 The install commands select `v1.2.0-rc.17`.
@@ -39,8 +39,8 @@ and CI results apply to their named candidates; they do not qualify a later
 package automatically. Updating source on GitHub does not update an installed
 plugin or enable optional readers, Google access, or source previews.
 
-In RC13, `search_memory` returns labeled partial matches when no record contains
-every query word. Use `match: all` to require every term. Task subscriptions and
+In RC13, `search_memory`<!-- mcp:graph --> returns labeled partial matches when no record contains
+every query word. Use `match: all`<!-- mcp:graph.search_memory --> to require every term. Task subscriptions and
 privacy rules apply before matching and result limits. See the
 [search reference](../../plugins/tedd/skills/obsidian-knowledge-graph/references/recall.md#on-demand-mcp-search).
 
@@ -94,7 +94,7 @@ do not qualify every source workflow or installation on another host.
 
 RC7 was subsequently merged through PR 13
 as main commit `5447a53`. Its main-branch CI
-passed all 15 jobs. The package adds the fourth graph tool, `search_memory`.
+passed all 15 jobs. The package adds the fourth graph tool, `search_memory`<!-- mcp:graph -->.
 The feature delivery record
 records its scope and remaining limits. The Windows installation above remained
 on RC6; an RC7 installation needs its own file comparison and native checks.

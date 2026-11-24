@@ -19,7 +19,7 @@ old conversations merely to answer a challenge.
    context to identify the memory. A known record ID does not authorize another
    client's data. Do not switch to global recall or `operator_full` to get past a refusal.
 3. Call `source-evidence` for that record, including the cited revision if known.
-   For provider-checked Google evidence, use source MCP `check_memory` with those
+   For provider-checked Google evidence, use source MCP `check_memory`<!-- mcp:source --> with those
    flags through the configured endpoint; the standalone CLI has no provider
    session. Apply [host integration](source-host-integration.md#google-host-integration)
    without changing permissions or creating a new source to answer the challenge.
@@ -51,8 +51,8 @@ python3 -B scripts/knowledge_graph.py --config "<approved-config>" source-eviden
   --subject-id entity_example --max-chars 12000 --max-versions 5
 ```
 
-The example is the local-evidence CLI path. Source MCP `check_memory` takes the
-same operation flags in `argv`, without `source-evidence` or `--config`.
+The example is the local-evidence CLI path. Source MCP `check_memory`<!-- mcp:source --> takes the
+same operation flags in `argv`<!-- mcp:source.check_memory -->, without `source-evidence` or `--config`.
 `--revision` is optional. The public command allows at most 48,000 characters and
 five source versions. Increase the initial text budget only for relevant missing
 context; ask before exceeding those investigation limits. A smaller valid budget
@@ -75,7 +75,7 @@ extracted text remain derivatives. If the original page cannot be inspected, say
 which part remains unverified.
 
 For a saved standalone image, use the qualified image reader to inspect its exact
-returned unit with `render_image`. Follow the [image review procedure](source-preservation.md#review-a-standalone-image-before-keeping-it)
+returned unit with `render_image`<!-- mcp:source -->. Follow the [image review procedure](source-preservation.md#review-a-standalone-image-before-keeping-it)
 for detail, cropped views and coverage. An overview is not enough to settle a
 dispute over a small word or number; missing readable detail stays unresolved.
 Neither decoding nor a matching original hash proves that hidden encoded bytes
@@ -85,7 +85,7 @@ were inspected. Owner-only evidence remains on the private-viewer path.
 
 Use bounded metadata lookup within the exact authorized task/project, then inspect
 only the selected result. This is a fresh source check, not a remembered fact.
-For provider-checked Google sources, use source MCP `lookup` and `inspect` through
+For provider-checked Google sources, use source MCP `lookup`<!-- mcp:source --> and `inspect`<!-- mcp:source --> through
 the configured endpoint so provider access can be checked. The CLI example below
 is for permitted local evidence; it has no Google provider session.
 

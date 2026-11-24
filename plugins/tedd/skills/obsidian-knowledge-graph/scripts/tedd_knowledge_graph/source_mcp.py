@@ -432,7 +432,7 @@ _IMAGE_SELECTOR_DESCRIPTION = (
     "coordinates or x/y/width/height; right and bottom are exclusive. Each crop side must be "
     "at most 2048 pixels. An overview does not establish readable inspection of small text."
 )
-_TOOLS: tuple[JsonObject, ...] = tuple(
+TOOLS: tuple[JsonObject, ...] = tuple(
     {
         "name": name,
         "description": (
@@ -465,7 +465,7 @@ _TOOLS: tuple[JsonObject, ...] = tuple(
     }
     for name in ("begin_turn", "end_turn", "link_sources", *_COMMANDS)
 )
-_TOOLS += (
+TOOLS += (
     {
         "name": "acknowledge_review",
         "description": "Acknowledge the exact image rendering you reviewed in this turn. "
@@ -479,7 +479,7 @@ _TOOLS += (
         },
     },
 )
-_TOOLS += tuple(
+TOOLS += tuple(
     {
         "name": name,
         "description": "Request the host's separate Google disconnect or recovery confirmation. "
@@ -503,7 +503,7 @@ class SourceMcpServer(McpLifecycle):
     ) -> None:
         super().__init__(
             name="tedd-sources",
-            tools=_TOOLS,
+            tools=TOOLS,
             instructions="Explicit source access only. Never use retrieval exposure "
             "as capture permission. Human-only viewing returns no evidence text.",
         )

@@ -56,7 +56,7 @@ not authorize an installation change.
 
 | Source used in the workflow | Interface | Important limit |
 | --- | --- | --- |
-| Selected local UTF-8 text, Markdown or code | `intake-file` / source MCP `intake_file` | Purpose-bound exact byte range or justified whole file; no scripts are executed. |
+| Selected local UTF-8 text, Markdown or code | `intake-file` / source MCP `intake_file`<!-- mcp:source --> | Purpose-bound exact byte range or justified whole file; no scripts are executed. |
 | Delivered tool result | `capture-file` | Exact supplied bytes; the caller must establish actual delivery. |
 | Selected plain web text | `capture-file`, kind `web` | An observed text snapshot, not HTML extraction, a whole-page capture, or a provider original. |
 | Saved email | `capture-file`, kind `email` | Single-part `text/plain` only. Multipart mail, HTML, and attachments are refused. |
@@ -64,8 +64,8 @@ not authorize an installation change.
 | Selected local PDF | `intake-file` or legacy `capture-pdf` | Intake preserves the whole file and requires `--whole-file-reason`, plus the qualified reader and visual check below. No PDF-page selection for acquisition. |
 | Selected local DOCX, XLSX, PPTX | `intake-file` or legacy `capture-file`, with the host reader | Intake preserves the whole file and requires `--whole-file-reason`; no section/sheet selection for acquisition. Saved readings remain partial. A separately qualified LibreOffice helper can render selected layout pages. |
 | Google Docs, Sheets, Slides | Optional source MCP adapter | Exact REST observations, task-linked access, current permissions, and the [trusted Codex lifecycle hooks](source-host-integration.md#source-endpoint-and-lifecycle-hooks). The ordinary CLI has no Google session. |
-| Downloaded Google DOCX/XLSX/PPTX exports | Host-configured source MCP `import_exports` | One private owner confirmation binds an ordinary batch. Provenance is owner-confirmed, not provider-verified. No default installation enables this route. |
-| Standalone image | `intake_file`, review acknowledgment, then preservation | Requires `acknowledge_review` and qualified image helpers; see the image procedure below. |
+| Downloaded Google DOCX/XLSX/PPTX exports | Host-configured source MCP `import_exports`<!-- mcp:source --> | One private owner confirmation binds an ordinary batch. Provenance is owner-confirmed, not provider-verified. No default installation enables this route. |
+| Standalone image | `intake_file`<!-- mcp:source -->, review acknowledgment, then preservation | Requires `acknowledge_review`<!-- mcp:source --> and qualified image helpers; see the image procedure below. |
 
 Use only a route qualified for the current host and available in the loaded
 package. Successful source acquisition does not establish complete document
@@ -81,7 +81,7 @@ another format or switching viewers.
 Apply the same selection rule to different arrival paths:
 
 - **Upload or desktop file:** use the exact readable path delivered with the task,
-  whether it names the original or a Codex-managed copy. Both use `intake_file`
+  whether it names the original or a Codex-managed copy. Both use `intake_file`<!-- mcp:source -->
   without a dedicated attachment API. Preserve that file even if it differs from
   the prepared upload; do not substitute a same-name file or extracted text. If no
   readable path or supported byte transfer is available, report that limitation.
@@ -115,7 +115,7 @@ source or a later model suggests a correction.
 
 ### Select local evidence without bulk capture
 
-Use `intake_file` on a qualified source endpoint with the reviewed
+Use `intake_file`<!-- mcp:source --> on a qualified source endpoint with the reviewed
 [prompt/turn hooks](source-host-integration.md#source-endpoint-and-lifecycle-hooks).
 The trusted prompt hook accepts an absolute path in backticks, double
 quotes, on its own line, or in Codex's file-list entry (`## filename: path`).
@@ -170,7 +170,7 @@ deletes the user's input. Clean only exact Tedd-created disposable copies.
 
 ### Review a standalone image before keeping it
 
-Check that the loaded endpoint advertises `acknowledge_review` and has an image
+Check that the loaded endpoint advertises `acknowledge_review`<!-- mcp:source --> and has an image
 helper qualified for this host. Tool availability alone does not establish that
 the host can process the required format.
 
@@ -181,11 +181,11 @@ static SVG; each retains its format-specific limits. This does not expand the
 older embedded-Office format set. A missing or unqualified helper refuses the
 route; renaming or converting the file is not a way around that refusal.
 
-First call `intake_file` with `--review-only` to list the image units. This
+First call `intake_file`<!-- mcp:source --> with `--review-only` to list the image units. This
 inventory does not mean their pixels were reviewed or the original was saved.
 Then repeat the call with `--review-only --image-unit <position>`, using a
 one-based position from that inventory. Inspect the returned image, then call
-`acknowledge_review` with its exact `review_id`, not an `argv` array.
+`acknowledge_review`<!-- mcp:source --> with its exact `review_id`<!-- mcp:source.acknowledge_review -->, not an `argv` array.
 A receipt binds the delivered pixels, original bytes, task, audience
 and viewed region. Never acknowledge pixels you did not inspect. Every retained
 frame, page, item, auxiliary plane or icon variant needs its own review. A cropped
@@ -198,7 +198,7 @@ prove that small wording or numbers were read. Request native detail with
 `--image-rectangle left top right bottom`: zero-based coordinates in the oriented
 image, including the left/top edges and excluding the right/bottom edges. Keep
 each detail view within 2048 pixels per dimension, and send the four coordinates
-as separate `argv` strings. Review the detail needed to interpret small text or
+as separate `argv`<!-- mcp:source.render_image --> strings. Review the detail needed to interpret small text or
 symbols; an acknowledged overview alone does not prove they were read. Check
 the returned `output_size`: an overview can shrink to fit the PNG budget. Native
 detail is not silently rescaled and can be refused by PNG or MCP response byte
@@ -309,7 +309,7 @@ Animated GIF/WEBP/AVIF must decode every frame; each receives a separate anchor.
 Animated PNG, TIFF, HEIC/HEIF and SVG remain unsupported. These are embedded-image
 capabilities, not a standalone-image intake route.
 
-For an authorized Office original, first call `intake_file` with the normal
+For an authorized Office original, first call `intake_file`<!-- mcp:source --> with the normal
 input, metadata, digest, purpose, whole-file reason and session flags, adding
 `--review-only`. It returns partial text and embedded-frame units without saving
 anything. For every `image_page` unit, repeat that call with
@@ -325,7 +325,7 @@ Only after this review, remove the review flags and supply the exact original's
 is not visual approval. If necessary layout or visual context is unavailable,
 refuse capture. Do not strip a refused part or call a converted derivative the
 original. Saved readings retain their context gaps; existing text-only Office
-inputs need no image decoder. Later, use `render_image` on the exact saved frame
+inputs need no image decoder. Later, use `render_image`<!-- mcp:source --> on the exact saved frame
 URI; combine the publication receipt's archive/scope/manifest with that returned
 unit's `anchor_id`; do not guess it from the frame number. No reacquisition is
 needed. Previews contain decoded pixels without original metadata, animation
@@ -334,7 +334,7 @@ Image orientation is applied before producing metadata-free pixels; colour profi
 are preserved in the private original but not applied to these previews.
 The CLI equivalents require the qualified
 `--reader-python`; send their PNG result directly to an image bridge, never a log
-or text prompt. Sensitive human-only evidence uses `owner_view` instead.
+or text prompt. Sensitive human-only evidence uses `owner_view`<!-- mcp:source --> instead.
 
 ### Check a document's layout
 
@@ -343,7 +343,7 @@ Office intake call to inspect one page before saving. Repeat for the pages neede
 to check the evidence. Rendering alone does not approve preservation; the same
 exact-byte visual review and retention requirements still apply.
 
-For a saved Office source, source MCP `render_document` accepts its exact
+For a saved Office source, source MCP `render_document`<!-- mcp:source --> accepts its exact
 `--source-uri`, `--document-page` and session/scope flags. It reads the archived
 original, even if the external file was deleted. The response names the selected
 page and page count separately from the original source reference. That page is

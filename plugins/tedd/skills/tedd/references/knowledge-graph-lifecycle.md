@@ -51,14 +51,14 @@ until a relevant change or decision boundary requires refresh.
 
 ## Optional scoped MCP reads
 
-Use `brain_status` for health or an exact consumer. The connected `tedd-graph`
-tools `recall_context`, `pull_changes` and `search_memory` require the exact
+Use `brain_status`<!-- mcp:graph --> for health or an exact consumer. The connected `tedd-graph`
+tools `recall_context`<!-- mcp:graph -->, `pull_changes`<!-- mcp:graph --> and `search_memory`<!-- mcp:graph --> require the exact
 existing subscription, consumer, agent and task. They read only: no registration,
 acknowledgement, migration, capture or projection. They infer neither scope nor
 graph from the directory. Use the CLI for `doctor`, broader recall and unavailable
 MCP routes. Keep work local unless another lane materially helps.
 
-Use `search_memory` to supplement recent context when an older decision or
+Use `search_memory`<!-- mcp:graph --> to supplement recent context when an older decision or
 detail matters. Reconcile the inbox independently. Follow the
 [scoped search procedure](../../obsidian-knowledge-graph/references/recall.md#on-demand-mcp-search)
 for literal queries, labeled partial matches, one deliberate prefix broadening

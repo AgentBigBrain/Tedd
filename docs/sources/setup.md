@@ -154,9 +154,9 @@ hooks on the same server:
 
 | Event | Tool | Input |
 | --- | --- | --- |
-| `UserPromptSubmit` | `link_sources` | Trusted `session_id`, `turn_id` and `prompt` |
-| `PreToolUse`, matching `^mcp__tedd_sources__.*$` | `begin_turn` | Trusted `session_id` and `turn_id` |
-| `Interrupt` and `Stop` | `end_turn` | Trusted `session_id` and `turn_id`; three-second timeout |
+| `UserPromptSubmit` | `link_sources`<!-- mcp:source --> | Trusted `session_id`<!-- mcp:source.link_sources -->, `turn_id`<!-- mcp:source.link_sources --> and `prompt`<!-- mcp:source.link_sources --> |
+| `PreToolUse`, matching `^mcp__tedd_sources__.*$` | `begin_turn`<!-- mcp:source --> | Trusted `session_id`<!-- mcp:source.begin_turn --> and `turn_id`<!-- mcp:source.begin_turn --> |
+| `Interrupt` and `Stop` | `end_turn`<!-- mcp:source --> | Trusted `session_id`<!-- mcp:source.end_turn --> and `turn_id`<!-- mcp:source.end_turn -->; three-second timeout |
 
 Use the exact hook inputs and integration rules in
 [source host integration](../../plugins/tedd/skills/tedd/references/source-host-integration.md#source-endpoint-and-lifecycle-hooks).
@@ -179,10 +179,11 @@ representation and coverage; [the metadata contract](#capture-metadata) explains
 its fields. It hashes the exact bytes selected for acquisition. The digest is not
 a hash of an earlier preparation copy or a model reconstruction.
 
-For Codex, call source MCP `intake_file` with operation flags only. This example
+For Codex, call source MCP `intake_file`<!-- mcp:source --> with operation flags only. This example
 shows the argument shape; replace every uppercase placeholder with verified
 session values, actual private paths and the acquired SHA-256 digest.
 
+<!-- mcp:source.intake_file -->
 ```json
 {
   "argv": [
@@ -202,18 +203,18 @@ session values, actual private paths and the acquired SHA-256 digest.
 }
 ```
 
-Do not include `intake-file`, `--config` or helper executable flags in MCP `argv`.
+Do not include `intake-file`, `--config` or helper executable flags in MCP `argv`<!-- mcp:source.intake_file -->.
 CLI equivalents use the subcommand and configuration; an operator CLI check is
 not a substitute for the real Codex lifecycle check.
 
 Check the receipt's status, coverage and warnings before continuing. Assemble its
 source URI from the returned `ref` identities as shown in the
 [local walkthrough](local-example.md#2-preserve-and-inspect-the-original), or use
-scoped `lookup` to discover saved references. Use `inspect` to check the passage.
+scoped `lookup`<!-- mcp:source --> to discover saved references. Use `inspect`<!-- mcp:source --> to check the passage.
 Repeating the same capture can return `duplicate` without adding bytes. Follow the
 [memory-binding procedure](../../plugins/tedd/skills/tedd/references/source-preservation.md#capture-a-local-document)
 to create a separate compact graph packet, review a dry-run plan and apply that
-same packet with its returned fingerprint and plan file. Use `check_memory` on
+same packet with its returned fingerprint and plan file. Use `check_memory`<!-- mcp:source --> on
 the returned graph claim to verify the link. Capture alone does not create memory.
 
 ## Capture metadata

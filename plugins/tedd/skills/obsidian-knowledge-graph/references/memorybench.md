@@ -3,8 +3,8 @@
 MemoryBench checks retrieval through Tedd's real read interfaces. Existing v1
 suites measure CLI `recall`. It searches within the requested sections and
 subjects, returns an eligible exact ID first, then ranks full-text matches.
-Opt-in v2 suites can measure MCP `search_memory` or the overdue and preference
-sections delivered by `recall_context`. MCP search applies scope before limits.
+Opt-in v2 suites can measure MCP `search_memory`<!-- mcp:graph --> or the overdue and preference
+sections delivered by `recall_context`<!-- mcp:graph -->. MCP search applies scope before limits.
 It returns records that contain every query term, with exact IDs first and then
 recent changes. When none exists, it returns labeled partial matches ordered by
 how many distinct query terms each record contains.
@@ -151,7 +151,7 @@ or approve any reader.
 A case can add `match` with `auto`, `all` or `any`. Without it, the request
 omits the argument and the connected tool applies its own default, as it would
 for the model. Set `match: all` for a case that depends on the every-term rule.
-A build whose `search_memory` tool does not list `match` refuses the argument,
+A build whose `search_memory`<!-- mcp:graph --> tool does not list `match`<!-- mcp:graph.search_memory --> refuses the argument,
 which makes the run invalid; omit it for that build.
 
 Use literal search words appropriate to MCP. A natural-language question that
@@ -175,14 +175,14 @@ whether a model abstains.
 
 Use `read_path: mcp_recall_context` for D2 and D3. Each case supplies `session`
 and `context_section: overdue` or `preferences`, plus its usual required targets
-and hard negatives. There is no query. Set `max_items` to bound recent records
-in the request and `max_chars` for the entire disclosed context. Omit `limit`
+and hard negatives. There is no query. Set `max_items`<!-- mcp:graph.recall_context --> to bound recent records
+in the request and `max_chars`<!-- mcp:graph.recall_context --> for the entire disclosed context. Omit `limit`
 from the case and defaults; it would not control these sections.
 
 A build that returns [current claims](recall.md#current-claims) and
 [waiting counts](recall.md#waiting-work) reserves their space before recent
 records. They are not selectable as a `context_section`, but they count toward
-`max_chars`. A suite written against an earlier build can therefore see fewer
+`max_chars`<!-- mcp:graph.recall_context -->. A suite written against an earlier build can therefore see fewer
 recent records at the same budget; review its budgets before comparing scores.
 
 A complete context suite can name a preference's stable surface. Replace the

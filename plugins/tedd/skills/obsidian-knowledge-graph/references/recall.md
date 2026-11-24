@@ -30,7 +30,7 @@ For a lossless global audit catch-up, use `changes --since-watermark`. The first
 
 ## Stated preferences
 
-Subscription `recall_context` and CLI `context` put a `preferences` section first,
+Subscription `recall_context`<!-- mcp:graph --> and CLI `context` put a `preferences` section first,
 labeled "stated preferences, with dates". It contains currently effective
 preference claims whose single subject is explicitly approved in the task's
 subscription. Project
@@ -58,7 +58,7 @@ appears. Historical values whose ending date has passed stay out of the summary.
 
 The section holds at most 12 items and 2,000 characters after sanitization. It
 uses spare space after recent records and the existing overdue summary, inside
-the caller's complete `max_chars` budget. Read `truncated`, `omitted`, and
+the caller's complete `max_chars`<!-- mcp:graph.recall_context --> budget. Read `truncated`, `omitted`, and
 `reason: budget_exhausted` together; missing details are not evidence that no
 preference exists. An optional context plan covers only disclosed preference
 claims, alongside the other returned records. Reading never subscribes to global
@@ -69,7 +69,7 @@ the record shape.
 
 ## Current claims
 
-Subscription `recall_context` and CLI `context` return a `current_state`
+Subscription `recall_context`<!-- mcp:graph --> and CLI `context` return a `current_state`
 section after `preferences`, labeled "current claims, with dates". It is the
 task's fact sheet: each item is the current value on one claim surface, so the
 task can read what is true now without sorting dated notes.
@@ -202,7 +202,7 @@ follow [fold notes into claims](capture-and-correction.md#fold-notes-into-claims
 
 ## Review overdue items
 
-Subscription `recall_context` and CLI `context` include an `overdue` section
+Subscription `recall_context`<!-- mcp:graph --> and CLI `context` include an `overdue` section
 for unfinished `open` or `candidate` loops. A loop qualifies when its checkpoint
 is in the past, or when it has no checkpoint and was first observed more than
 30 days ago. Updating it does not reset that age. Scope and privacy filtering
@@ -211,7 +211,7 @@ run before the item limits; candidate status and source authority are preserved.
 ### Read the context summary
 
 The section holds at most five items and 1,500 characters. The caller's
-`max_chars` covers the complete disclosed context, including metadata and any
+`max_chars`<!-- mcp:graph.recall_context --> covers the complete disclosed context, including metadata and any
 requested plan token. The [waiting counts](#waiting-work) and the bounded
 [current claims](#current-claims) are reserved first. Fitting recent records
 and their plan read set come next; overdue details use what remains, and
@@ -270,7 +270,7 @@ records. The four MCP tools are unchanged; `loops-review`, `review-queue` and
 
 ## On-demand MCP search
 
-Check that the connected server advertises `search_memory` before calling it.
+Check that the connected server advertises `search_memory`<!-- mcp:graph --> before calling it.
 If it is missing, follow the [MCP and CLI fallback procedure](setup-and-recovery.md#optional-mcp-and-cli-fallback).
 Absence does not authorize installing a new build or using global CLI search to
 bypass task scope.
@@ -284,9 +284,10 @@ cannot change the subscription's selection rules or create another subscription.
 ### Request and matching
 
 This is an MCP argument object, not a shell command. Replace the placeholders
-with the verified identifiers. An optional `run_id` records the run, but grants
+with the verified identifiers. An optional `run_id`<!-- mcp:graph.search_memory --> records the run, but grants
 no authority.
 
+<!-- mcp:graph.search_memory -->
 ```json
 {
   "subscription_id": "<active-subscription-id>",
@@ -324,17 +325,17 @@ A partial match is a lead, not an answer. A record that matched `logo` but not
 with `considered_terms`, read the record's own status, and search again with
 the record's wording when the missing term matters.
 
-The optional `match` argument selects this behavior:
+The optional `match`<!-- mcp:graph.search_memory --> argument selects this behavior:
 
-| `match` | Returns |
+| `match`<!-- mcp:graph.search_memory --> | Returns |
 | --- | --- |
 | `auto` | Records containing every term; partial matches only when there are none. This is the default. |
 | `all` | Records containing every term, or an empty list. |
 | `any` | Partial matching for every query. Records containing more of the considered terms still come first. |
 
-Check that the connected `search_memory` tool lists `match` before relying on
+Check that the connected `search_memory`<!-- mcp:graph --> tool lists `match`<!-- mcp:graph.search_memory --> before relying on
 partial matches or sending the argument. A build without it requires every term,
-returns an empty list when one is missing, and refuses `match` as
+returns an empty list when one is missing, and refuses `match`<!-- mcp:graph.search_memory --> as
 `invalid_request`.
 
 Matching compares whole words, so `approved` does not match `approval` in either
@@ -356,10 +357,10 @@ force a match. An empty result is not proof that the event never happened.
 
 | Argument | Default | Accepted range |
 | --- | --- | --- |
-| `query` | Required | Nonblank text, at most 2,000 characters and 32 distinct terms; punctuation alone is invalid |
-| `limit` | 10 | 1 to 100 records |
-| `max_chars` | 12,000 | 2 to 100,000 characters of disclosed result-list JSON |
-| `match` | `auto` | `auto`, `all` or `any` |
+| `query`<!-- mcp:graph.search_memory --> | Required | Nonblank text, at most 2,000 characters and 32 distinct terms; punctuation alone is invalid |
+| `limit`<!-- mcp:graph.search_memory --> | 10 | 1 to 100 records |
+| `max_chars`<!-- mcp:graph.search_memory --> | 12,000 | 2 to 100,000 characters of disclosed result-list JSON |
+| `match`<!-- mcp:graph.search_memory --> | `auto` | `auto`, `all` or `any` |
 
 The character cap applies after review-safe sanitization and includes the list
 brackets, separators and first record. Metadata is outside that cap. Search

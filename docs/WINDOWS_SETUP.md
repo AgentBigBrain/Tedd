@@ -99,7 +99,7 @@ for the distinction between user servers and plugin-server settings. These
 commands were checked against Codex CLI 0.153.1; inspect `codex mcp --help` if
 your version differs.
 
-Start a fresh Codex task and request `brain_status` through the native tool.
+Start a fresh Codex task and request `brain_status`<!-- mcp:graph --> through the native tool.
 Confirm that only one intended Tedd server is available. Tool discovery alone
 is not a successful call; running the Python server directly is not desktop
 integration proof. Test scoped reads only with an existing, authorized
@@ -238,11 +238,11 @@ recorded Windows checks and their limits.
 4. If you use handoff reminders, check each handler's path. After a path change,
    restart Codex, review the definitions in `/hooks`, and confirm each intended
    handler appears once and is trusted. See the [handoff hook checks](#check-handoff-hooks-in-a-test-installation).
-5. In a fresh task in the approved project, call native `brain_status`. Compare
+5. In a fresh task in the approved project, call native `brain_status`<!-- mcp:graph -->. Compare
    `graph.store_id` with `doctor` from the installed CLI on the same graph
    configuration. Retrieve a familiar decision or project record by ID within
    the task's subscription. If sources are enabled, confirm that `tedd_sources`
-   is connected and offers `intake_file` before selecting a file.
+   is connected and offers `intake_file`<!-- mcp:source --> before selecting a file.
 
 ## Keep installation separate from graph maintenance
 

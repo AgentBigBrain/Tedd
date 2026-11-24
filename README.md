@@ -144,7 +144,7 @@ version.
 
 Start a fresh Codex task in a connected project and retrieve a known record
 within its approved scope. If you use the graph endpoint, compare
-`graph.store_id` from its native `brain_status` call with the ID from `doctor`
+`graph.store_id` from its native `brain_status`<!-- mcp:graph --> call with the ID from `doctor`
 on the configured graph. For Claude Code, follow the [local marketplace update](docs/CLAUDE_CODE_SETUP.md#update-a-local-marketplace-installation).
 
 Package updates reuse your private profile and graph. An existing v3 graph has
@@ -205,10 +205,10 @@ The server exposes four read-only tools:
 
 | Tool | What it returns |
 | --- | --- |
-| `brain_status` | Graph health, store ID (`graph.store_id`), and optionally one consumer's coordination state. Record content and private filesystem diagnostics stay out of the response. |
-| `recall_context` | A size-limited set of records selected by an existing subscription. |
-| `search_memory` | Saved memories matching specific words or an exact record ID within an existing subscription, including older records absent from recent context. |
-| `pull_changes` | A size-limited list of changes for an existing subscription. Reading it does not mark those changes as received. |
+| `brain_status`<!-- mcp:graph --> | Graph health, store ID (`graph.store_id`), and optionally one consumer's coordination state. Record content and private filesystem diagnostics stay out of the response. |
+| `recall_context`<!-- mcp:graph --> | A size-limited set of records selected by an existing subscription. |
+| `search_memory`<!-- mcp:graph --> | Saved memories matching specific words or an exact record ID within an existing subscription, including older records absent from recent context. |
+| `pull_changes`<!-- mcp:graph --> | A size-limited list of changes for an existing subscription. Reading it does not mark those changes as received. |
 
 Memory reads stay within the task's approved subscription. Context, search, and
 inbox calls require that subscription to be active, with matching consumer,
@@ -218,7 +218,7 @@ consumer registrations, and they collect no telemetry. The
 explains the local access model and SQLite's read-only behavior.
 
 Search supplements recent context. Check that the connected server advertises
-`search_memory`. For example, a task can search for `logo approved` when it needs
+`search_memory`<!-- mcp:graph -->. For example, a task can search for `logo approved` when it needs
 an older design decision. See
 [finding older memories](docs/MEMORY_WORKFLOW.md#find-an-older-memory) for matching
 rules and result limits.

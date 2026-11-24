@@ -14,12 +14,12 @@ Local intake also uses the lifecycle hooks below; Google sign-in is optional.
 Qualify the actual host route before enabling it.
 
 Start the endpoint with a fixed `--config`. Local historical inspection needs no
-Google configuration and must not open sign-in. Local selection uses `intake_file`
+Google configuration and must not open sign-in. Local selection uses `intake_file`<!-- mcp:source -->
 with [source preservation](source-preservation.md#select-local-evidence-without-bulk-capture).
 
 For PDF owner viewing, the operator also fixes `--reader-python` and `--renderer`
 at endpoint startup to the qualified local binaries. Model tool arguments cannot
-select either executable; `owner_view` supplies only the selected `--page`.
+select either executable; `owner_view`<!-- mcp:source --> supplies only the selected `--page`.
 Office capture needs only the host-owned reader; it does not require a PDF renderer.
 Optional Office layout viewing also requires host-pinned `--office-converter`
 and `--office-work-root`, together with the qualified reader and PDF renderer.
@@ -28,13 +28,13 @@ Model tool arguments cannot choose these executables or the temporary destinatio
 
 Register the endpoint as `tedd_sources` in the explicitly approved host configuration.
 Review and trust these exact lifecycle bindings: `PreToolUse` matching
-`^mcp__tedd_sources__.*$` calls `begin_turn`; `Interrupt` and `Stop` call `end_turn`.
+`^mcp__tedd_sources__.*$` calls `begin_turn`<!-- mcp:source -->; `Interrupt` and `Stop` call `end_turn`<!-- mcp:source -->.
 Each is a synchronous `mcp_tool` hook on server `tedd_sources`, with input
-`{"session_id":"${session_id}","turn_id":"${turn_id}"}`. Use a three-second
+`{"session_id":"${session_id}","turn_id":"${turn_id}"}`<!-- mcp:source.begin_turn,end_turn -->. Use a three-second
 timeout for end hooks. Local file/attachment selection and reusable Google linked
 access both require a synchronous
-`UserPromptSubmit` hook calling `link_sources` on the same server with input
-`{"session_id":"${session_id}","turn_id":"${turn_id}","prompt":"${prompt}"}`.
+`UserPromptSubmit` hook calling `link_sources`<!-- mcp:source --> on the same server with input
+`{"session_id":"${session_id}","turn_id":"${turn_id}","prompt":"${prompt}"}`<!-- mcp:source.link_sources -->.
 Only the trusted hook can supply links; model arguments cannot grant access.
 Prompts are reduced to resource IDs in memory, not stored in the source archive.
 
@@ -51,8 +51,8 @@ When a host sends an MCP `tools/call` request, it puts the tool input in
 Codex supplies this metadata. A person or model calling a tool supplies only
 the tool arguments.
 
-For the trusted `link_sources`, `begin_turn`, and `end_turn` hooks,
-`_meta.threadId` must match the hook's `session_id` argument. The host omits
+For the trusted `link_sources`<!-- mcp:source -->, `begin_turn`<!-- mcp:source -->, and `end_turn`<!-- mcp:source --> hooks,
+`_meta.threadId` must match the hook's `session_id`<!-- mcp:source.link_sources,begin_turn,end_turn --> argument. The host omits
 `callId` and `x-codex-turn-metadata` from hook metadata.
 
 This example shows `params._meta` for a tool call in a turn the host has
@@ -111,36 +111,36 @@ or preservation receipt.
 
 ## Source MCP operations
 
-Ordinary source operations take one `argv` array containing the existing subcommand flags,
+Ordinary source operations take one `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array containing the existing subcommand flags,
 without a command name or `--config`. Reuse the registered session/scope values:
 
 | Source MCP tool | Existing command flags to supply |
 | --- | --- |
-| `intake_file` | `intake-file`: exact host-selected `--input`, private `--metadata`, acquired digest, purpose/selection and existing session/scope flags. No model-selected reader executable. |
-| `import_exports` | `import-exports`: private batch `--input` and session/scope flags. Requires the host-pinned root, reader and real owner confirmation described below. |
-| `list_google` | `list-google`: `--folder-id <linked folder or descendant>`, optional returned `--page-token`, and existing session/scope flags. One page of at most 100 names/IDs; no content capture. |
-| `capture_google` | `capture-google`: `--metadata <private metadata> --workflow-state active` and capture session/scope flags. No `--input`; the adapter binds the acquired hash itself. |
-| `bind_memory` | Graph `capture`: private `--input`, producer/consumer flags, `--source-subscription-id`, `--source-subject-id`, and the normal reviewed dry-run/apply flags. Only an archived `source.uri` is accepted. |
-| `check_memory` | Graph `source-evidence`: disputed `--id`, optional `--revision`, and the existing session/scope/budget flags. |
-| `lookup` / `inspect` | The existing bounded source lookup/inspection flags. |
-| `render_image` | `render-image --source-uri <exact image-unit URI>` and existing session/scope flags. The host pins the qualified image reader; the result is an MCP image, not a text encoding. |
-| `render_document` | `render-document --source-uri <saved Office reference> --document-page <number>` and session/scope flags. Requires the separately qualified, host-pinned Office layout helpers. |
-| `owner_view` | `owner-view --private-viewer` flags in [viewing and maintenance](source-viewing-and-maintenance.md); no evidence body is returned. |
+| `intake_file`<!-- mcp:source --> | `intake-file`: exact host-selected `--input`, private `--metadata`, acquired digest, purpose/selection and existing session/scope flags. No model-selected reader executable. |
+| `import_exports`<!-- mcp:source --> | `import-exports`: private batch `--input` and session/scope flags. Requires the host-pinned root, reader and real owner confirmation described below. |
+| `list_google`<!-- mcp:source --> | `list-google`: `--folder-id <linked folder or descendant>`, optional returned `--page-token`, and existing session/scope flags. One page of at most 100 names/IDs; no content capture. |
+| `capture_google`<!-- mcp:source --> | `capture-google`: `--metadata <private metadata> --workflow-state active` and capture session/scope flags. No `--input`; the adapter binds the acquired hash itself. |
+| `bind_memory`<!-- mcp:source --> | Graph `capture`: private `--input`, producer/consumer flags, `--source-subscription-id`, `--source-subject-id`, and the normal reviewed dry-run/apply flags. Only an archived `source.uri` is accepted. |
+| `check_memory`<!-- mcp:source --> | Graph `source-evidence`: disputed `--id`, optional `--revision`, and the existing session/scope/budget flags. |
+| `lookup`<!-- mcp:source --> / `inspect`<!-- mcp:source --> | The existing bounded source lookup/inspection flags. |
+| `render_image`<!-- mcp:source --> | `render-image --source-uri <exact image-unit URI>` and existing session/scope flags. The host pins the qualified image reader; the result is an MCP image, not a text encoding. |
+| `render_document`<!-- mcp:source --> | `render-document --source-uri <saved Office reference> --document-page <number>` and session/scope flags. Requires the separately qualified, host-pinned Office layout helpers. |
+| `owner_view`<!-- mcp:source --> | `owner-view --private-viewer` flags in [viewing and maintenance](source-viewing-and-maintenance.md); no evidence body is returned. |
 
-`acknowledge_review` takes only the returned `review_id`; `disconnect_google` and
-`reconnect_google` take empty objects and request their own host confirmation.
+`acknowledge_review`<!-- mcp:source --> takes only the returned `review_id`<!-- mcp:source.acknowledge_review -->; `disconnect_google`<!-- mcp:source --> and
+`reconnect_google`<!-- mcp:source --> take empty objects and request their own host confirmation.
 Use them only when the loaded endpoint advertises them and the relevant route is
 qualified. Standalone-image helpers are fixed at startup with `--reader-python`,
 and, when needed, `--av1-validator`, `--svg-renderer` and `--svg-font`. Model
 arguments cannot choose executables. The [image procedure](source-preservation.md#review-a-standalone-image-before-keeping-it)
 separates rendering from acknowledgment and preservation.
 
-For memory linking, first call `bind_memory` with `--dry-run --plan-output` to a
+For memory linking, first call `bind_memory`<!-- mcp:source --> with `--dry-run --plan-output` to a
 new private plan file. Review the result, then call it with the same packet/scope,
 `--expect-fingerprint` and `--expect-plan-file`. Keep `review_safe`; stdin and
 `operator_full` are not accepted by this endpoint. To challenge the Google-backed
-memory, use `check_memory` on the same endpoint, not a shell command with no provider
-session. Reacquire a later version with `capture_google`, then check the original
+memory, use `check_memory`<!-- mcp:source --> on the same endpoint, not a shell command with no provider
+session. Reacquire a later version with `capture_google`<!-- mcp:source -->, then check the original
 memory again. This never rewrites the earlier evidence or corrects a claim automatically.
 
 ## Owner-confirmed browser exports
@@ -157,7 +157,7 @@ For an ordinary, needed batch, write a private JSON array with one object per
 export: `path`, `origin`, `account`, `kind` (`docx`, `xlsx`, `pptx`), `sha256`,
 `purpose`, `whole_file_reason`, `sensitivity` (`ordinary` only), and
 `visual_review_sha256` (null unless the exact original's embedded images were
-reviewed). Pass that file as `import_exports`'s `--input`, with the existing scoped
+reviewed). Pass that file as `import_exports`<!-- mcp:source -->'s `--input`, with the existing scoped
 session flags. The host, not tool arguments, chooses the export root and reader.
 The batch is limited to eight files and the existing document acquisition ceiling
 in aggregate. The native window identifies the proposed files, account, sources,
@@ -225,7 +225,7 @@ open handles, or promise that another process made no copy.
 ### Disconnect and recover a connection
 
 Do not confuse disconnection with `disable`, which only pauses source collection.
-On a qualified endpoint, `disconnect_google` requests confirmation of the
+On a qualified endpoint, `disconnect_google`<!-- mcp:source --> requests confirmation of the
 exact account and OAuth client. The warning matters: provider revocation can
 affect this user's other grants across the same Google Cloud project, not just
 the current task. Saved evidence is not deleted and delivered content cannot be
@@ -243,13 +243,13 @@ do not silently retry it. The control remains responsive during acquisition and
 prevents the disabled connection from publishing or delivering affected evidence.
 Replayed old requests cannot revoke or overwrite a replacement connection.
 
-Remain disconnected by default. `reconnect_google` requests separate warned
+Remain disconnected by default. `reconnect_google`<!-- mcp:source --> requests separate warned
 recovery after the old local sender has stopped. A delayed provider revocation may
 still invalidate the replacement grant. `google_recovery_awaiting_consent` means
 fresh Google consent is still needed, not that access has resumed or the earlier
 revocation was resolved. Recovery never silently opens sign-in.
 After separately completing consent for a user-linked source, use scoped
-`inspect` on the existing saved reference to check restored access. Do not capture
+`inspect`<!-- mcp:source --> on the existing saved reference to check restored access. Do not capture
 another version merely to prove recovery, or reinterpret a capture identity
 conflict as a reason to weaken the archive's guards.
 
