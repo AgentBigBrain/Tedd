@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 import unittest
 import zipfile
 import zlib
@@ -306,14 +305,22 @@ class OfficeLayoutTransportTests(unittest.TestCase):
         self.assert_cleaned()
 
     def test_deadline_during_partial_upload_reaps_worker(self) -> None:
-        self.worker_body("sys.stdin.buffer.read(1)\ntime.sleep(20)\n")
-        started = time.monotonic()
+        ready = self.root / "ready"
+        self.worker_body(
+            "assert sys.stdin.buffer.read(1) == b'p'\n(root / 'ready').touch()\ntime.sleep(30)\n"
+        )
+        # Advance only the host's deadline clock. The pipe transfer keeps its real timeout.
+        timeout = 15
         with (
-            mock.patch.object(self.host, "DOCUMENT_WALL_SECONDS", 0.3),
-            self.assertRaisesRegex(SourceArchiveError, "capability_unavailable"),
+            mock.patch.object(self.host, "DOCUMENT_WALL_SECONDS", timeout),
+            mock.patch.object(self.host, "time") as clock,
+            self.assertRaisesRegex(SourceArchiveError, "capability_unavailable") as refusal,
         ):
+            clock.monotonic.side_effect = lambda: timeout if ready.is_file() else 0
             self.read(b"p" * (2 * 1024**2))
-        self.assertLess(time.monotonic() - started, 3)
+        self.assertTrue(ready.is_file(), "worker must have started reading the upload")
+        # Both the host deadline and subprocess.communicate's timeout use this refusal code.
+        self.assertNotIsInstance(refusal.exception.__context__, subprocess.TimeoutExpired)
         self.assert_cleaned()
 
     @unittest.skipIf(os.name == "nt", "POSIX session descendants; Windows uses worker Jobs")
