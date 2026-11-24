@@ -9,6 +9,8 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Exercise the documented save, inbox, source archive, upgrade recovery, fact sheet, and missing-store procedures against disposable fixtures in the test suite.
+
 - The developer quality check reports new or growing functions above the reviewed
   complexity and statement limits. The full suite now requires 70% coverage
   with branches enabled on Linux, Windows, and macOS.

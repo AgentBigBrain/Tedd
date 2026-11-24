@@ -58,6 +58,8 @@ For the sample restore check, set `graph_config` to the disposable graph's confi
 
 Use the agent, task, and consumer from registration, the current run ID, and the watermark the task actually read. The Bash array keeps those inputs identical for both commands. Include `--parent-task-id` if the consumer was registered with a parent.
 
+<!-- procedure: preview-save -->
+
 ```bash
 capture_args=(
   --input "$packet" --consumer-id "$consumer_id"
@@ -71,6 +73,8 @@ python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
 
 Review the summary. For `would_capture`, set `fingerprint` to the returned `fingerprint` and apply the reviewed plan.
 
+<!-- procedure: apply-save -->
+
 ```bash
 python3 -B scripts/knowledge_graph.py --config "$graph_config" capture \
   "${capture_args[@]}" --expect-fingerprint "$fingerprint" --expect-plan-file "$plan_file"
@@ -78,6 +82,14 @@ python3 -B scripts/knowledge_graph.py --config "$graph_config" validate
 ```
 
 For `captured`, use `get --id` with the `record_id` from each `changed` entry. For this example, check the observation's wording and subject, then the title of the record in `sources`. The default output withholds the observation's `source_ref`.
+
+For each returned `record_id`, run:
+
+<!-- procedure: read-saved-record -->
+
+```bash
+python3 -B scripts/knowledge_graph.py --config "$graph_config" get --id "$record_id"
+```
 
 These file options are v4-only. Use a private current-user directory
 (0700 on POSIX, equivalent private Windows ACL), with no symlink/reparse path

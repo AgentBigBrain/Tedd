@@ -26,6 +26,8 @@ Intake returns `not_preserved` with `excluded_input` for a note under `.git`,
 `credentials.json`. The `.codex` directory rule has one exception for the
 individual file selected from `<CODEX_HOME>/attachments/<group>/<file>`.
 
+<!-- procedure: source-note -->
+
 ```text
 Synthetic documentation fixture.
 The worker must not stop while any job is queued.
@@ -50,6 +52,8 @@ uppercase placeholders, including the generation **string** and capture time.
 The task/run values must match the command session. `interaction_id` identifies
 this actual acquisition encounter, and `tool_id` identifies its acquiring tool.
 Use a stable local principal already chosen for this scope.
+
+<!-- procedure: source-metadata -->
 
 ```json
 {
@@ -103,6 +107,8 @@ values do not assert continuity after a rename.
 Hash the actual file that will be acquired. This example retains the whole short
 note because both the rule and its exception are needed.
 
+<!-- procedure: source-intake -->
+
 ```bash
 source_input='/absolute/private/work/support-note.txt'
 metadata_file='/absolute/private/work/capture-metadata.json'
@@ -126,6 +132,8 @@ Build the source URI from the receipt's `ref.archive_id`, `ref.scope_id`,
 `ref.manifest_sha256` and `ref.anchor_id`, in that order:
 `tedd-source://<archive_id>/<scope_id>/<manifest_sha256>#<anchor_id>`.
 Do not guess a digest or assume an anchor such as `u1`.
+
+<!-- procedure: source-inspect -->
 
 ```bash
 source_uri='URI_ASSEMBLED_FROM_THE_RETURNED_REF'

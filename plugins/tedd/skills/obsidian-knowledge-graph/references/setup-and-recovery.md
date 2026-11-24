@@ -188,6 +188,10 @@ Native Windows uses `py -3` (or the configured Python) with the CLI until a
 native MCP launcher is qualified. MCP and adaptive routing are optional; neither
 makes subagents mandatory.
 
+Check the configured default store before initializing a graph:
+
+<!-- procedure: diagnose-store -->
+
 ```bash
 python3 -B scripts/knowledge_graph.py doctor
 ```
@@ -275,11 +279,15 @@ python3 -B scripts/knowledge_graph.py backup --output /absolute/private/path/gra
 
 Start with a verified backup of the v3 graph. Set `graph_config` to its existing configuration. Run the preview with the build you intend to use for the upgrade.
 
+<!-- procedure: upgrade-preview -->
+
 ```bash
 python3 -B scripts/knowledge_graph.py --config "$graph_config" upgrade-v4 --dry-run
 ```
 
 For `would_upgrade`, check `plan.source_path` and `plan.target_path`. Save `source_sha256`, `plan_fingerprint`, and `plan.source_watermark` from that preview. Use them below with the actual agent, task, and run IDs. Include `--parent-task-id` when the task has a parent. If you select a custom `--backup-output`, keep that path with the reviewed command.
+
+<!-- procedure: upgrade-apply -->
 
 ```bash
 python3 -B scripts/knowledge_graph.py --config "$graph_config" upgrade-v4 --apply \
@@ -290,6 +298,8 @@ python3 -B scripts/knowledge_graph.py --config "$graph_config" upgrade-v4 --appl
 ```
 
 Tedd preserves the exact v3 bytes, builds v4 alongside them, and verifies that the current records match before switching the configuration. It marks the old v3 path to prevent stale writers from using it. Expect `upgraded_and_activated` and `config_switched: true`. Check that the same configuration opens a healthy v4 graph.
+
+<!-- procedure: verify-upgrade -->
 
 ```bash
 python3 -B scripts/knowledge_graph.py --config "$graph_config" doctor
