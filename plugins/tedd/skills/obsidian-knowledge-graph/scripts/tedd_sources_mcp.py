@@ -13,9 +13,12 @@ import argparse
 import time
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, ExitStack, closing, contextmanager
+from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import cast
 
+from tedd_knowledge_graph.source_authority import AccessDecision
 from tedd_knowledge_graph.source_contracts import (
     MANIFEST_BYTES,
     SourceArchiveError,
@@ -170,18 +173,15 @@ class SourceOperations:
     def _intake_request(self, args: argparse.Namespace, turn: SourceTurn) -> IntakeFileRequest:
         from tedd_sources import intake_file_request
 
-        def argument(path: Path | None) -> str | None:
-            return str(path) if path is not None else None
-
         page = args.document_page
         helpers = IntakeHelpers(
-            reader_python=argument(self._reader_python),
-            svg_renderer=argument(self._svg_renderer),
-            svg_font=argument(self._svg_font),
-            av1_validator=argument(self._av1_validator),
-            renderer=argument(self._renderer) if page is not None else None,
-            office_converter=argument(self._office_converter) if page is not None else None,
-            office_work_root=argument(self._office_work_root) if page is not None else None,
+            reader_python=_path_argument(self._reader_python),
+            svg_renderer=_path_argument(self._svg_renderer),
+            svg_font=_path_argument(self._svg_font),
+            av1_validator=_path_argument(self._av1_validator),
+            renderer=_path_argument(self._renderer) if page is not None else None,
+            office_converter=_path_argument(self._office_converter) if page is not None else None,
+            office_work_root=_path_argument(self._office_work_root) if page is not None else None,
         )
         request = intake_file_request(args, host_helpers=helpers)
         if page is not None and self._reader is None and self._office_converter is None:
@@ -189,15 +189,8 @@ class SourceOperations:
         turn.authorize_local(request.input)
         return request
 
-    def __call__(self, command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
-        import knowledge_graph_v4 as v4
-        import knowledge_graph_v4_capture as graph_capture
-        import knowledge_graph_v4_cli as graph_cli
+    def _parse(self, command: str, argv: list[str]) -> argparse.Namespace:
         import tedd_sources
-        from tedd_knowledge_graph import source_google_oauth
-        from tedd_knowledge_graph.source_viewer import PrivateViewer
-
-        turn.local_delivery_hold = None
 
         if command not in SOURCE_COMMANDS or any(arg in {"--help", "-h"} for arg in argv):
             raise SourceArchiveError("capability_unavailable")
@@ -207,331 +200,407 @@ class SourceOperations:
             else tedd_sources.parser()
         )
         try:
-            args = command_parser.parse_args(["--config", str(self._config), command, *argv])
+            return command_parser.parse_args(["--config", str(self._config), command, *argv])
         except tedd_sources.graph.CLIArgumentError as error:
             raise SourceArchiveError("invalid_request") from error
-        intake = self._intake_request(args, turn) if command == "intake-file" else None
-        if command in ("render-image", "owner-view"):
-            if (
-                args.svg_renderer is not None
-                or args.svg_font is not None
-                or args.av1_validator is not None
+
+    def _image_helpers(self, args: argparse.Namespace) -> None:
+        if (
+            args.svg_renderer is not None
+            or args.svg_font is not None
+            or args.av1_validator is not None
+        ):
+            raise SourceArchiveError("scope_denied")
+        args.svg_renderer = _path_argument(self._svg_renderer)
+        args.svg_font = _path_argument(self._svg_font)
+        args.av1_validator = _path_argument(self._av1_validator)
+
+    def _office_helpers(self, args: argparse.Namespace) -> None:
+        if args.office_converter is not None or args.office_work_root is not None:
+            raise SourceArchiveError("scope_denied")
+        if args.document_page is not None:
+            if self._reader is None and (
+                self._office_converter is None or self._office_work_root is None
             ):
-                raise SourceArchiveError("scope_denied")
-            args.svg_renderer = str(self._svg_renderer) if self._svg_renderer is not None else None
-            args.svg_font = str(self._svg_font) if self._svg_font is not None else None
-            args.av1_validator = (
-                str(self._av1_validator) if self._av1_validator is not None else None
-            )
-        if command in ("owner-view", "render-document"):
-            if args.office_converter is not None or args.office_work_root is not None:
-                raise SourceArchiveError("scope_denied")
-            if args.document_page is not None:
-                if self._reader is None and (
-                    self._office_converter is None or self._office_work_root is None
-                ):
-                    raise SourceArchiveError("capability_unavailable")
-                args.office_converter = (
-                    str(self._office_converter) if self._office_converter is not None else None
-                )
-                args.office_work_root = (
-                    str(self._office_work_root) if self._office_work_root is not None else None
-                )
-            if command == "render-document":
-                if args.renderer is not None:
-                    raise SourceArchiveError("scope_denied")
-                if args.document_page is not None:
-                    args.renderer = str(self._renderer)
-        if command in ("render-image", "render-document", "import-exports"):
-            # A model cannot select an executable or substitute its workflow state.
-            if args.reader_python is not None:
-                raise SourceArchiveError("scope_denied")
-            args.reader_python = str(self._reader_python) if self._reader_python else None
+                raise SourceArchiveError("capability_unavailable")
+            args.office_converter = _path_argument(self._office_converter)
+            args.office_work_root = _path_argument(self._office_work_root)
+
+    def _document_renderer(self, args: argparse.Namespace) -> None:
+        if args.renderer is not None:
+            raise SourceArchiveError("scope_denied")
+        if args.document_page is not None:
+            args.renderer = str(self._renderer)
+
+    def _reader_helper(self, args: argparse.Namespace) -> None:
+        # A model cannot select an executable or substitute its workflow state.
+        if args.reader_python is not None:
+            raise SourceArchiveError("scope_denied")
+        args.reader_python = _path_argument(self._reader_python)
+
+    def _viewer_helpers(self, args: argparse.Namespace) -> None:
+        if args.reader_python is not None or args.renderer is not None:
+            raise SourceArchiveError("scope_denied")
+        if args.page is not None or args.document_page is not None:
+            if self._reader is None and (self._reader_python is None or self._renderer is None):
+                raise SourceArchiveError("capability_unavailable")
+            args.reader_python = _path_argument(self._reader_python)
+            args.renderer = _path_argument(self._renderer)
+        elif args.image:
+            if self._reader is None and self._reader_python is None:
+                raise SourceArchiveError("capability_unavailable")
+            args.reader_python = _path_argument(self._reader_python)
+
+    # Apply each command's checks in order so a refusal keeps its original cause.
+    _HELPER_RULES = {
+        "render-image": (_image_helpers, _reader_helper),
+        "render-document": (_office_helpers, _document_renderer, _reader_helper),
+        "owner-view": (_image_helpers, _office_helpers, _viewer_helpers),
+        "import-exports": (_reader_helper,),
+    }
+
+    def _apply_helper_policy(self, command: str, args: argparse.Namespace) -> None:
+        for apply in self._HELPER_RULES.get(command, ()):
+            apply(self, args)
         if command in {"capture-google", "list-google"} and self._client is None:
             raise SourceArchiveError("capability_unavailable")
-        if command == "owner-view":
-            if args.reader_python is not None or args.renderer is not None:
-                raise SourceArchiveError("scope_denied")
-            if args.page is not None or args.document_page is not None:
-                if self._reader is None and (self._reader_python is None or self._renderer is None):
-                    raise SourceArchiveError("capability_unavailable")
-                args.reader_python = (
-                    str(self._reader_python) if self._reader_python is not None else None
-                )
-                args.renderer = str(self._renderer) if self._renderer is not None else None
-            elif args.image:
-                if self._reader is None and self._reader_python is None:
-                    raise SourceArchiveError("capability_unavailable")
-                args.reader_python = (
-                    str(self._reader_python) if self._reader_python is not None else None
-                )
-        expected_session = (
-            intake.session
-            if intake is not None
-            else GraphReadSession(
-                args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
-            )
-        )
 
-        def active() -> None:
-            if turn.cancelled.is_set():
-                raise SourceArchiveError("scope_denied")
+    def _google_session(
+        self, command: str, turn: SourceTurn, scope: SourceScope, resource: str
+    ) -> GoogleSourceSession:
+        from tedd_knowledge_graph import source_google_oauth
 
-        def google_session(scope: SourceScope, resource: str) -> GoogleSourceSession:
-            active()
-            # An operation that already used provider bytes keeps that generation
-            # through publication and viewing. Recovery authorizes new work, not
-            # a paused old operation or a fresh sign-in on its behalf.
-            if turn.provider_hold is not None:
-                with turn.provider_hold():
-                    pass
-            client, account = self._client, self._account
-            if client is None or account is None:
-                raise SourceArchiveError("capability_unavailable")
-            persistent = self._credentials is not None
-            if persistent and not (turn.google_files or turn.google_folders):
-                raise SourceArchiveError("scope_denied")
-            if self._credentials is not None:
-                self._credential_root()
-            session = self._google
-            if (
-                session is None
-                or session.scope != scope
-                or (not session.folder_ids and resource not in session.selected_ids)
-                or (
-                    persistent
-                    and (
-                        self._google_turn is not turn
-                        or session.selected_ids != turn.google_files
-                        or session.folder_ids != turn.google_folders
-                    )
-                )
-                or session.expires_at <= time.monotonic()
-            ):
-                if not persistent and command in {"lookup", "capture", "source-evidence"}:
-                    raise SourceArchiveError("scope_denied")
-                self.close()
-                session = source_google_oauth.sign_in(
-                    client,
-                    account=account,
-                    scope=scope,
-                    cancelled=turn.cancelled,
-                    credentials=self._credentials,
-                    selected_ids=turn.google_files if persistent else frozenset(),
-                    folder_ids=turn.google_folders if persistent else frozenset(),
-                )
-                self._google = session
-                self._google_turn = turn
-            active()
-            with session.hold():
-                pass
-            if turn.provider_hold is None:
-                turn.provider_hold = session.hold
-            # Recheck after any unlocked sign-in/refresh, but never replace the
-            # first fence with the replacement session's newer generation.
+        _require_active(turn)
+        # An operation that already used provider bytes keeps that generation
+        # through publication and viewing. Recovery authorizes new work, not
+        # a paused old operation or a fresh sign-in on its behalf.
+        if turn.provider_hold is not None:
             with turn.provider_hold():
                 pass
-            if not session.folder_ids and resource not in session.selected_ids:
-                self.close()
-                raise SourceArchiveError("scope_denied")
-            return session
-
-        def google(source: SourceMetadata) -> GoogleSourceSession:
-            if command in {"capture-google", "capture"}:
-                turn.check_retention(source)
-            return google_session(source.scope, source.source_id)
-
-        def list_google(scope: SourceScope, folder: str, page: str) -> dict[str, object]:
-            if self._credentials is None or not turn.google_folders:
-                raise SourceArchiveError("scope_denied")
-            result = google_session(scope, folder).list_folder(folder, page)
-            active()
-            return result
-
-        @contextmanager
-        def collecting(session: GraphReadSession, scope: SourceScope) -> Iterator[None]:
-            if intake is not None:
-                subjects = intake.subject_ids
-            else:
-                subjects = args.source_subject_id if command == "capture" else args.subject_id
-            if session != expected_session or set(scope.subject_ids) != set(subjects):
-                raise SourceArchiveError("scope_denied")
-            with turn.delivery():
-                yield
-
-        def acquire(source: SourceMetadata, maximum: int) -> bytes:
-            payload = google(source).acquire(source, maximum)
-            active()
-            return payload
-
-        active()
-        try:
-            with ExitStack() as stack:
-                viewer = None
-                if command == "owner-view":
-                    if not args.private_viewer:
-                        raise SourceArchiveError("capability_unavailable")
-                    viewer = PrivateViewer()
-                    stack.callback(viewer.close)
-
-                def display(excerpt: SourceExcerpt) -> None:
-                    assert viewer is not None
-                    with turn.delivery():
-                        viewer.display(excerpt)
-
-                def display_image(ref: SourceRef, png: bytes) -> None:
-                    assert viewer is not None
-                    with turn.delivery():
-                        viewer.display_image(ref, png)
-
-                def display_rendering(rendering: ReviewRendering, png: bytes) -> None:
-                    assert viewer is not None
-                    with turn.delivery():
-                        viewer.display_rendering(rendering, png)
-
-                def confirm_exports(description: str) -> bool:
-                    active()
-                    with ExitStack() as confirmation_stack:
-                        confirmation = PrivateViewer(confirmation=True)
-                        confirmation_stack.callback(confirmation.close)
-                        return confirmation.confirm(description, turn.cancelled, exports=True)
-
-                def review_owner_image(
-                    rendering: ReviewRendering, png: bytes, handoff: AbstractContextManager[None]
-                ) -> bool:
-                    active()
-                    with closing(PrivateViewer(confirmation=True)) as confirmation:
-                        return confirmation.review_image(
-                            rendering, png, turn.cancelled, handoff=handoff
-                        )
-
-                def retain_delivery(
-                    reservation: Callable[[], AbstractContextManager[None]],
-                ) -> None:
-                    @contextmanager
-                    def local_release() -> Iterator[None]:
-                        with ExitStack() as ownership:
-                            try:
-                                ownership.enter_context(reservation())
-                            except SourceArchiveError:
-                                raise
-                            except (OSError, ValueError, v4.V4Error):
-                                raise SourceArchiveError("source_unavailable") from None
-                            # Transport exceptions propagate to the actual sender;
-                            # do not turn a partial write into a second response.
-                            yield
-
-                    turn.local_delivery_hold = local_release
-
-                host = SourceHost(
-                    reader=self._reader,
-                    cancelled=turn.cancelled,
-                    reviews=turn.reviews,
-                    review_owner_image=review_owner_image,
-                    authorize_local=turn.authorize_local,
-                    export_root=self._browser_export_root,
-                    confirm_exports=confirm_exports if self._browser_export_root else None,
-                    check_retention=turn.check_retention,
-                    list_google=list_google,
-                    prepare_google=lambda source: google(source).prepare(source),
-                    acquire_google=acquire,
-                    provider_check=lambda source, checksum, operation, audience: google(
-                        source
-                    ).check(source, checksum, operation, audience),
-                    collecting=collecting,
-                    retain_delivery=retain_delivery,
-                    display_owner=display if viewer else None,
-                    display_owner_image=display_image if viewer else None,
-                    display_owner_rendering=display_rendering if viewer else None,
+        client, account = self._client, self._account
+        if client is None or account is None:
+            raise SourceArchiveError("capability_unavailable")
+        persistent = self._credentials is not None
+        if persistent and not (turn.google_files or turn.google_folders):
+            raise SourceArchiveError("scope_denied")
+        if self._credentials is not None:
+            self._credential_root()
+        session = self._google
+        if (
+            session is None
+            or session.scope != scope
+            or (not session.folder_ids and resource not in session.selected_ids)
+            or (
+                persistent
+                and (
+                    self._google_turn is not turn
+                    or session.selected_ids != turn.google_files
+                    or session.folder_ids != turn.google_folders
                 )
-                if command in {"capture", "source-evidence"}:
-                    _, config = tedd_sources.load_config(self._config)
-                    store_path = tedd_sources.graph.secure_state_path(
-                        config.get("store_path"), "Canonical store"
+            )
+            or session.expires_at <= time.monotonic()
+        ):
+            if not persistent and command in {"lookup", "capture", "source-evidence"}:
+                raise SourceArchiveError("scope_denied")
+            self.close()
+            session = source_google_oauth.sign_in(
+                client,
+                account=account,
+                scope=scope,
+                cancelled=turn.cancelled,
+                credentials=self._credentials,
+                selected_ids=turn.google_files if persistent else frozenset(),
+                folder_ids=turn.google_folders if persistent else frozenset(),
+            )
+            self._google = session
+            self._google_turn = turn
+        _require_active(turn)
+        with session.hold():
+            pass
+        if turn.provider_hold is None:
+            turn.provider_hold = session.hold
+        # Recheck after any unlocked sign-in/refresh, but never replace the
+        # first fence with the replacement session's newer generation.
+        with turn.provider_hold():
+            pass
+        if not session.folder_ids and resource not in session.selected_ids:
+            self.close()
+            raise SourceArchiveError("scope_denied")
+        return session
+
+    @contextmanager
+    def _build_host(
+        self,
+        command: str,
+        args: argparse.Namespace,
+        turn: SourceTurn,
+        collecting: Callable[[GraphReadSession, SourceScope], AbstractContextManager[None]],
+    ) -> Iterator[SourceHost]:
+        from tedd_knowledge_graph.source_viewer import PrivateViewer
+
+        google = _GoogleAccess(
+            command,
+            turn,
+            persistent=self._credentials is not None,
+            session_for=partial(self._google_session, command, turn),
+        )
+        with ExitStack() as stack:
+            viewer = None
+            if command == "owner-view":
+                if not args.private_viewer:
+                    raise SourceArchiveError("capability_unavailable")
+                viewer = PrivateViewer()
+                stack.callback(viewer.close)
+
+            def display(excerpt: SourceExcerpt) -> None:
+                assert viewer is not None
+                with turn.delivery():
+                    viewer.display(excerpt)
+
+            def display_image(ref: SourceRef, png: bytes) -> None:
+                assert viewer is not None
+                with turn.delivery():
+                    viewer.display_image(ref, png)
+
+            def display_rendering(rendering: ReviewRendering, png: bytes) -> None:
+                assert viewer is not None
+                with turn.delivery():
+                    viewer.display_rendering(rendering, png)
+
+            def confirm_exports(description: str) -> bool:
+                _require_active(turn)
+                with closing(PrivateViewer(confirmation=True)) as confirmation:
+                    return confirmation.confirm(description, turn.cancelled, exports=True)
+
+            def review_owner_image(
+                rendering: ReviewRendering, png: bytes, handoff: AbstractContextManager[None]
+            ) -> bool:
+                _require_active(turn)
+                with closing(PrivateViewer(confirmation=True)) as confirmation:
+                    return confirmation.review_image(
+                        rendering, png, turn.cancelled, handoff=handoff
                     )
-                    if command == "source-evidence":
-                        with v4.open_store(store_path, readonly=True) as store:
-                            result = tedd_sources.evidence_command(
-                                args, store, store_path, host=host
-                            )
-                    else:
 
-                        def capture(
-                            store: object, request: graph_capture.CaptureRequest
-                        ) -> dict[str, object]:
-                            from tedd_knowledge_graph.source_contracts import parse_source_uri
+            yield SourceHost(
+                reader=self._reader,
+                cancelled=turn.cancelled,
+                reviews=turn.reviews,
+                review_owner_image=review_owner_image,
+                authorize_local=turn.authorize_local,
+                export_root=self._browser_export_root,
+                confirm_exports=confirm_exports if self._browser_export_root else None,
+                check_retention=turn.check_retention,
+                list_google=google.list_folder,
+                prepare_google=google.prepare,
+                acquire_google=google.acquire,
+                provider_check=google.check,
+                collecting=collecting,
+                retain_delivery=partial(_retain_delivery, turn),
+                display_owner=display if viewer else None,
+                display_owner_image=display_image if viewer else None,
+                display_owner_rendering=display_rendering if viewer else None,
+            )
 
-                            if (
-                                request.input_bytes is None
-                                or request.source_subscription_id is None
-                            ):
-                                raise SourceArchiveError("scope_denied")
-                            packet = parse_json(request.input_bytes)
-                            source = packet.get("source") if isinstance(packet, dict) else None
-                            if not isinstance(source, dict):
-                                raise SourceArchiveError("scope_denied")
-                            uri = source.get("uri")
-                            if not isinstance(uri, str):
-                                raise SourceArchiveError("scope_denied")
-                            reference = parse_source_uri(uri)
-                            active()
-                            result = graph_capture.execute_capture(store, request, source_host=host)
-                            if result.get("status") == "captured" and isinstance(
-                                store, v4.KnowledgeGraphV4
-                            ):
-                                changed = result.get("changed_ids")
-                                if isinstance(changed, list):
-                                    bound = [
-                                        SourceProgress(
-                                            "bound",
-                                            ref=reference,
-                                            memory_id=str(record["record_id"]),
-                                        )
-                                        for record in store.get_records(
-                                            str(item) for item in changed
-                                        )
-                                        if record.get("collection") == "claims"
-                                    ]
-                                    if bound:
-                                        result = {
-                                            **result,
-                                            "stage": "bound",
-                                            "bound_memories": [item.as_dict() for item in bound],
-                                        }
-                            return result
-
-                        # The original dry-run/fingerprint/apply contract and review
-                        # sanitizer are retained; this is not a general graph-write tool.
-                        from knowledge_graph_v4_integration import sanitize_review_safe_value
-
-                        if args.mode != "review_safe" or args.input == "-":
-                            raise SourceArchiveError("scope_denied")
-                        response = graph_cli.handle_v4_command(
-                            args,
-                            db_path=store_path,
-                            capture_handler=capture,
-                            review_sanitizer=sanitize_review_safe_value,
-                        )
-                        if response is None:
-                            raise SourceArchiveError("capability_unavailable")
-                        result = dict(response)
+    def __call__(self, command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
+        turn.local_delivery_hold = None
+        args = self._parse(command, argv)
+        intake = self._intake_request(args, turn) if command == "intake-file" else None
+        self._apply_helper_policy(command, args)
+        collecting = _collection_guard(command, args, intake, turn)
+        _require_active(turn)
+        try:
+            with self._build_host(command, args, turn, collecting) as host:
+                if command == "source-evidence":
+                    result = _run_evidence(args, self._config, host)
+                elif command == "capture":
+                    result = _run_bind_memory(args, self._config, host, turn)
                 else:
-                    result = tedd_sources.execute(intake if intake is not None else args, host=host)
-                active()
-                # The existing CLI's serializer checks data shapes; MCP additionally
-                # bounds the final JSON-RPC response. No arbitrary objects escape.
-                return cast(
-                    JsonObject,
-                    parse_json(
-                        encode(result),
-                        maximum_bytes=MAX_RESPONSE_BYTES
-                        if "png_base64" in result
-                        else MANIFEST_BYTES,
-                    ),
-                )
+                    result = _run_command(intake if intake is not None else args, host)
+                _require_active(turn)
+                return _bounded(result)
         finally:
             if turn.cancelled.is_set():
                 self.close()
+
+
+def _path_argument(path: Path | None) -> str | None:
+    return str(path) if path is not None else None
+
+
+def _require_active(turn: SourceTurn) -> None:
+    if turn.cancelled.is_set():
+        raise SourceArchiveError("scope_denied")
+
+
+@dataclass(frozen=True, repr=False)
+class _GoogleAccess:
+    command: str
+    turn: SourceTurn
+    persistent: bool
+    session_for: Callable[[SourceScope, str], GoogleSourceSession]
+
+    def _source_session(self, source: SourceMetadata) -> GoogleSourceSession:
+        if self.command in {"capture-google", "capture"}:
+            self.turn.check_retention(source)
+        return self.session_for(source.scope, source.source_id)
+
+    def list_folder(self, scope: SourceScope, folder: str, page: str) -> dict[str, object]:
+        if not self.persistent or not self.turn.google_folders:
+            raise SourceArchiveError("scope_denied")
+        result = self.session_for(scope, folder).list_folder(folder, page)
+        _require_active(self.turn)
+        return result
+
+    def prepare(self, source: SourceMetadata) -> SourceMetadata:
+        return self._source_session(source).prepare(source)
+
+    def acquire(self, source: SourceMetadata, maximum: int) -> bytes:
+        payload = self._source_session(source).acquire(source, maximum)
+        _require_active(self.turn)
+        return payload
+
+    def check(
+        self, source: SourceMetadata, checksum: str, operation: str, audience: str
+    ) -> AccessDecision:
+        return self._source_session(source).check(source, checksum, operation, audience)
+
+
+def _collection_guard(
+    command: str,
+    args: argparse.Namespace,
+    intake: IntakeFileRequest | None,
+    turn: SourceTurn,
+) -> Callable[[GraphReadSession, SourceScope], AbstractContextManager[None]]:
+    expected_session = (
+        intake.session
+        if intake is not None
+        else GraphReadSession(
+            args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+        )
+    )
+
+    @contextmanager
+    def collecting(session: GraphReadSession, scope: SourceScope) -> Iterator[None]:
+        if intake is not None:
+            subjects = intake.subject_ids
+        else:
+            subjects = args.source_subject_id if command == "capture" else args.subject_id
+        if session != expected_session or set(scope.subject_ids) != set(subjects):
+            raise SourceArchiveError("scope_denied")
+        with turn.delivery():
+            yield
+
+    return collecting
+
+
+def _retain_delivery(
+    turn: SourceTurn, reservation: Callable[[], AbstractContextManager[None]]
+) -> None:
+    import knowledge_graph_v4 as v4
+
+    @contextmanager
+    def local_release() -> Iterator[None]:
+        with ExitStack() as ownership:
+            try:
+                ownership.enter_context(reservation())
+            except SourceArchiveError:
+                raise
+            except (OSError, ValueError, v4.V4Error):
+                raise SourceArchiveError("source_unavailable") from None
+            # Transport exceptions propagate to the actual sender;
+            # do not turn a partial write into a second response.
+            yield
+
+    turn.local_delivery_hold = local_release
+
+
+def _store_path(config_path: Path) -> Path:
+    import tedd_sources
+
+    _, config = tedd_sources.load_config(config_path)
+    return tedd_sources.graph.secure_state_path(config.get("store_path"), "Canonical store")
+
+
+def _run_evidence(
+    args: argparse.Namespace, config_path: Path, host: SourceHost
+) -> dict[str, object]:
+    import knowledge_graph_v4 as v4
+    import tedd_sources
+
+    store_path = _store_path(config_path)
+    with v4.open_store(store_path, readonly=True) as store:
+        return tedd_sources.evidence_command(args, store, store_path, host=host)
+
+
+def _run_bind_memory(
+    args: argparse.Namespace, config_path: Path, host: SourceHost, turn: SourceTurn
+) -> dict[str, object]:
+    import knowledge_graph_v4 as v4
+    import knowledge_graph_v4_capture as graph_capture
+    import knowledge_graph_v4_cli as graph_cli
+    from knowledge_graph_v4_integration import sanitize_review_safe_value
+
+    store_path = _store_path(config_path)
+
+    def capture(store: object, request: graph_capture.CaptureRequest) -> dict[str, object]:
+        from tedd_knowledge_graph.source_contracts import parse_source_uri
+
+        if request.input_bytes is None or request.source_subscription_id is None:
+            raise SourceArchiveError("scope_denied")
+        packet = parse_json(request.input_bytes)
+        source = packet.get("source") if isinstance(packet, dict) else None
+        if not isinstance(source, dict):
+            raise SourceArchiveError("scope_denied")
+        uri = source.get("uri")
+        if not isinstance(uri, str):
+            raise SourceArchiveError("scope_denied")
+        reference = parse_source_uri(uri)
+        _require_active(turn)
+        result = graph_capture.execute_capture(store, request, source_host=host)
+        if result.get("status") == "captured" and isinstance(store, v4.KnowledgeGraphV4):
+            changed = result.get("changed_ids")
+            if isinstance(changed, list):
+                bound = [
+                    SourceProgress(
+                        "bound",
+                        ref=reference,
+                        memory_id=str(record["record_id"]),
+                    )
+                    for record in store.get_records(str(item) for item in changed)
+                    if record.get("collection") == "claims"
+                ]
+                if bound:
+                    result = {
+                        **result,
+                        "stage": "bound",
+                        "bound_memories": [item.as_dict() for item in bound],
+                    }
+        return result
+
+    if args.mode != "review_safe" or args.input == "-":
+        raise SourceArchiveError("scope_denied")
+    response = graph_cli.handle_v4_command(
+        args,
+        db_path=store_path,
+        capture_handler=capture,
+        review_sanitizer=sanitize_review_safe_value,
+    )
+    if response is None:
+        raise SourceArchiveError("capability_unavailable")
+    return dict(response)
+
+
+def _run_command(
+    request: argparse.Namespace | IntakeFileRequest, host: SourceHost
+) -> dict[str, object]:
+    import tedd_sources
+
+    return tedd_sources.execute(request, host=host)
+
+
+def _bounded(result: dict[str, object]) -> JsonObject:
+    limit = MAX_RESPONSE_BYTES if "png_base64" in result else MANIFEST_BYTES
+    return cast(JsonObject, parse_json(encode(result), maximum_bytes=limit))
 
 
 def main(argv: list[str] | None = None) -> int:

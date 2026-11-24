@@ -9,6 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Split source MCP command handling into smaller stages while preserving the
+  existing tool arguments, permission checks, and response limits.
+
 - Start the Office upload deadline test after the worker reads its first byte
   so slower CI runners exercise the same cleanup path.
 
