@@ -20,11 +20,12 @@ GRAPH_SCRIPTS = ROOT / "plugins/tedd/skills/obsidian-knowledge-graph/scripts"
 TEDD_SCRIPTS = ROOT / "plugins/tedd/skills/tedd/scripts"
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 FENCED_SHELL = re.compile(
-    r"^```(bash|sh|powershell)[ \t]*\n(.*?)^```[ \t]*$", re.MULTILINE | re.DOTALL
+    r"^[ \t]*```(bash|sh|shell|powershell|pwsh)[ \t]*\n(.*?)^[ \t]*```[ \t]*$",
+    re.MULTILINE | re.DOTALL,
 )
 FENCED_JSON = re.compile(r"```json\n(.*?)```", re.DOTALL)
 PYTHON_CALL = re.compile(
-    r"^(?:\$\w+\s*=\s*)?(?:python3?(?:\.exe)?|py(?:\.exe)?|&\s+(?:\$\w+|\"[^\"]+\"|'[^']+'))\s+"
+    r"^(?:\$\w+\s*=\s*)?(?:python(?:3(?:\.\d+)?)?(?:\.exe)?|py(?:\.exe)?|&\s+(?:\$\w+|\"[^\"]+\"|'[^']+'))\s+"
 )
 PS_ARRAY = re.compile(r"\$(\w+)\s*(\+?=)\s*@\(([^()]*)\)")
 PLACEHOLDER = re.compile(r"(?:\$(?:\w+(?:\.\w+)*|\{\w+\})|<[^<>]+>)\Z")
@@ -232,7 +233,7 @@ def check_cli_examples(files: list[Path]) -> tuple[list[str], int]:
     for path in files:
         markdown = path.read_text(encoding="utf-8")
         for match in FENCED_SHELL.finditer(markdown):
-            powershell = match[1] == "powershell"
+            powershell = match[1] in {"powershell", "pwsh"}
             arrays: dict[str, list[str]] = {}
             block = match[2].replace("`\n" if powershell else "\\\n", " ")
             for line in block.splitlines():
@@ -279,7 +280,7 @@ def mcp_tool_inputs() -> dict[str, dict[str, set[str]]]:
     return result
 
 
-MCP_MARKER = re.compile(r"<!-- mcp:([^>]*?) -->")
+MCP_MARKER = re.compile(r"<!--[ \t]*mcp:([^>\n]*?)[ \t]*-->")
 INLINE_REFERENCE = re.compile(r"`([^`\n]+)`\Z")
 
 

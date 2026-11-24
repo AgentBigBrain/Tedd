@@ -141,9 +141,12 @@ git diff --check
 ```
 
 On Windows use a qualified Python 3.10–3.14 interpreter, such as `py -3.10 -B`,
-in place of `python3 -B`. The checker reads fenced Bash, sh and PowerShell
-commands for the graph, source, profile, setup and MemoryBench CLIs. It passes
-their arguments to the shipped parsers, substitutes sample values for shell
+in place of `python3 -B`. Put each graph, source, profile, setup or MemoryBench
+command on its own line in a fenced block. Use `bash`, `sh` or `shell` for Bash,
+and `powershell` or `pwsh` for PowerShell. Fences can be indented inside a list.
+Show the direct Python invocation when the surrounding workflow uses command
+substitution, file redirection or a chain such as `&&`. The checker passes
+the command's arguments to the shipped parser, substitutes sample values for shell
 placeholders and checks explicit options in calls that expand a Bash array.
 The procedure tests exercise the examples that need real files or a database.
 
@@ -153,7 +156,10 @@ field, include the tool name in the comment, for example `mcp:graph.search_memor
 Put the same comment directly above a fenced JSON input object. The checker
 compares these references with the tool lists and top-level input properties
 published by the servers. A fenced JSON `tools/call` request already names its
-tool, so it needs no comment. Dated reports describe the versions tested.
+tool, so it needs no comment. Mark each new tool or input name in prose.
+Reviewers check unmarked prose and the values in examples, including choices
+such as `all` or `any` for the search match mode. Dated reports describe the
+versions tested.
 Output fields, host metadata and flags inside a
 source tool's `argv` belong to different interfaces.
 

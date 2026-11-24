@@ -17,6 +17,34 @@ import check_documentation as documentation  # noqa: E402
 
 
 class DocumentationContractTests(unittest.TestCase):
+    def test_indented_shell_fences_check_list_examples_and_stop_at_the_closing_fence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            guide = root / "identity.md"
+            guide.write_text(
+                "1. Initialize the profile.\n\n"
+                "   ```bash\n"
+                "   python3 -B scripts/tedd_profile.py init --name Reader --bad-init\n"
+                "   ```\n"
+                "2. Validate it.\n\n"
+                "   ```shell\n"
+                "   python3.12 -B scripts/tedd_profile.py validate --bad-validate\n"
+                "   ```\n"
+                "python3 scripts/tedd_profile.py validate --outside-the-fence\n"
+                "```pwsh\n"
+                "py -3 -B scripts\\tedd_profile.py validate --bad-pwsh\n"
+                "```\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(documentation, "ROOT", root):
+                errors, checked = documentation.check_cli_examples([guide])
+        self.assertEqual(checked, 3)
+        self.assertEqual(len(errors), 3, errors)
+        for error, option in zip(
+            errors, ("--bad-init", "--bad-validate", "--bad-pwsh"), strict=True
+        ):
+            self.assertIn(option, error)
+
     def test_full_cli_examples_distinguish_literals_placeholders_and_splats(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -56,7 +84,7 @@ class DocumentationContractTests(unittest.TestCase):
             guide.write_text(
                 "Use `search_memory`<!-- mcp:graph --> or `brain_status`<!-- mcp:source -->.\n"
                 "Set `match`<!-- mcp:graph.search_memory -->. "
-                "`query`<!-- mcp:source.lookup --> belongs to another tool.\n"
+                "`query`<!--mcp:source.lookup--> belongs to another tool.\n"
                 '`{"session_id":"s","turn_id":"t"}`<!-- mcp:source.begin_turn -->\n'
                 '<!-- mcp:graph.search_memory -->\n```json\n{"limti": 2}\n```\n'
                 '```json\n{"output_only": 1}\n```\n'
