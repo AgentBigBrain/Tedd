@@ -188,12 +188,12 @@ Native Windows uses `py -3` (or the configured Python) with the CLI until a
 native MCP launcher is qualified. MCP and adaptive routing are optional; neither
 makes subagents mandatory.
 
-With `graph_config` set to your chosen configuration file, check the store:
+Check the configured default store before initializing a graph:
 
 <!-- procedure: diagnose-store -->
 
 ```bash
-python3 -B scripts/knowledge_graph.py --config "$graph_config" doctor
+python3 -B scripts/knowledge_graph.py doctor
 ```
 
 If the user confirms this is a first installation, give them this command to run.

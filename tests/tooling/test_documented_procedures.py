@@ -17,6 +17,11 @@ from unittest.mock import patch
 import knowledge_graph as graph
 import knowledge_graph_v4 as v4
 import tedd_sources
+from platform_support import set_private_path_mode
+from tedd_knowledge_graph.v4_application_service import (
+    CURRENT_STATE_BUDGET_DIVISOR,
+    CURRENT_STATE_CHARS,
+)
 
 from tests.knowledge_graph.outcome_support import OutcomeFixture
 from tests.support.graph_cases import FIXED_TIME, V4TestCase, applied, change, make_v3_graph
@@ -46,6 +51,7 @@ class DocumentedProcedureTests(V4TestCase):
         super().setUp()
         graph_dir = self.root / "graph"
         graph_dir.mkdir(mode=0o700)
+        set_private_path_mode(graph_dir, 0o700)
         self.config = graph_dir / "config.json"
         self.store_path = graph_dir / "graph.sqlite3"
         self.values = {
@@ -73,7 +79,13 @@ class DocumentedProcedureTests(V4TestCase):
         return json.loads((err if expected else out).getvalue())
 
     def documented(
-        self, block: str, verb: str, *, expected: int = 0, capture_args: tuple[str, ...] = ()
+        self,
+        block: str,
+        verb: str,
+        *,
+        expected: int = 0,
+        capture_args: tuple[str, ...] = (),
+        default_config: bool = False,
     ) -> dict[str, Any]:
         # Run one documented Python invocation as argv. Shell assignments and substitutions
         # are supplied by the fixture, and no shell gets to interpret file paths.
@@ -82,10 +94,13 @@ class DocumentedProcedureTests(V4TestCase):
             for line in block.replace("\\\n", "").splitlines()
             if line.startswith("python3 -B scripts/")
         )
-        (call,) = [words for words in calls if words[5:6] == [verb]]
-        self.assertEqual(call[3:5], ["--config", "$graph_config"])
+        # Normal task commands use the host default. Rehearsals name their configuration.
+        # Match the documented form before binding either route to the disposable store.
+        prefix = [] if default_config else ["--config", "$graph_config"]
+        start = 3 + len(prefix)
+        (call,) = [words for words in calls if words[3 : start + 1] == [*prefix, verb]]
         args = []
-        for word in call[5:]:
+        for word in call[start:]:
             if word == "${capture_args[@]}":
                 args.extend(capture_args)
             else:
@@ -103,7 +118,8 @@ class DocumentedProcedureTests(V4TestCase):
 
     def configure_store(self, store: Path) -> None:
         vault = self.root / "vault"
-        vault.mkdir()
+        vault.mkdir(mode=0o700)
+        set_private_path_mode(vault, 0o700)
         self.graph_cli("configure", "--vault", str(vault), "--store", str(store))
         configured = Path(json.loads(self.config.read_text(encoding="utf-8"))["store_path"])
         self.assertTrue(configured.is_relative_to(self.root))
@@ -132,6 +148,7 @@ class DocumentedProcedureTests(V4TestCase):
     def test_reviewed_sample_packet_saves_and_reads_back_each_record(self) -> None:
         self.initialize(scoped=False)
         packet = example(REF / "capture-schema.md", "restore-packet", "json")
+        specimen = json.loads(packet)
         graph.atomic_write(Path(self.values["packet"]), packet)
         self.values["watermark"] = str(self.graph_cli("doctor")["graph"]["watermark"])
         block, args = self.capture_inputs()
@@ -153,10 +170,10 @@ class DocumentedProcedureTests(V4TestCase):
             read = self.documented(example(CAPTURE, "read-saved-record"), "get")
             records[entry["collection"]] = read["payload"]
         self.assertEqual(set(records), {"entities", "observations", "sources"})
-        self.assertEqual(records["sources"]["title"], "Sample restore check")
-        self.assertEqual(records["entities"]["name"], "Sample project")
+        self.assertEqual(records["sources"]["title"], specimen["source"]["title"])
+        self.assertEqual(records["entities"]["name"], specimen["entities"][0]["name"])
         observation = records["observations"]
-        self.assertEqual(observation["value"], "The sample backup opened successfully.")
+        self.assertEqual(observation["value"], specimen["observations"][0]["value"])
         self.assertEqual(observation["entity_refs"], [records["entities"]["id"]])
         self.assertEqual(observation["source_ref"], "[withheld in review_safe mode]")
 
@@ -176,7 +193,7 @@ class DocumentedProcedureTests(V4TestCase):
                     fingerprint=f"revision_{revision}",
                 )
         self.values["page_size"] = "1"
-        page = self.documented(example(PROTOCOL, "first-inbox-page"), "inbox")
+        page = self.documented(example(PROTOCOL, "first-inbox-page"), "inbox", default_config=True)
         self.values["snapshot_watermark"] = str(page["snapshot_watermark"])
         first_watermark = page["since_watermark"]
         rows = []
@@ -190,7 +207,9 @@ class DocumentedProcedureTests(V4TestCase):
             cursors.add(cursor)
             self.assertLessEqual(len(cursors), 3)
             self.values["next_cursor"] = cursor
-            page = self.documented(example(PROTOCOL, "next-inbox-page"), "inbox")
+            page = self.documented(
+                example(PROTOCOL, "next-inbox-page"), "inbox", default_config=True
+            )
             self.assertEqual(str(page["snapshot_watermark"]), self.values["snapshot_watermark"])
         self.assertGreaterEqual(len(cursors), 2)
         self.assertEqual(
@@ -198,7 +217,7 @@ class DocumentedProcedureTests(V4TestCase):
             list(range(first_watermark + 1, page["advance_to_watermark"] + 1)),
         )
         self.assertEqual(page["ack_token"], "[redacted secret]")
-        first = self.documented(example(PROTOCOL, "first-inbox-page"), "inbox")
+        first = self.documented(example(PROTOCOL, "first-inbox-page"), "inbox", default_config=True)
         self.assertEqual(first["changes"], rows[:1])
 
     def test_source_init_requires_an_unused_archive_path(self) -> None:
@@ -206,6 +225,7 @@ class DocumentedProcedureTests(V4TestCase):
         block = example(ARCHIVE, "source-setup")
         preexisting = self.root / "existing"
         preexisting.mkdir(mode=0o700)
+        set_private_path_mode(preexisting, 0o700)
         self.values["archive_root"] = str(preexisting)
         self.assertEqual(self.documented(block, "init", expected=1)["status"], "source_unavailable")
         self.assertEqual(list(preexisting.iterdir()), [])
@@ -294,12 +314,17 @@ class DocumentedProcedureTests(V4TestCase):
         self.assertEqual(inspected["source_version"], self.values["acquired_sha256"])
         self.assertEqual(inspected["units"][0]["text"], note.read_text(encoding="utf-8"))
 
-    def test_two_short_confirmed_facts_appear_in_the_documented_context(self) -> None:
+    def test_fact_sheet_considers_and_discloses_short_facts_within_documented_limits(self) -> None:
         self.initialize()
+        guide = (ROOT / "docs/MEMORY_WORKFLOW.md").read_text(encoding="utf-8")
+        limits = {
+            name: int(number.replace(",", ""))
+            for name, number in re.findall(r"<!-- sheet: (\w+) -->\s*([\d,]+)", guide)
+        }
         packet = OutcomeFixture.packet()
-        facts = {"provider": "Provider A", "version": "Version two"}
         packet["claims"] = [
-            OutcomeFixture.claim(k, val, family="deployment") for k, val in facts.items()
+            OutcomeFixture.claim(f"site_{i:02}", f"Provider {i}", family="deployment")
+            for i in range(16)
         ]
         graph.atomic_write(Path(self.values["packet"]), json.dumps(packet))
         self.values["watermark"] = str(self.graph_cli("doctor")["graph"]["watermark"])
@@ -308,13 +333,19 @@ class DocumentedProcedureTests(V4TestCase):
             "fingerprint"
         ]
         self.documented(example(CAPTURE, "apply-save"), "capture", capture_args=args)
-        result = self.documented(
-            example(ROOT / "docs/MEMORY_WORKFLOW.md", "read-fact-sheet"), "context"
-        )
-        expected = json.loads(example(ROOT / "docs/MEMORY_WORKFLOW.md", "fact-values", "json"))
-        self.assertCountEqual(
-            [item["value"] for item in result["current_state"]["items"]], expected
-        )
+        with v4.open_store(self.store_path, readonly=True) as store:
+            candidates = store.current_state(self.values["subscription_id"])
+        self.assertTrue(candidates["truncated"])
+        self.assertEqual(len(candidates["items"]), limits["candidates"])
+        self.assertEqual(limits["characters"], CURRENT_STATE_CHARS)
+        self.assertEqual(limits["percent"] * CURRENT_STATE_BUDGET_DIVISOR, 100)
+
+        result = self.documented(example(PROTOCOL, "task-context"), "context", default_config=True)
+        sheet = result["current_state"]
+        self.assertTrue(sheet["truncated"])
+        self.assertTrue(sheet["items"])
+        self.assertLess(len(sheet["items"]), len(candidates["items"]))
+        self.assertLessEqual(len(json.dumps(sheet, ensure_ascii=False)), limits["characters"])
 
     def test_missing_store_distinguishes_restore_from_first_installation(self) -> None:
         self.configure_store(self.store_path)
@@ -323,7 +354,7 @@ class DocumentedProcedureTests(V4TestCase):
             example(REF / "capture-schema.md", "restore-packet", "json"),
         )
         before = set(self.root.rglob("*"))
-        status = self.documented(example(RECOVERY, "diagnose-store"), "doctor")
+        status = self.documented(example(RECOVERY, "diagnose-store"), "doctor", default_config=True)
         self.assertEqual(status["store_state"], "missing")
         self.values["watermark"] = "0"
         block, args = self.capture_inputs()

@@ -48,8 +48,11 @@ from the existing task registration; display names are not substitutes for them.
 4. For a new archive, prepare a private local parent directory outside the
    repository, graph storage, Obsidian vault, synced folders and network storage.
    Choose an unused child path for `--archive-root` and let `init --enable` create
-   it. A pre-created, owner-only empty child returns `source_unavailable` because Tedd tries
-   to open an existing archive there. To re-enable an initialized archive, use
+   it. If that directory already exists, Tedd tries to open an archive there.
+   An empty owner-only directory returns `source_unavailable`. On Linux and
+   macOS, a directory readable by other users can return `privacy_rejected`
+   first. For a new archive, choose an unused path under the private parent.
+   To re-enable an initialized archive, use
    its configured path, matching graph and authorized scope, and existing quota
    and limits. Input files may come from a synced location. Keep metadata and
    work files private.

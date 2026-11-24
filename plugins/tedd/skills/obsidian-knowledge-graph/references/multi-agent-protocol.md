@@ -102,19 +102,21 @@ At task start:
 4. Request a bounded `context` pack for the subscribed subjects.
 5. Inspect and prioritize overdue subscribed loops, conflicts, quarantine items, and relevant changes before planning new work.
 
-Use the path to your graph configuration for `graph_config` and the ID returned by `subscribe` for `subscription_id`. Choose a page size, for example `page_size=100`.
+Set `subscription_id` to the ID returned by `subscribe` on the configured default graph. Choose a page size, for example `page_size=100`.
 
 <!-- procedure: first-inbox-page -->
 
 ```bash
-python3 -B scripts/knowledge_graph.py --config "$graph_config" inbox \
+python3 -B scripts/knowledge_graph.py inbox \
   --subscription-id "$subscription_id" --limit "$page_size"
 ```
 
 Read the context for that subscription:
 
+<!-- procedure: task-context -->
+
 ```bash
-python3 -B scripts/knowledge_graph.py --config "$graph_config" context \
+python3 -B scripts/knowledge_graph.py context \
   --subscription-id "$subscription_id" \
   --max-chars 12000
 ```
@@ -130,7 +132,7 @@ Exact selectors keep unrelated clients out; broad collection or `--all` subscrip
 <!-- procedure: next-inbox-page -->
 
 ```bash
-python3 -B scripts/knowledge_graph.py --config "$graph_config" inbox \
+python3 -B scripts/knowledge_graph.py inbox \
   --subscription-id "$subscription_id" --limit "$page_size" \
   --through-watermark "$snapshot_watermark" --cursor "$next_cursor"
 ```

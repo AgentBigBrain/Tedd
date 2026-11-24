@@ -120,31 +120,12 @@ the fact still holds, so Tedd rechecks anything that may have changed before
 acting on it. When two values for one fact are both current, the sheet flags
 the conflict instead of choosing one.
 
-Tedd considers up to 12 eligible facts for the sheet. The whole section,
-including record IDs, dates, and JSON fields, must fit within 2,400 characters
-or one quarter of the requested context limit, whichever is smaller. Even a
+Tedd considers up to <!-- sheet: candidates -->12 eligible facts for the sheet.
+The whole section, including record IDs, dates, and JSON fields, must fit
+within <!-- sheet: characters -->2,400 characters or <!-- sheet: percent -->25%
+of the requested context limit, whichever is smaller. Even a
 two-word fact can be left out. Use a scoped search to check for a particular
 fact that is missing from the sheet.
-
-Suppose your project has two confirmed facts. Its hosting provider is Provider A,
-and its deployed version is Version two. From the graph skill directory, use your
-graph configuration and task subscription to read the sheet:
-
-<!-- procedure: read-fact-sheet -->
-
-```bash
-python3 -B scripts/knowledge_graph.py --config "$graph_config" context \
-  --subscription-id "$subscription_id" --max-chars 12000
-```
-
-At this budget, both short values fit. Reading the `value` field of each entry in
-`current_state.items` gives these values (the order can vary):
-
-<!-- procedure: fact-values -->
-
-```json
-["Provider A", "Version two"]
-```
 
 Facts are not only for code. Ask Tedd to save a person's role, how someone
 prefers to be contacted, what a client agreed to, or a renewal date. Tedd saves
