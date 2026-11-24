@@ -250,7 +250,7 @@ obligation, retrieve that too and compare its meaning, status, and evidence with
 what you expected. A new graph may contain only the project record so far.
 
 Confirm that the session has one Tedd graph endpoint. Its four read-only tools
-are `brain_status`, `recall_context`, `search_memory`, and `pull_changes`. Approve
+are `brain_status`<!-- mcp:graph -->, `recall_context`<!-- mcp:graph -->, `search_memory`<!-- mcp:graph -->, and `pull_changes`<!-- mcp:graph -->. Approve
 only the intended calls if the host prompts. Existing permissions and host modes
 affect those prompts; do not disable permission checks to make a read succeed.
 

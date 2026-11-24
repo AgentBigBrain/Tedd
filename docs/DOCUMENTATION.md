@@ -141,12 +141,30 @@ git diff --check
 ```
 
 On Windows use a qualified Python 3.10–3.14 interpreter, such as `py -3.10 -B`,
-in place of `python3 -B`. The documentation checker validates local Markdown
-links, recognized CLI subcommands/options and fenced JSON syntax. CLI recognition
-covers selected `python3` Bash examples for graph, source, profile and MemoryBench
-scripts; it does not validate required arguments, values or successful execution.
-It also does not verify external websites, private installations, natural-language
-claims, MCP argument arrays or every shell language.
+in place of `python3 -B`. Put each graph, source, profile, setup or MemoryBench
+command on its own line in a fenced block. Use `bash`, `sh` or `shell` for Bash,
+and `powershell` or `pwsh` for PowerShell. Fences can be indented inside a list.
+Show the direct Python invocation when the surrounding workflow uses command
+substitution, file redirection or a chain such as `&&`. The checker passes
+the command's arguments to the shipped parser, substitutes sample values for shell
+placeholders and checks explicit options in calls that expand a Bash array.
+The procedure tests exercise the examples that need real files or a database.
+
+When documenting an MCP tool, add an HTML comment containing `mcp:graph` or
+`mcp:source` immediately after the tool name's closing backtick. For an input
+field, include the tool name in the comment, for example `mcp:graph.search_memory`.
+Put the same comment directly above a fenced JSON input object. The checker
+compares these references with the tool lists and top-level input properties
+published by the servers. A fenced JSON `tools/call` request already names its
+tool, so it needs no comment. Mark each new tool or input name in prose.
+Reviewers check unmarked prose and the values in examples, including choices
+such as `all` or `any` for the search match mode. Dated reports describe the
+versions tested.
+Output fields, host metadata and flags inside a
+source tool's `argv` belong to different interfaces.
+
+The checker also validates local links and fenced JSON syntax. Runtime behavior,
+private installations and external links need separate checks.
 Report the checks actually run and their limits.
 
 For changed skill references, check that the plugin still contains every linked

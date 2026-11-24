@@ -179,8 +179,8 @@ for consent, selection, exclusions and cleanup.
 
 ### Disconnect and recover Google access
 
-The configured source service must provide `disconnect_google` and
-`reconnect_google`, with a tested Google connection and protected reusable sign-in.
+The configured source service must provide `disconnect_google`<!-- mcp:source --> and
+`reconnect_google`<!-- mcp:source -->, with a tested Google connection and protected reusable sign-in.
 Ask Tedd to disconnect Google, then review the account and OAuth client, the
 application requesting access, in the confirmation. Revocation can affect your
 other grants across that application's Google Cloud project. Canceling the

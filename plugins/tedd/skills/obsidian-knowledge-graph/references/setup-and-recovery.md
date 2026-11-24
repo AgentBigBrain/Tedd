@@ -143,17 +143,17 @@ keep their own subjects.
 Codex may discover the packaged local stdio `tedd-graph` MCP server when its
 `python3` launcher is available. It exposes four read-only tools:
 
-- `brain_status` returns graph health and, when requested, the state of one exact named consumer; it never returns records.
-- `recall_context` returns the bounded `context_pack` for one existing exact subscription.
-- `search_memory` finds matching current memories within that subscription without replacing recent context.
-- `pull_changes` returns the bounded inbox for one existing exact subscription and never acknowledges delivery.
+- `brain_status`<!-- mcp:graph --> returns graph health and, when requested, the state of one exact named consumer; it never returns records.
+- `recall_context`<!-- mcp:graph --> returns the bounded `context_pack` for one existing exact subscription.
+- `search_memory`<!-- mcp:graph --> finds matching current memories within that subscription without replacing recent context.
+- `pull_changes`<!-- mcp:graph --> returns the bounded inbox for one existing exact subscription and never acknowledges delivery.
 
-Check the connected server's tool list before using `search_memory`; the RC6
+Check the connected server's tool list before using `search_memory`<!-- mcp:graph -->; the RC6
 package does not include it. Its absence does not authorize installation or a
 configuration change. See the
 [search reference](recall.md#on-demand-mcp-search) for arguments and result limits.
 
-`recall_context`, `search_memory` and `pull_changes` require the exact active
+`recall_context`<!-- mcp:graph -->, `search_memory`<!-- mcp:graph --> and `pull_changes`<!-- mcp:graph --> require the exact active
 subscription and matching consumer, agent and task identifiers.
 They cannot request a global CLI read and never infer a
 consumer, project, client, graph, or working-directory scope. MCP is local

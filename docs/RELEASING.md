@@ -191,11 +191,10 @@ distinctly versioned package from its recorded commit and start a new task befor
 claiming host MCP or skill discovery. Add a dated checkpoint for what actually
 ran without rewriting earlier evidence; discovery is not a successful tool call.
 
-The documentation check validates repository links, recognized CLI subcommands and
-option names, and fenced JSON syntax. It covers selected `python3` Bash examples
-for graph, source, profile and MemoryBench scripts. It does not validate required
-arguments, values, successful execution or MCP argument arrays. It also does not
-query GitHub, compare an installed cache, or verify prose about Git state.
+The documentation check validates repository links, fenced JSON, documented CLI
+arguments, and named MCP tools and inputs. See the [documentation guide](DOCUMENTATION.md)
+for shell and placeholder conventions. The documented procedure tests exercise
+workflows against disposable state.
 Its temporary-repository tests isolate inherited Git config, templates,
 excludes, and repository overrides. Git is a required release-gate dependency;
 missing Git or a sandbox that denies fixture writes is a failed/unavailable

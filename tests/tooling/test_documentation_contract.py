@@ -17,6 +17,95 @@ import check_documentation as documentation  # noqa: E402
 
 
 class DocumentationContractTests(unittest.TestCase):
+    def test_indented_shell_fences_check_list_examples_and_stop_at_the_closing_fence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            guide = root / "identity.md"
+            guide.write_text(
+                "1. Initialize the profile.\n\n"
+                "   ```bash\n"
+                "   python3 -B scripts/tedd_profile.py init --name Reader --bad-init\n"
+                "   ```\n"
+                "2. Validate it.\n\n"
+                "   ```shell\n"
+                "   python3.12 -B scripts/tedd_profile.py validate --bad-validate\n"
+                "   ```\n"
+                "python3 scripts/tedd_profile.py validate --outside-the-fence\n"
+                "```pwsh\n"
+                "py -3 -B scripts\\tedd_profile.py validate --bad-pwsh\n"
+                "```\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(documentation, "ROOT", root):
+                errors, checked = documentation.check_cli_examples([guide])
+        self.assertEqual(checked, 3)
+        self.assertEqual(len(errors), 3, errors)
+        for error, option in zip(
+            errors, ("--bad-init", "--bad-validate", "--bad-pwsh"), strict=True
+        ):
+            self.assertIn(option, error)
+
+    def test_full_cli_examples_distinguish_literals_placeholders_and_splats(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            guide = root / "commands.md"
+            guide.write_text(
+                "```bash\n"
+                "python3 -B scripts/knowledge_graph.py get\n"
+                'python3 -B scripts/knowledge_graph.py --config get inbox --subscription-id sub --limit "$count"\n'
+                "python3 -B scripts/knowledge_graph.py inbox --subscription-id sub --limit nonsense\n"
+                'python3 -B scripts/knowledge_graph.py capture "${capture_args[@]}" --dry-run\n'
+                'python3 -B scripts/knowledge_graph.py capture "${capture_args[@]}" --made-up\n'
+                "```\n```powershell\n"
+                "py -3 -B scripts\\knowledge_graph.py inbox --subscription-id sub `\n"
+                '    --limit "<number>" --bogus\n'
+                '& "$python" -B scripts\\tedd_setup.py --host unknown --project "C:\\my project" '
+                '--graph-config "$config"\n'
+                "$kg = @('-B', 'scripts\\knowledge_graph.py')\n"
+                "$ids = @('--id', '<record-id>')\n"
+                "& $python @kg get @ids | ConvertFrom-Json\n"
+                "& $python @kg get | ConvertFrom-Json\n"
+                "```\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(documentation, "ROOT", root):
+                errors, count = documentation.check_cli_examples([guide])
+        self.assertEqual(count, 9)
+        self.assertEqual(len(errors), 6, errors)
+        for error, reason in zip(
+            errors, ("--id", "nonsense", "--made-up", "--bogus", "unknown", "--id"), strict=True
+        ):
+            self.assertIn(reason, error)
+
+    def test_mcp_references_use_the_named_servers_input_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            guide = root / "tools.md"
+            guide.write_text(
+                "Use `search_memory`<!-- mcp:graph --> or `brain_status`<!-- mcp:source -->.\n"
+                "Set `match`<!-- mcp:graph.search_memory -->. "
+                "`query`<!--mcp:source.lookup--> belongs to another tool.\n"
+                '`{"session_id":"s","turn_id":"t"}`<!-- mcp:source.begin_turn -->\n'
+                '<!-- mcp:graph.search_memory -->\n```json\n{"limti": 2}\n```\n'
+                '```json\n{"output_only": 1}\n```\n'
+                '```json\n{"method":"tools/call","params":{"name":"lookup",'
+                '"_meta":{"threadId":"host"},"arguments":{"argv":[]}}}\n```\n'
+                '```json\n{"method":"tools/call","params":{"name":"lookup",'
+                '"arguments":{"typo":[]}}}\n```\n',
+                encoding="utf-8",
+            )
+            with mock.patch.object(documentation, "ROOT", root):
+                schemas = documentation.mcp_tool_inputs()
+                errors, checked = documentation.check_mcp_examples([guide], schemas)
+                wire_errors, wire_count = documentation.check_json_examples([guide], schemas)
+        self.assertEqual(4, wire_count)
+        self.assertEqual(1, len(wire_errors), wire_errors)
+        self.assertIn("typo", wire_errors[0])
+        self.assertEqual(6, checked)
+        self.assertEqual(3, len(errors), errors)
+        for error, name in zip(errors, ("brain_status", "query", "limti"), strict=True):
+            self.assertIn(name, error)
+
     def test_inventory_permission_error_does_not_become_an_empty_pass(self) -> None:
         with (
             mock.patch.object(
@@ -73,9 +162,9 @@ class DocumentationContractTests(unittest.TestCase):
 
         self.assertEqual(4, count)
         self.assertEqual(3, len(errors))
-        self.assertIn("unsupported tedd_sources.py options: ['--invented-flag']", errors[0])
-        self.assertIn("tedd_sources.py example has no valid subcommand", errors[1])
-        self.assertIn("unsupported tedd_profile.py options: ['--invented-flag']", errors[2])
+        self.assertIn("tedd_sources.py: unsupported options: ['--invented-flag']", errors[0])
+        self.assertIn("tedd_sources.py: example has no valid subcommand", errors[1])
+        self.assertIn("tedd_profile.py: unsupported options: ['--invented-flag']", errors[2])
 
     @contextlib.contextmanager
     def initialize_repository(self, root: Path) -> Iterator[None]:

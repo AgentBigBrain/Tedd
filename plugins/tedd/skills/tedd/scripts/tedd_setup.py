@@ -687,7 +687,7 @@ def binding_for_project(
     return binding
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", choices=("codex", "claude"), required=True)
     parser.add_argument("--graph-config", type=Path, required=True)
@@ -709,7 +709,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fingerprint")
     parser.add_argument("--session-id", help="Read only: freshly resolved native session ID")
     parser.add_argument("--run-id", help="Read only: current invocation provenance ID")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     request = SetupRequest(
         host=args.host,
         graph_config=args.graph_config.expanduser().absolute(),

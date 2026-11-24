@@ -61,7 +61,7 @@ Every retained constituent and required uncropped view needs a separate review
 receipt; decoding or displaying it is not approval. Image positions use one-based
 `--image-unit` values. Native detail uses `--image-rectangle left top right bottom`
 in the oriented image's zero-based coordinates, including left/top and excluding
-right/bottom. Pass the four coordinates as separate MCP `argv` strings. Use
+right/bottom. Pass the four coordinates as separate MCP `argv`<!-- mcp:source.render_image --> strings. Use
 `--image-view reconstruction` for a required uncropped container view.
 
 | Image boundary | Hard maximum |
@@ -149,24 +149,24 @@ The CLI requires `--config` before its subcommand. Scoped commands require
 omit those session flags. Connection-level Google controls instead
 bind the explicitly selected account, client and private credential root.
 
-Ordinary source MCP operations use underscore tool names and an `argv` array
+Ordinary source MCP operations use underscore tool names and an `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array
 containing only operation flags. Configuration and helper executables are fixed
-by the host. `acknowledge_review` instead takes a
-`review_id`; `disconnect_google` and `reconnect_google` take empty objects and
+by the host. `acknowledge_review`<!-- mcp:source --> instead takes a
+`review_id`<!-- mcp:source.acknowledge_review -->; `disconnect_google`<!-- mcp:source --> and `reconnect_google`<!-- mcp:source --> take empty objects and
 request host confirmation. Check the loaded endpoint's tool list before use.
 
 | Task | Source MCP | CLI equivalent |
 | --- | --- | --- |
-| Preserve selected local evidence | `intake_file` | `tedd_sources.py intake-file` |
-| Import an owner-reviewed export batch | `import_exports` | Use the configured endpoint; standalone CLI has no owner-confirmation adapter |
-| Find / inspect saved evidence | `lookup`, `inspect` | `tedd_sources.py lookup`, `inspect` |
-| Link evidence to a reviewed graph memory | `bind_memory` | `knowledge_graph.py capture` with source bindings |
-| Check a memory's evidence | `check_memory` | `knowledge_graph.py source-evidence` |
-| Open the owner viewer | `owner_view` | `tedd_sources.py owner-view --private-viewer` |
-| Review a standalone image | `intake_file` with review flags, then `acknowledge_review` | The qualified source endpoint owns review delivery and acknowledgment; a standalone CLI render is not a review receipt |
-| Read saved image pixels | `render_image` | `tedd_sources.py render-image`; format helpers and access checks still apply |
-| Read a saved Office page | `render_document` | `tedd_sources.py render-document`; requires qualified Office layout helpers |
-| Disconnect / prepare Google recovery | `disconnect_google`, `reconnect_google` | `tedd_sources.py disconnect-google`, `reconnect-google`; explicit account/client/credential bindings and owner confirmation |
+| Preserve selected local evidence | `intake_file`<!-- mcp:source --> | `tedd_sources.py intake-file` |
+| Import an owner-reviewed export batch | `import_exports`<!-- mcp:source --> | Use the configured endpoint; standalone CLI has no owner-confirmation adapter |
+| Find / inspect saved evidence | `lookup`<!-- mcp:source -->, `inspect`<!-- mcp:source --> | `tedd_sources.py lookup`, `inspect` |
+| Link evidence to a reviewed graph memory | `bind_memory`<!-- mcp:source --> | `knowledge_graph.py capture` with source bindings |
+| Check a memory's evidence | `check_memory`<!-- mcp:source --> | `knowledge_graph.py source-evidence` |
+| Open the owner viewer | `owner_view`<!-- mcp:source --> | `tedd_sources.py owner-view --private-viewer` |
+| Review a standalone image | `intake_file`<!-- mcp:source --> with review flags, then `acknowledge_review`<!-- mcp:source --> | The qualified source endpoint owns review delivery and acknowledgment; a standalone CLI render is not a review receipt |
+| Read saved image pixels | `render_image`<!-- mcp:source --> | `tedd_sources.py render-image`; format helpers and access checks still apply |
+| Read a saved Office page | `render_document`<!-- mcp:source --> | `tedd_sources.py render-document`; requires qualified Office layout helpers |
+| Disconnect / prepare Google recovery | `disconnect_google`<!-- mcp:source -->, `reconnect_google`<!-- mcp:source --> | `tedd_sources.py disconnect-google`, `reconnect-google`; explicit account/client/credential bindings and owner confirmation |
 | Restrict / forget / recover | No public MCP tools | `tedd_sources.py restrict`, `forget`, `recover` |
 
 The table shows command names. Use each command's `--help` for complete syntax,
@@ -191,7 +191,7 @@ configured source endpoint and its provider session.
 | `privacy_rejected` | A private file, directory or source fails its privacy checks; correct only the intended approved input or work-file setup |
 | `capability_unavailable` | The operation needs a host tool or connection that is missing, unconfigured or unqualified |
 | `source_unavailable` | The selected source or reader is unavailable; check source access and reader recovery state before retrying, without substituting different evidence |
-| `invalid_request` | Check the command's help for required flags and value types. For MCP tools that take `argv`, pass an object containing only `argv`, with up to 64 strings of at most 8,192 characters each. |
+| `invalid_request` | Check the command's help for required flags and value types. For MCP tools that take `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory -->, pass an object containing only `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory -->, with up to 64 strings of at most 8,192 characters each. |
 | `source_corrupt` | The source or its metadata failed validation. For direct local file capture, check that `--acquired-sha256` is valid and matches the bytes actually acquired. |
 | `limit_exceeded` | The operation exceeded a limit; check which one before choosing a smaller permitted operation |
 | `reauthentication_required` | The provider rejected the saved grant; renew consent through the configured route |
@@ -236,7 +236,7 @@ Image progress uses `stage` in addition to the operation's `status`:
 | `bound` | A reviewed graph write linked a memory to the preserved source |
 
 `source_review` with `preserved: false` is a review response. For model review,
-inspect the returned image before sending its `review_id` to `acknowledge_review`.
+inspect the returned image before sending its `review_id`<!-- mcp:source.acknowledge_review --> to `acknowledge_review`<!-- mcp:source -->.
 Human-only review uses the private viewer's confirmation instead. Receipts expire
 with the active turn and cannot authorize changed bytes. Read status, reason and
 coverage together; a saved original can coexist with a failed memory binding.

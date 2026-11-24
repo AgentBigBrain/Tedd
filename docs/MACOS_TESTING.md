@@ -126,7 +126,7 @@ Restart Codex and start a fresh task. Invoke `$tedd` and follow
 state that the default graph must not be initialized or written.
 
 Check that the endpoint command uses the installed code and explicit test
-configuration. Call native `brain_status` and compare `graph.store_id` with
+configuration. Call native `brain_status`<!-- mcp:graph --> and compare `graph.store_id` with
 the ID from `doctor` above. Once the test project has a saved record and an
 approved subscription, retrieve that record by its exact ID through the host.
 The matching ID checks which graph opened. Reading the record checks the
