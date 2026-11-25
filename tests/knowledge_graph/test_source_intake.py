@@ -2345,14 +2345,19 @@ class SourceIntakeCommandTests(unittest.TestCase):
         ref = saved["ref"]
         assert isinstance(ref, dict)
         uri = SourceRef(**ref).as_uri()
-        root, helper = fixture.root / "conversion", Path(sys.executable)
+        root = fixture.root / "conversion"
+        reader = Path(sys.executable)
+        converter = fixture.root / "office-converter"
+        renderer = fixture.root / "pdf-renderer"
+        for program in (converter, renderer):
+            source_files.write_bytes(program, b"")
         source_files.directory(root)
         self._serve(
             SourceOperations(
                 fixture.config,
-                reader_python=helper,
-                renderer=helper,
-                office_converter=helper,
+                reader_python=reader,
+                renderer=renderer,
+                office_converter=converter,
                 office_work_root=root,
             )
         )
@@ -2362,11 +2367,11 @@ class SourceIntakeCommandTests(unittest.TestCase):
             "render-document",
             *argv,
             "--reader-python",
-            str(helper),
+            str(reader),
             "--renderer",
-            str(helper),
+            str(renderer),
             "--office-converter",
-            str(helper),
+            str(converter),
             "--office-work-root",
             str(root),
         ]
@@ -2393,9 +2398,17 @@ class SourceIntakeCommandTests(unittest.TestCase):
                 self.assertEqual(self._source_content(result), expected)
                 self.assertEqual(expected["source_uri"], uri)
                 self.assertEqual(expected["status"], "rendered")
-                self.assertEqual(
-                    [call.args for call in render.call_args_list], [(payload, "docx", 2)] * 2
+                expected_call = mock.call(
+                    payload,
+                    "docx",
+                    2,
+                    reader=reader,
+                    converter=converter,
+                    renderer=renderer,
+                    work_root=root,
+                    cancelled=mock.ANY,
                 )
+                self.assertEqual(render.call_args_list, [expected_call, expected_call])
                 content = result["content"]
                 assert isinstance(content, list)
                 self.assertEqual(
