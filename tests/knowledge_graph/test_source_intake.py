@@ -33,6 +33,7 @@ from tedd_knowledge_graph.source_contracts import (
 from tedd_knowledge_graph.source_host import SourceHost
 from tedd_knowledge_graph.source_mcp import SourceTurn
 from tedd_knowledge_graph.v4_application_contracts import JsonObject, JsonValue
+from tedd_sources_mcp import SourceOperations
 
 
 class SourceIntakeTests(unittest.TestCase):
@@ -562,9 +563,6 @@ class SourceIntakeCommandTests(unittest.TestCase):
         self.assertEqual((fixture.root / "neutral.txt").read_bytes(), original)
 
     def _start_source_endpoint(self, *, svg: bool = False, av1: bool = False) -> None:
-        from tedd_knowledge_graph.source_mcp import SourceMcpServer
-        from tedd_sources_mcp import SourceOperations
-
         operations = SourceOperations(
             self.fixture.config,
             reader_python=Path(sys.executable),
@@ -572,6 +570,11 @@ class SourceIntakeCommandTests(unittest.TestCase):
             svg_font=Path(os.environ["TEDD_TEST_SVG_FONT"]) if svg else None,
             av1_validator=Path(os.environ["TEDD_TEST_AV1_VALIDATOR"]) if av1 else None,
         )
+        self._serve(operations)
+
+    def _serve(self, operations: SourceOperations) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceMcpServer
+
         self.addCleanup(operations.close)
         self._source_server = SourceMcpServer(operations)
         self.addCleanup(self._source_server.close)
@@ -1933,47 +1936,39 @@ class SourceIntakeCommandTests(unittest.TestCase):
 
     def test_owner_export_import_preserves_bytes_and_offline_provenance(self) -> None:
         import tedd_sources
-        from tedd_knowledge_graph.source_host import SourceHost
-        from tedd_knowledge_graph.source_mcp import SourceTurn
 
         batch, path, payload = self.export_batch()
         fixture = self.fixture
-        turn = SourceTurn()
-        descriptions: list[str] = []
-
-        def confirm(description: str) -> bool:
-            descriptions.append(description)
-            return True
-
-        host = SourceHost(
-            export_root=path.parent,
-            confirm_exports=confirm,
-            check_retention=turn.check_retention,
-            collecting=lambda _session, _scope: turn.hold(),
-            cancelled=turn.cancelled,
-        )
-        args = tedd_sources.parser().parse_args(
-            [
-                "--config",
-                str(fixture.config),
-                "import-exports",
-                "--input",
-                str(batch),
-                "--reader-python",
-                sys.executable,
-                *fixture.session,
-            ]
-        )
+        confirm = mock.Mock(return_value=True)
+        self._serve_export_import(path.parent)
         graph_before = fixture.store.read_bytes()
         archive_before = self.archive_bytes()
-        result = tedd_sources.execute(args, host=host)
+        # An export's observation time contributes to its identity. Replay the same encounter.
+        with (
+            mock.patch.object(tedd_sources.graph, "utc_now", return_value="2026-09-06T12:00:00Z"),
+            mock.patch("tedd_knowledge_graph.source_viewer.PrivateViewer") as viewer,
+        ):
+            result = self.run_export_batch(batch, path, SourceTurn(), confirm)
+            source_files.write_bytes(path, payload, overwrite=path.exists())
+            viewer.return_value.confirm.return_value = True
+            replay = self._source_content(
+                self._source_call(
+                    "import_exports", {"argv": ["--input", str(batch), *fixture.session]}
+                )
+            )
         if sys.platform == "darwin":
             self.assert_macos_export_refusal(result, archive_before, graph_before)
+            self.assert_macos_export_refusal(replay, archive_before, graph_before)
             return
         self.assertEqual(result["status"], "preserved", result)
+        self.assertEqual(replay["status"], result["status"])
         receipts = result["receipts"]
         assert isinstance(receipts, list) and isinstance(receipts[0], dict)
         ref = receipts[0]["ref"]
+        repeated = replay["receipts"]
+        assert isinstance(repeated, list) and len(repeated) == 1 and isinstance(repeated[0], dict)
+        self.assertEqual(repeated[0]["ref"], ref)
+        self.assertEqual(repeated[0]["status"], "duplicate")
         assert isinstance(ref, dict)
         from tedd_knowledge_graph.source_contracts import SourceRef
 
@@ -1985,10 +1980,12 @@ class SourceIntakeCommandTests(unittest.TestCase):
         self.assertIn("owner_confirmed_export", encode(inspected).decode())
         self.assertIn(payload, self.archive_bytes().values())
         self.assertEqual(fixture.store.read_bytes(), graph_before)
-        self.assertEqual(len(descriptions), 1)
-        self.assertIn("owner@example.com", descriptions[0])
-        self.assertIn(digest(payload), descriptions[0])
-        self.assertIn("not provider-verified", descriptions[0])
+        confirm.assert_called_once()
+        description = confirm.call_args.args[0]
+        self.assertEqual(viewer.return_value.confirm.call_args.args[0], description)
+        self.assertIn("owner@example.com", description)
+        self.assertIn(digest(payload), description)
+        self.assertIn("not provider-verified", description)
 
     def test_sheet_excerpt_import_keeps_exact_copy_and_original_restriction_group(self) -> None:
         from tedd_knowledge_graph.source_contracts import SourceRef, decode_manifest
@@ -2235,40 +2232,181 @@ class SourceIntakeCommandTests(unittest.TestCase):
         self.assertNotIn("source_export_recovery_key", str(status))
         self.assertEqual(self.fixture.store.read_bytes(), before)
 
-    def test_declined_owner_batch_reads_no_original_and_publishes_nothing(self) -> None:
-        import tedd_sources
-        from tedd_knowledge_graph.source_host import SourceHost
-        from tedd_knowledge_graph.source_mcp import SourceTurn
+    def assert_unconfigured_host_refusal(self, tool: str, command: str, argv: list[str]) -> None:
+        self._start_source_endpoint()
+        expected = self.fixture.invoke(command, *argv, success=False)
+        result = self._source_call(tool, {"argv": [*argv]})
+        self.assertTrue(result["isError"])
+        self.assertEqual(result["structuredContent"], expected)
+        self.assertEqual(expected, {"status": "capability_unavailable"})
 
+    def _serve_export_import(self, export_root: Path) -> None:
+        self._serve(
+            SourceOperations(
+                self.fixture.config,
+                reader_python=Path(sys.executable),
+                browser_export_root=export_root,
+            )
+        )
+
+    def test_import_exports_cli_and_mcp_honor_the_same_owner_decision(self) -> None:
         batch, path, _payload = self.export_batch()
-        turn = SourceTurn()
+        argv = ["--input", str(batch), *self.fixture.session]
         before = self.archive_bytes()
-        host = SourceHost(
-            export_root=path.parent,
-            confirm_exports=lambda _description: False,
-            check_retention=turn.check_retention,
-            collecting=lambda _session, _scope: turn.hold(),
-            cancelled=turn.cancelled,
-        )
-        args = tedd_sources.parser().parse_args(
-            [
-                "--config",
-                str(self.fixture.config),
-                "import-exports",
-                "--input",
-                str(batch),
-                "--reader-python",
-                sys.executable,
-                *self.fixture.session,
-            ]
-        )
-        with mock.patch.object(
-            source_files, "read_input", side_effect=AssertionError("Unapproved read")
+        self.assert_unconfigured_host_refusal("import_exports", "import-exports", argv)
+        self._serve_export_import(path.parent)
+        with (
+            mock.patch.object(
+                source_files, "read_input", side_effect=AssertionError("Unapproved read")
+            ),
+            mock.patch("tedd_knowledge_graph.source_viewer.PrivateViewer") as viewer,
         ):
-            result = tedd_sources.execute(args, host=host)
-        self.assertEqual(result["status"], "not_preserved")
+            decline = mock.Mock(return_value=False)
+            expected = self.run_export_batch(batch, path, SourceTurn(), decline)
+            viewer.return_value.confirm.return_value = False
+            actual = self._source_content(self._source_call("import_exports", {"argv": [*argv]}))
+        self.assertEqual(actual, expected)
+        self.assertEqual(actual, {"status": "not_preserved", "reason": "confirmation_not_accepted"})
+        decline.assert_called_once()
+        self.assertEqual(viewer.return_value.confirm.call_args.args[0], decline.call_args.args[0])
         self.assertEqual(self.archive_bytes(), before)
         self.assertTrue(path.exists())
+
+    def test_list_google_cli_and_mcp_return_the_same_folder_page(self) -> None:
+        from contextlib import nullcontext
+
+        import tedd_sources
+        from tedd_knowledge_graph.source_credentials import CredentialStore
+        from tedd_knowledge_graph.source_google import GoogleSourceSession
+
+        fixture = self.fixture
+        fixture.invoke(
+            "init", "--enable", "--archive-root", str(fixture.archive_root), *fixture.session
+        )
+        folder, token = "linked-root", "second-page"
+        argv = ["--folder-id", folder, "--page-token", token, *fixture.session]
+        self.assert_unconfigured_host_refusal("list_google", "list-google", argv)
+        self._serve(
+            SourceOperations(
+                fixture.config,
+                fixture.root / "client.json",
+                "owner@example.com",
+                credentials=mock.Mock(spec=CredentialStore, root=fixture.root / "credentials"),
+            )
+        )
+        self._source_server.lifecycle.link_sources(
+            {
+                "session_id": "thread",
+                "turn_id": "first",
+                "prompt": f"https://drive.google.com/drive/folders/{folder}",
+            },
+            {"threadId": "thread"},
+        )
+        page = {"files": [{"id": "selected-document"}], "next_page": "third-page"}
+        listing = mock.Mock(return_value=page)
+        cli = tedd_sources.parser().parse_args(
+            ["--config", str(fixture.config), "list-google", *argv]
+        )
+        host = SourceHost(list_google=listing, collecting=lambda *_: nullcontext())
+        before = fixture.store.read_bytes(), self.archive_bytes()
+        expected = tedd_sources.execute(cli, host=host)
+        scope, *selection = listing.call_args.args
+        self.assertEqual(selection, [folder, token])
+        session = GoogleSourceSession(
+            "synthetic", "google:123", frozenset(), scope, 10**12, folder_ids=frozenset({folder})
+        )
+        with (
+            mock.patch("tedd_knowledge_graph.source_google_oauth.sign_in", return_value=session),
+            mock.patch.object(session, "list_folder", return_value=page) as remote,
+        ):
+            actual = self._source_content(self._source_call("list_google", {"argv": [*argv]}))
+        remote.assert_called_once_with(folder, token)
+        self.assertEqual(actual, expected)
+        self.assertEqual(actual, page)
+        self.assertEqual((fixture.store.read_bytes(), self.archive_bytes()), before)
+
+    def test_render_document_cli_and_mcp_deliver_the_same_saved_page(self) -> None:
+        import json
+        from contextlib import redirect_stdout
+
+        import tedd_sources
+        from tedd_knowledge_graph.source_contracts import SourceRef
+
+        from tests.knowledge_graph.test_source_office import png_image, word_document
+
+        fixture = self.fixture
+        payload, png = word_document(), png_image()
+        capture = fixture._document_args("docx", payload)
+        fixture.invoke("configure", "--allow-local-documents", *fixture.session)
+        parser = tedd_sources.parser()
+        config = ["--config", str(fixture.config)]
+        with mock.patch.object(tedd_sources, "office_reading", self.in_process_office_reading):
+            saved = tedd_sources.execute_cli(parser.parse_args([*config, *capture]))
+        ref = saved["ref"]
+        assert isinstance(ref, dict)
+        uri = SourceRef(**ref).as_uri()
+        root, helper = fixture.root / "conversion", Path(sys.executable)
+        source_files.directory(root)
+        self._serve(
+            SourceOperations(
+                fixture.config,
+                reader_python=helper,
+                renderer=helper,
+                office_converter=helper,
+                office_work_root=root,
+            )
+        )
+        argv = ["--source-uri", uri, "--document-page", "2", *fixture.session]
+        cli = [
+            *config,
+            "render-document",
+            *argv,
+            "--reader-python",
+            str(helper),
+            "--renderer",
+            str(helper),
+            "--office-converter",
+            str(helper),
+            "--office-work-root",
+            str(root),
+        ]
+        before = self.archive_bytes(), fixture.store.read_bytes()
+        encoded = base64.b64encode(png).decode("ascii")
+        with mock.patch(
+            "tedd_knowledge_graph.source_office_host.document_page",
+            return_value={"page": 2, "png_base64": encoded, "png_sha256": digest(png)},
+        ) as render:
+            with io.TextIOWrapper(io.BytesIO()) as output, redirect_stdout(output):
+                code = tedd_sources.main(cli)
+                output.seek(0)
+                expected = json.load(output)
+            result = self._source_call("render_document", {"argv": [*argv]})
+            if sys.platform == "darwin":
+                self.assertEqual(code, 1)
+                self.assertTrue(result["isError"])
+                self.assertEqual(result["structuredContent"], expected)
+                self.assertEqual(expected["status"], "capability_unavailable")
+                render.assert_not_called()
+            else:
+                self.assertEqual(code, 0, expected)
+                self.assertEqual(expected.pop("png_base64"), encoded)
+                self.assertEqual(self._source_content(result), expected)
+                self.assertEqual(expected["source_uri"], uri)
+                self.assertEqual(expected["status"], "rendered")
+                self.assertEqual(
+                    [call.args for call in render.call_args_list], [(payload, "docx", 2)] * 2
+                )
+                content = result["content"]
+                assert isinstance(content, list)
+                self.assertEqual(
+                    [
+                        item
+                        for item in content
+                        if isinstance(item, dict) and item.get("type") == "image"
+                    ],
+                    [{"type": "image", "mimeType": "image/png", "data": encoded}],
+                )
+        self.assertEqual((self.archive_bytes(), fixture.store.read_bytes()), before)
 
     def test_cli_skip_never_reads_a_missing_source_or_publishes_history(self) -> None:
         fixture = self.fixture
