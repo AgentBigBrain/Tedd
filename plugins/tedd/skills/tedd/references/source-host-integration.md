@@ -111,8 +111,12 @@ or preservation receipt.
 
 ## Source MCP operations
 
-Ordinary source operations take one `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array containing the existing subcommand flags,
-without a command name or `--config`. Reuse the registered session/scope values:
+Source command tools accept one `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array of subcommand flags.
+Omit the command name and `--config`. When the endpoint advertises named inputs for
+`lookup`<!-- mcp:source -->, prefer those. Pass the registered consumer, producer agent,
+task, run and subscription IDs as strings, and the subject IDs as an array. Use
+`query`<!-- mcp:source.lookup --> to search metadata. A caller using the older flag array
+sends it alone. In either form the host supplies the active turn through call metadata.
 
 | Source MCP tool | Existing command flags to supply |
 | --- | --- |
@@ -122,7 +126,7 @@ without a command name or `--config`. Reuse the registered session/scope values:
 | `capture_google`<!-- mcp:source --> | `capture-google`: `--metadata <private metadata> --workflow-state active` and capture session/scope flags. No `--input`; the adapter binds the acquired hash itself. |
 | `bind_memory`<!-- mcp:source --> | Graph `capture`: private `--input`, producer/consumer flags, `--source-subscription-id`, `--source-subject-id`, and the normal reviewed dry-run/apply flags. Only an archived `source.uri` is accepted. |
 | `check_memory`<!-- mcp:source --> | Graph `source-evidence`: disputed `--id`, optional `--revision`, and the existing session/scope/budget flags. |
-| `lookup`<!-- mcp:source --> / `inspect`<!-- mcp:source --> | The existing bounded source lookup/inspection flags. |
+| `lookup`<!-- mcp:source --> / `inspect`<!-- mcp:source --> | Lookup accepts named filters or the existing discovery flags. Inspection takes the saved source URI and inspection flags. |
 | `render_image`<!-- mcp:source --> | `render-image --source-uri <exact image-unit URI>` and existing session/scope flags. The host pins the qualified image reader; the result is an MCP image, not a text encoding. |
 | `render_document`<!-- mcp:source --> | `render-document --source-uri <saved Office reference> --document-page <number>` and session/scope flags. Requires the separately qualified, host-pinned Office layout helpers. |
 | `owner_view`<!-- mcp:source --> | `owner-view --private-viewer` flags in [viewing and maintenance](source-viewing-and-maintenance.md); no evidence body is returned. |

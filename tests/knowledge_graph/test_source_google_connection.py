@@ -733,7 +733,7 @@ class GoogleConnectionTests(unittest.TestCase):
         entered, release = threading.Event(), threading.Event()
         published: list[bool] = []
 
-        def operation(command: str, _argv: list[str], turn: SourceTurn) -> JsonObject:
+        def operation(command: str, _argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
             if command == "lookup":
                 return {"status": "local_unchanged"}
             turn.provider_hold = lambda: connection.hold(grant.stamp)

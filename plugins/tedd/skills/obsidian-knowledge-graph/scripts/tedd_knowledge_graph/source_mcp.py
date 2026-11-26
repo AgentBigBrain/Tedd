@@ -26,6 +26,7 @@ from .source_contracts import (
     encode,
     identifier,
 )
+from .source_lookup import MAX_TEXT, OPTIONAL_TEXT, REQUIRED_TEXT
 from .source_macos_host import MacOSWorkerUnavailable
 from .source_review import ReviewBook, SourceProgress
 from .v4_application_contracts import JsonObject, JsonValue
@@ -416,6 +417,37 @@ _ARGV_SCHEMA: JsonObject = {
     },
     "required": ["argv"],
 }
+_TEXT: JsonObject = {"type": "string", "maxLength": MAX_TEXT}
+_LOOKUP_SCHEMA: JsonObject = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        **{key: _TEXT for key in (*REQUIRED_TEXT, *OPTIONAL_TEXT)},
+        "subject_id": {"type": "array", "minItems": 1, "maxItems": 64, "items": _TEXT},
+        "offset": {"type": "integer", "default": 0},
+        "argv": {"type": "array", "maxItems": 64, "items": _TEXT, "deprecated": True},
+    },
+    "oneOf": [
+        {"required": [*REQUIRED_TEXT, "subject_id"], "not": {"required": ["argv"]}},
+        {"required": ["argv"], "maxProperties": 1},
+    ],
+}
+
+
+def _command_arguments(name: str, arguments: JsonObject) -> list[str] | JsonObject:
+    if name == "lookup" and "argv" not in arguments:
+        return arguments
+    argv = arguments.get("argv")
+    if (
+        set(arguments) != {"argv"}
+        or not isinstance(argv, list)
+        or len(argv) > 64
+        or any(not isinstance(item, str) or len(item) > MAX_TEXT for item in argv)
+    ):
+        raise SourceArchiveError("invalid_request")
+    return cast(list[str], argv)
+
+
 _LINK_SCHEMA: JsonObject = {
     **_HOOK_SCHEMA,
     "properties": {
@@ -438,6 +470,9 @@ TOOLS: tuple[JsonObject, ...] = tuple(
         "description": (
             "Codex lifecycle hook only; model calls cannot grant or revoke authority."
             if name in _HOOKS
+            else "Search saved source metadata in the authorized scope. Use the named inputs. "
+            "Older callers may still send the CLI flags in argv."
+            if name == "lookup"
             else "Explicit scoped source operation. argv contains this tedd_sources subcommand's "
             "flags, never --config or a command name. Google access may open browser consent: "
             "the host discloses either selected-file drive.file access or an explicitly configured "
@@ -461,6 +496,8 @@ TOOLS: tuple[JsonObject, ...] = tuple(
         if name == "link_sources"
         else _HOOK_SCHEMA
         if name in _HOOKS
+        else _LOOKUP_SCHEMA
+        if name == "lookup"
         else _ARGV_SCHEMA,
     }
     for name in ("begin_turn", "end_turn", "link_sources", *_COMMANDS)
@@ -497,7 +534,7 @@ class SourceMcpServer(McpLifecycle):
 
     def __init__(
         self,
-        operation: Callable[[str, list[str], SourceTurn], JsonObject],
+        operation: Callable[[str, list[str] | JsonObject, SourceTurn], JsonObject],
         *,
         control: Callable[[str, str, SourceTurn], JsonObject] | None = None,
     ) -> None:
@@ -651,15 +688,9 @@ class SourceMcpServer(McpLifecycle):
                         else None,
                     }
                 else:
-                    argv = arguments.get("argv")
-                    if (
-                        set(arguments) != {"argv"}
-                        or not isinstance(argv, list)
-                        or len(argv) > 64
-                        or any(not isinstance(item, str) or len(item) > 8192 for item in argv)
-                    ):
-                        raise SourceArchiveError("invalid_request")
-                    payload = self._operation(_COMMANDS[name], cast(list[str], argv), turn)
+                    payload = self._operation(
+                        _COMMANDS[name], _command_arguments(name, arguments), turn
+                    )
             if "review_id" in payload and "png_base64" not in payload:
                 raise SourceArchiveError()
             if "png_base64" in payload:

@@ -149,8 +149,31 @@ The CLI requires `--config` before its subcommand. Scoped commands require
 omit those session flags. Connection-level Google controls instead
 bind the explicitly selected account, client and private credential root.
 
-Ordinary source MCP operations use underscore tool names and an `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array
-containing only operation flags. Configuration and helper executables are fixed
+Source MCP command tools accept an `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory --> array
+of operation flags. On endpoints that advertise named inputs for
+`lookup`<!-- mcp:source -->, you can search saved source metadata directly.
+Use the identifiers from your registered task. For example:
+
+```json
+{
+  "consumer_id": "consumer-example",
+  "producer_agent_id": "agent-example",
+  "task_id": "task-example",
+  "producer_run_id": "run-example",
+  "subscription_id": "subscription-example",
+  "subject_id": ["project-example"],
+  "query": "logo"
+}
+```
+
+The six identity and scope fields are required. The subject list can contain
+multiple authorized subjects. Add a query, source ID (`source_id`<!-- mcp:source.lookup -->),
+or version (`source_version`<!-- mcp:source.lookup -->) to narrow results. To continue,
+send the returned page offset as `offset`<!-- mcp:source.lookup --> and its snapshot digest as
+`snapshot_sha256`<!-- mcp:source.lookup -->. Older endpoints accept the flag array.
+Send one input form per call.
+
+Configuration and helper executables are fixed
 by the host. `acknowledge_review`<!-- mcp:source --> instead takes a
 `review_id`<!-- mcp:source.acknowledge_review -->; `disconnect_google`<!-- mcp:source --> and `reconnect_google`<!-- mcp:source --> take empty objects and
 request host confirmation. Check the loaded endpoint's tool list before use.
@@ -191,7 +214,7 @@ configured source endpoint and its provider session.
 | `privacy_rejected` | A private file, directory or source fails its privacy checks; correct only the intended approved input or work-file setup |
 | `capability_unavailable` | The operation needs a host tool or connection that is missing, unconfigured or unqualified |
 | `source_unavailable` | The selected source or reader is unavailable; check source access and reader recovery state before retrying, without substituting different evidence |
-| `invalid_request` | Check the command's help for required flags and value types. For MCP tools that take `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory -->, pass an object containing only `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory -->, with up to 64 strings of at most 8,192 characters each. |
+| `invalid_request` | Check the loaded tool's required fields and their types. When using `argv`<!-- mcp:source.intake_file,import_exports,list_google,capture_google,inspect,render_image,render_document,lookup,owner_view,bind_memory,check_memory -->, send only that field, with up to 64 strings of at most 8,192 characters each. |
 | `source_corrupt` | The source or its metadata failed validation. For direct local file capture, check that `--acquired-sha256` is valid and matches the bytes actually acquired. |
 | `limit_exceeded` | The operation exceeded a limit; check which one before choosing a smaller permitted operation |
 | `reauthentication_required` | The provider rejected the saved grant; renew consent through the configured route |

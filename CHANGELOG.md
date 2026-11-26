@@ -9,6 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Search saved source metadata with named parameters in the source MCP `lookup` tool.
+  Existing callers can still send a single `argv` array of command-line flags.
+
 - Test CLI and MCP agreement on export confirmation, Google folder listings, and rendered document pages using disposable sources.
 
 - Split source MCP command handling into smaller stages while preserving the
