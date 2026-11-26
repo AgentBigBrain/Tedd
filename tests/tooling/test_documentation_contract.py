@@ -84,7 +84,7 @@ class DocumentationContractTests(unittest.TestCase):
             guide.write_text(
                 "Use `search_memory`<!-- mcp:graph --> or `brain_status`<!-- mcp:source -->.\n"
                 "Set `match`<!-- mcp:graph.search_memory -->. "
-                "`query`<!--mcp:source.lookup--> belongs to another tool.\n"
+                "`query`<!--mcp:source.inspect--> belongs to another tool.\n"
                 '`{"session_id":"s","turn_id":"t"}`<!-- mcp:source.begin_turn -->\n'
                 '<!-- mcp:graph.search_memory -->\n```json\n{"limti": 2}\n```\n'
                 '```json\n{"output_only": 1}\n```\n'
