@@ -658,6 +658,8 @@ class SourceIntakeCommandTests(unittest.TestCase):
             self._source_content(self._source_call("lookup", {"argv": [*argv]})), expected
         )
         self.assertEqual(self._source_content(self._source_call("lookup", named)), expected)
+        unmatched = fixture.invoke("lookup", *fixture.session, "--query", "no-such-case")
+        self.assertEqual(unmatched["sources"], [])
         snapshot = expected["snapshot_sha256"]
         assert isinstance(snapshot, str)
         page = self._source_content(
@@ -684,6 +686,30 @@ class SourceIntakeCommandTests(unittest.TestCase):
                     self._source_call("lookup", {**named, **changes})["structuredContent"],
                     {"status": expected_code},
                 )
+
+    def test_lookup_withholds_prepared_results_after_consumer_rebind(self) -> None:
+        import knowledge_graph_v4 as v4
+
+        self.fixture._capture_chat_fixture()
+        self._start_source_endpoint()
+        operation = self._source_server._operation
+        prepared: list[JsonValue] = []
+
+        def rebind(command: str, arguments: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
+            result = operation(command, arguments, turn)
+            prepared.append(result["sources"])
+            with v4.open_store(self.fixture.store) as store:
+                store.rebind_consumer(
+                    "consumer", task_id="task", expected_old_agent_id="agent", new_agent_id="other"
+                )
+            return result
+
+        with mock.patch.object(self._source_server, "_operation", side_effect=rebind):
+            result = self._source_call("lookup", {"argv": [*self.fixture.session]})
+        self.assertTrue(prepared[0])
+        self.assertIs(result["isError"], True)
+        self.assertEqual(result["structuredContent"], {"status": "scope_denied"})
+        self.assertEqual(result["content"], [{"type": "text", "text": '{"status":"scope_denied"}'}])
 
     def test_lookup_advertises_and_validates_both_input_shapes(self) -> None:
         self._start_source_endpoint()
@@ -721,13 +747,29 @@ class SourceIntakeCommandTests(unittest.TestCase):
         assert isinstance(named_required, list)
         self.assertCountEqual(named_required, required)
         self.assertEqual(named_form["not"], {"required": ["argv"]})
+        self.assertIs(schema["additionalProperties"], False)
+        for name, field in props.items():
+            with self.subTest(field=name):
+                assert isinstance(field, dict)
+                if name in {"subject_id", "argv"}:
+                    self.assertEqual(field["type"], "array")
+                    self.assertEqual(field["items"], {"type": "string", "maxLength": 8192})
+                    self.assertEqual(field["maxItems"], 64)
+                else:
+                    self.assertEqual(field["type"], "integer" if name == "offset" else "string")
         assert isinstance(props["argv"], dict)
         self.assertIs(props["argv"]["deprecated"], True)
+        for size, expected_status in ((64, "scope_denied"), (65, "invalid_request")):
+            with self.subTest(subject_count=size):
+                subjects: list[JsonValue] = [f"outside_{i}" for i in range(size)]
+                reply = self._source_call("lookup", {**required, "subject_id": subjects})
+                self.assertEqual(reply["structuredContent"], {"status": expected_status})
         malformed: list[JsonObject] = [
             {k: v for k, v in required.items() if k != missing} for missing in required
         ]
+        for name in props.keys() - {"argv", "subject_id", "offset"}:
+            malformed.append({**required, name: 1})
         invalid_fields: tuple[tuple[str, JsonValue], ...] = (
-            ("consumer_id", 1),
             ("subject_id", []),
             ("subject_id", "entity_task"),
             ("subject_id", [1]),
