@@ -9,6 +9,9 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Add an optional read-only source lookup for Claude Code. It returns metadata
+  for the current project's approved scope and checks access again before delivery.
+
 - Search saved source metadata with named parameters in the source MCP `lookup` tool.
   Existing callers can still send a single `argv` array of command-line flags.
 

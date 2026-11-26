@@ -17,6 +17,7 @@ line-length = 100
 force-exclude = true
 include = [
     "scripts/**/*.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_claude_lookup.py",
     "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
     "plugins/tedd/skills/tedd/scripts/tedd_setup.py",
     "plugins/tedd/skills/tedd/scripts/tedd_handoff_hook.py",
@@ -51,6 +52,7 @@ platform = "win32"
 files = [
     "scripts",
     "tests/tooling/test_macos_reader_guest.py",
+    "plugins/tedd/skills/tedd/scripts/tedd_claude_lookup.py",
     "tests/tooling/test_macos_reader_spike.py",
     "plugins/tedd/skills/tedd/scripts/tedd_profile.py",
     "plugins/tedd/skills/tedd/scripts/tedd_setup.py",

@@ -30,7 +30,9 @@ search, and reviewed saving in both hosts. Start with the
 or the Code tab in the Claude desktop app. The
 [qualification summary](docs/CLAUDE_CODE_QUALIFICATION.md) lists
 tested versions and remaining host limits. Source retention is available through
-the Codex integration; shared graph memory does not enable it in Claude.
+the Codex integration. The Claude Code CLI can also
+[look up metadata for previously saved sources](docs/CLAUDE_CODE_SETUP.md#find-a-previously-saved-source)
+when you connect it to an approved project.
 
 ## What Tedd does
 

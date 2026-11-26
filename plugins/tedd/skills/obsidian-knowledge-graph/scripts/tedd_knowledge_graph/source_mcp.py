@@ -449,7 +449,7 @@ _LOOKUP_SCHEMA: JsonObject = {
 }
 
 
-def _command_arguments(name: str, arguments: JsonObject) -> list[str] | JsonObject:
+def command_arguments(name: str, arguments: JsonObject) -> list[str] | JsonObject:
     if name == "lookup" and "argv" not in arguments:
         return arguments
     argv = arguments.get("argv")
@@ -704,7 +704,7 @@ class SourceMcpServer(McpLifecycle):
                     }
                 else:
                     payload = self._operation(
-                        _COMMANDS[name], _command_arguments(name, arguments), turn
+                        _COMMANDS[name], command_arguments(name, arguments), turn
                     )
             if "review_id" in payload and "png_base64" not in payload:
                 raise SourceArchiveError()

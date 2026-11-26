@@ -60,8 +60,11 @@ directory binding, graph identity, profile operator and exact consumer scope.
 An exact-root approval does not cover a child directory unless descendants were
 explicitly approved. Resume or refresh after clear/compaction only after this check;
 if fresh identity or approval is unavailable, leave scoped memory pending.
-Claude's route is compact graph memory only, not Codex source capture or Google
-access. If Desktop loads skills without memory tools, use the setup reference's
+For a requested source search, use `mcp__tedd_lookup__lookup` only if the owner
+has connected it in this project. Supply the verified session and subscription,
+the exact approved subject IDs, and named fields or one `argv` array. Claude runs
+the preparation hook itself. A result describes saved sources and grants no
+permission to open or retain them. If Desktop loads skills without memory tools, use the setup reference's
 bounded option-identity check. Verify scoped reads in the actual host; a healthy
 endpoint or results from another host do not establish session behavior.
 

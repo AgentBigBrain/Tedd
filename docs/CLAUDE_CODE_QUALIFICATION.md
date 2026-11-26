@@ -230,6 +230,21 @@ Skipped tests retain their platform and dependency limits. Local results do not
 change the failed CI status, update an installed package, or establish native
 behavior on an untested host.
 
+## Local source metadata lookup
+
+Claude Code CLI 2.1.330 on Windows retrieved a synthetic archived chat with
+both named arguments and the compatibility `argv` form. Both replies matched
+the CLI lookup, including the source version and reference. A different
+session's subscription and an unapproved subject both returned `scope_denied`.
+
+In separate native sessions the test paused each argument form after Tedd
+found the source. A Claude interrupt, withdrawal of the project binding, and
+restriction of the individual archived source each withheld the pending result.
+The checks compared both the text and structured MCP replies. They used a
+disposable graph and process-local permissions. Desktop, interactive permission
+prompts, and native Claude on Linux and macOS still need separate checks for
+this endpoint. See [source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
+
 ## Historical records
 
 The implementation plans, original failures, fixes, and dated checkpoints
