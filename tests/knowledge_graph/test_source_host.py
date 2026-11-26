@@ -78,7 +78,7 @@ class SourceHandlerContractTests(unittest.TestCase):
         self.assertEqual(refused.exception.code, "scope_denied")
         (session.acquire if operation == "download" else session.list_folder).assert_called_once()
 
-    def test_export_confirmation_stays_closed_after_cancellation(self) -> None:
+    def test_owner_viewers_stay_closed_after_cancellation(self) -> None:
         from tedd_knowledge_graph.source_mcp import SourceTurn
         from tedd_sources_mcp import SourceOperations
 
@@ -92,10 +92,13 @@ class SourceHandlerContractTests(unittest.TestCase):
                 mock.patch("tedd_knowledge_graph.source_viewer.PrivateViewer") as viewer,
                 ops._build_host("import-exports", argparse.Namespace(), turn, mock.Mock()) as host,
             ):
-                assert host.confirm_exports is not None
+                assert host.confirm_exports is not None and host.review_owner_image is not None
                 turn.cancel()
                 with self.assertRaises(SourceArchiveError) as refused:
                     host.confirm_exports("synthetic batch")
+                self.assertEqual(refused.exception.code, "scope_denied")
+                with self.assertRaises(SourceArchiveError) as refused:
+                    host.review_owner_image(mock.Mock(), b"synthetic image", nullcontext())
                 self.assertEqual(refused.exception.code, "scope_denied")
                 viewer.assert_not_called()
 
