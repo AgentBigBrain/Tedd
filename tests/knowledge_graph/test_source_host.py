@@ -7,10 +7,11 @@ import importlib.util
 import json
 import os
 import queue
+import tempfile
 import threading
 import unittest
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict, replace
 from pathlib import Path
 from unittest import mock
@@ -39,6 +40,129 @@ from tedd_knowledge_graph.v4_application_contracts import GraphReadSession, Json
 from tedd_knowledge_graph.v4_cli_contracts import CaptureRequest, ProducerEnvelope
 
 from tests.knowledge_graph import test_source_cli
+
+
+class SourceHandlerContractTests(unittest.TestCase):
+    def test_image_response_can_exceed_the_metadata_budget(self) -> None:
+        from tedd_sources_mcp import MANIFEST_BYTES, _bounded
+
+        payload = "a" * MANIFEST_BYTES
+        with self.assertRaises(SourceArchiveError):
+            _bounded({"text": payload})
+        self.assertEqual(_bounded({"png_base64": payload}), {"png_base64": payload})
+
+    def test_provider_results_are_withheld_when_cancelled_during_io(self) -> None:
+        for operation in ("download", "folder"):
+            with self.subTest(operation=operation):
+                self._cancel_during_provider_call(operation)
+
+    def _cancel_during_provider_call(self, operation: str) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceTurn
+        from tedd_sources_mcp import _GoogleAccess
+
+        turn = SourceTurn(google_folders=frozenset({"folder"}))
+        session = mock.Mock()
+        access = _GoogleAccess("lookup", turn, True, lambda scope, resource: session)
+
+        def complete(*_: object) -> object:
+            turn.cancel()
+            return b"downloaded bytes" if operation == "download" else {"files": []}
+
+        session.acquire.side_effect = session.list_folder.side_effect = complete
+        with self.assertRaises(SourceArchiveError) as refused:
+            if operation == "download":
+                source = mock.Mock(spec=SourceMetadata, scope=mock.sentinel.scope, source_id="file")
+                access.acquire(source, 100)
+            else:
+                access.list_folder(mock.Mock(spec=SourceScope), "folder", "")
+        self.assertEqual(refused.exception.code, "scope_denied")
+        (session.acquire if operation == "download" else session.list_folder).assert_called_once()
+
+    def test_export_confirmation_stays_closed_after_cancellation(self) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceTurn
+        from tedd_sources_mcp import SourceOperations
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ops = SourceOperations(
+                root / "config", reader_python=root / "reader", browser_export_root=root
+            )
+            turn = SourceTurn()
+            with (
+                mock.patch("tedd_knowledge_graph.source_viewer.PrivateViewer") as viewer,
+                ops._build_host("import-exports", argparse.Namespace(), turn, mock.Mock()) as host,
+            ):
+                assert host.confirm_exports is not None
+                turn.cancel()
+                with self.assertRaises(SourceArchiveError) as refused:
+                    host.confirm_exports("synthetic batch")
+                self.assertEqual(refused.exception.code, "scope_denied")
+                viewer.assert_not_called()
+
+    def test_replacing_provider_session_rechecks_the_original_permission(self) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceTurn
+        from tedd_sources_mcp import SourceOperations
+
+        revoked = False
+
+        @contextmanager
+        def original_permission() -> Iterator[None]:
+            if revoked:
+                raise SourceArchiveError("scope_denied")
+            yield
+
+        replacement = mock.Mock(folder_ids=(), selected_ids={"file"})
+        replacement.hold.side_effect = nullcontext
+
+        def sign_in(*_: object, **__: object) -> object:
+            nonlocal revoked
+            revoked = True
+            return replacement
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ops = SourceOperations(root / "config", root / "client", "synthetic")
+            self.addCleanup(ops.close)
+            turn = SourceTurn(google_files=frozenset({"file"}), provider_hold=original_permission)
+            with mock.patch(
+                "tedd_knowledge_graph.source_google_oauth.sign_in", side_effect=sign_in
+            ):
+                with self.assertRaises(SourceArchiveError) as refused:
+                    ops._google_session("capture-google", turn, mock.Mock(spec=SourceScope), "file")
+            self.assertEqual(refused.exception.code, "scope_denied")
+            self.assertTrue(revoked)
+
+    def test_command_results_are_withheld_when_cancelled_during_execution(self) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceTurn
+        from tedd_sources_mcp import SourceOperations
+
+        turn = SourceTurn()
+
+        def complete(*_: object) -> dict[str, object]:
+            turn.cancel()
+            return {"result": "finished"}
+
+        argv = [
+            "--consumer-id",
+            "c",
+            "--producer-agent-id",
+            "a",
+            "--task-id",
+            "t",
+            "--producer-run-id",
+            "r",
+            "--subscription-id",
+            "s",
+            "--subject-id",
+            "subject",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            ops = SourceOperations(Path(directory) / "config")
+            with mock.patch("tedd_sources_mcp._run_command", side_effect=complete) as route:
+                with self.assertRaises(SourceArchiveError) as refused:
+                    ops("lookup", argv, turn)
+                self.assertEqual(refused.exception.code, "scope_denied")
+                route.assert_called_once()
 
 
 class SourceHostTests(unittest.TestCase):
