@@ -9,6 +9,8 @@ in the maintainers' private archive and are kept as historical references.
 
 ## Unreleased
 
+- Test CLI and MCP agreement on export confirmation, Google folder listings, and rendered document pages using disposable sources.
+
 - Split source MCP command handling into smaller stages while preserving the
   existing tool arguments, permission checks, and response limits.
 
