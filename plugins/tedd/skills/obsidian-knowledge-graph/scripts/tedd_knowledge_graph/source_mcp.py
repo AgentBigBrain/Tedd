@@ -423,8 +423,23 @@ _LOOKUP_SCHEMA: JsonObject = {
     "additionalProperties": False,
     "properties": {
         **{key: _TEXT for key in (*REQUIRED_TEXT, *OPTIONAL_TEXT)},
-        "subject_id": {"type": "array", "minItems": 1, "maxItems": 64, "items": _TEXT},
-        "offset": {"type": "integer", "default": 0},
+        "subscription_id": {**_TEXT, "description": "The current task's approved subscription."},
+        "subject_id": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": _TEXT,
+            "description": "The exact entity IDs in the subscription's approved source scope.",
+        },
+        "offset": {
+            "type": "integer",
+            "default": 0,
+            "description": "For the next page, use next_offset from the previous reply.",
+        },
+        "snapshot_sha256": {
+            **_TEXT,
+            "description": "For the next page, reuse the previous reply's digest and search arguments.",
+        },
         "argv": {"type": "array", "maxItems": 64, "items": _TEXT, "deprecated": True},
     },
     "oneOf": [
