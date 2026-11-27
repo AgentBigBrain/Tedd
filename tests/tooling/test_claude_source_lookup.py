@@ -12,6 +12,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.knowledge_graph import test_source_cli
 from tests.support.paths import GRAPH_SCRIPTS, PROFILE_SCRIPTS, prepend_import_paths
 
 prepend_import_paths(PROFILE_SCRIPTS, GRAPH_SCRIPTS)
@@ -42,17 +43,23 @@ class ClaudeSourceLookupTests(unittest.TestCase):
             "arguments": {},
         }
 
-    def send(self, method: str, params: object, *, notification: bool = False) -> None:
+    def send(
+        self, method: str, params: object, *, notification: bool = False, request_id: int = 17
+    ) -> None:
         message = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notification:
-            message["id"] = 17
+            message["id"] = request_id
         self.server.receive_line(json.dumps(message).encode(), self.responses.put)
 
     def result(self) -> JsonObject:
         return self.responses.get(timeout=3)["result"]
 
-    def prepare(self) -> None:
-        self.send("tools/call", {"name": "prepare_lookup", "arguments": self.grant})
+    def prepare(self, call_id: str = "call_a") -> None:
+        self.send(
+            "tools/call",
+            {"name": "prepare_lookup", "arguments": {**self.grant, "tool_use_id": call_id}},
+            request_id=1,
+        )
         self.assertFalse(self.result().get("isError"))
 
     def test_only_a_matching_host_call_can_consume_one_preparation(self) -> None:
@@ -106,10 +113,8 @@ class ClaudeSourceLookupTests(unittest.TestCase):
             self.assertEqual(response["structuredContent"], {"status": "scope_denied"})
             self.assertNotIn("private fixture", str(response))
 
-    def test_bound_lookup_checks_the_local_archive_and_rechecks_project_approval(self) -> None:
-        from tests.knowledge_graph.test_source_cli import SourceCliTests
-
-        fixture = SourceCliTests()
+    def bind_archive(self) -> tuple[test_source_cli.SourceCliTests, JsonObject]:
+        fixture = test_source_cli.SourceCliTests()
         self.addCleanup(fixture.doCleanups)
         fixture.setUp()
         fixture._capture_chat_fixture()
@@ -164,29 +169,128 @@ class ClaudeSourceLookupTests(unittest.TestCase):
             "subscription_id": "claude_subscription",
             "subject_id": ["entity_task"],
         }
+        return fixture, named
 
-        def lookup(args: dict[str, object]) -> JsonObject:
-            self.prepare()
-            self.send("tools/call", {**self.lookup, "arguments": args})
-            return self.result()
+    def prepared_lookup(self, args: JsonObject) -> JsonObject:
+        self.prepare()
+        self.send("tools/call", {**self.lookup, "arguments": args})
+        return self.result()
 
+    def test_bound_lookup_checks_the_local_archive_and_rechecks_project_approval(self) -> None:
+        fixture, named = self.bind_archive()
         # This second consumer is valid in the same graph and can see the same source in the CLI.
         other = {"argv": fixture.session}
         expected = fixture.invoke("lookup", *fixture.session)
         self.assertEqual(len(expected["sources"]), 1)
-        self.assertEqual(lookup(other)["structuredContent"], {"status": "scope_denied"})
-        self.assertEqual(lookup(named)["structuredContent"], expected)
+        self.assertEqual(
+            self.prepared_lookup(other)["structuredContent"], {"status": "scope_denied"}
+        )
+        self.assertEqual(self.prepared_lookup(named)["structuredContent"], expected)
         real_lookup = self.server.operations.local_lookup
 
         def revoke(request: LookupRequest, turn: SourceTurn) -> JsonObject:
             payload = real_lookup(request, turn)
             self.assertEqual(payload, expected)
-            path = profile.parent / "project-bindings.json"
+            path = self.server.setup.profile.parent / "project-bindings.json"
             with setup.graph.store_lock(path):
                 setup.graph.atomic_write(path, '{"version":1,"bindings":[]}')
             return payload
 
         with patch.object(self.server.operations, "local_lookup", side_effect=revoke):
-            denied = lookup(named)
+            denied = self.prepared_lookup(named)
         self.assertEqual(denied["structuredContent"], {"status": "scope_denied"})
         self.assertNotIn("tedd-source://", json.dumps(denied))
+
+    def test_restricting_the_returned_source_before_delivery_withholds_it(self) -> None:
+        fixture, named = self.bind_archive()
+        expected = fixture.invoke("lookup", *fixture.session)
+        source = expected["sources"][0]["source_uri"]
+        real_lookup = self.server.operations.local_lookup
+
+        def restrict(request: LookupRequest, turn: SourceTurn) -> JsonObject:
+            payload = real_lookup(request, turn)
+            self.assertEqual(payload, expected)
+            update = fixture.invoke("restrict", "--source-uri", source, *fixture.session)
+            self.assertEqual(update["status"], "source_restricted")
+            return payload
+
+        with patch.object(self.server.operations, "local_lookup", side_effect=restrict):
+            self.prepare()
+            self.send("tools/call", {**self.lookup, "arguments": named})
+            denied = self.responses.get(timeout=25)["result"]
+        self.assertEqual(denied["structuredContent"], {"status": "scope_denied"})
+        self.assertNotIn(source, json.dumps(denied))
+
+    def test_preparation_expires_at_120_seconds_and_a_fresh_call_can_retry(self) -> None:
+        fixture, named = self.bind_archive()
+        expected = fixture.invoke("lookup", *fixture.session)
+        with patch.object(endpoint, "time") as clock:
+            clock.monotonic.return_value = 100
+            self.prepare()
+            clock.monotonic.return_value = 220
+            self.send("tools/call", {**self.lookup, "arguments": named})
+            self.assertEqual(self.result()["structuredContent"], {"status": "scope_denied"})
+            self.prepare("retry")
+            clock.monotonic.return_value += 119
+            self.send(
+                "tools/call",
+                {**self.lookup, "_meta": {"claudecode/toolUseId": "retry"}, "arguments": named},
+            )
+            self.assertEqual(self.result()["structuredContent"], expected)
+
+    def test_busy_server_refuses_second_call_and_delivers_first_reply(self) -> None:
+        fixture, named = self.bind_archive()
+        expected = fixture.invoke("lookup", *fixture.session)
+        entered, release = threading.Event(), threading.Event()
+        real_lookup = self.server.operations.local_lookup
+
+        def pause(request: LookupRequest, turn: SourceTurn) -> JsonObject:
+            payload = real_lookup(request, turn)
+            entered.set()
+            if not release.wait(15):
+                raise TimeoutError
+            return payload
+
+        with patch.object(self.server.operations, "local_lookup", side_effect=pause):
+            self.prepare()
+            self.send("tools/call", {**self.lookup, "arguments": named})
+            try:
+                self.assertTrue(entered.wait(10))
+                self.prepare("call_b")
+                self.send(
+                    "tools/call",
+                    {
+                        **self.lookup,
+                        "_meta": {"claudecode/toolUseId": "call_b"},
+                        "arguments": named,
+                    },
+                    request_id=18,
+                )
+                busy = self.responses.get(timeout=3)
+                self.assertEqual(busy["id"], 18)
+                self.assertEqual(
+                    busy["result"]["structuredContent"], {"status": "capability_unavailable"}
+                )
+            finally:
+                release.set()
+            first = self.responses.get(timeout=5)
+            self.assertEqual(first["id"], 17)
+            self.assertEqual(first["result"]["structuredContent"], expected)
+
+    def test_unexpected_lookup_exception_returns_only_the_public_error(self) -> None:
+        with patch.object(
+            self.server.operations,
+            "lookup_request",
+            side_effect=RuntimeError("private fixture detail"),
+        ):
+            self.prepare()
+            self.send("tools/call", self.lookup)
+            reply = self.responses.get(timeout=3)
+        self.assertEqual(
+            reply,
+            {
+                "jsonrpc": "2.0",
+                "id": 17,
+                "error": {"code": -32603, "message": "request could not be completed"},
+            },
+        )

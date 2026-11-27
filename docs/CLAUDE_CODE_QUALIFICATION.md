@@ -232,7 +232,8 @@ behavior on an untested host.
 
 ## Local source metadata lookup
 
-Claude Code CLI 2.1.330 on Windows retrieved a synthetic archived chat with
+Headless Claude Code CLI 2.1.330 sessions on Windows (`claude -p`) retrieved
+metadata for a synthetic archived chat with
 both named arguments and the compatibility `argv` form. Both replies matched
 the CLI lookup, including the source version and reference. A different
 session's subscription and an unapproved subject both returned `scope_denied`.
@@ -240,10 +241,21 @@ session's subscription and an unapproved subject both returned `scope_denied`.
 In separate native sessions the test paused each argument form after Tedd
 found the source. A Claude interrupt, withdrawal of the project binding, and
 restriction of the individual archived source each withheld the pending result.
-The checks compared both the text and structured MCP replies. They used a
-disposable graph and process-local permissions. Desktop, interactive permission
-prompts, and native Claude on Linux and macOS still need separate checks for
-this endpoint. See [source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
+The checks compared the text and structured MCP replies. The lookup tool was
+preapproved for those processes, and all data came from a disposable graph.
+
+The server gets the host session and project from `CLAUDE_CODE_SESSION_ID`
+and `CLAUDE_PROJECT_DIR` at launch. The preparation hook supplies `session_id`,
+`cwd`, and `tool_use_id`. Claude sends the matching `claudecode/toolUseId` in
+the lookup request metadata.
+
+An interactive Windows CLI session returned the expected metadata on four
+successive lookups. The project had saved an allow rule by the final call.
+Before release, verify that declining a prompt withholds the source and that
+a fresh call succeeds after an approval arrives past the 120-second deadline.
+Desktop and native Claude sessions on Linux and macOS remain unverified for
+this endpoint. See the
+[source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
 
 ## Historical records
 
