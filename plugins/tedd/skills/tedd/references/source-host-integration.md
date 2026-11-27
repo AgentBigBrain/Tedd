@@ -13,6 +13,13 @@ the read-only graph server and is not enabled by ordinary plugin installation.
 Local intake also uses the lifecycle hooks below; Google sign-in is optional.
 Qualify the actual host route before enabling it.
 
+Claude Code can separately connect `tedd_claude_lookup.py` to discover local
+source metadata. Its `prepare_lookup` control is for the host's `PreToolUse`
+hook. Each preparation belongs to one native tool call. The server checks the
+session's project and subscription, then rechecks access before sending the
+result. Cancellation discards a pending result. This endpoint offers no intake,
+inspection, rendering, or Google tools.
+
 Start the endpoint with a fixed `--config`. Local historical inspection needs no
 Google configuration and must not open sign-in. Local selection uses `intake_file`<!-- mcp:source -->
 with [source preservation](source-preservation.md#select-local-evidence-without-bulk-capture).

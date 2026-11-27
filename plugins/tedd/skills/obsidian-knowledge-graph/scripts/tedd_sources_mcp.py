@@ -405,17 +405,25 @@ class SourceOperations:
     def _request(
         self, command: str, arguments: list[str] | JsonObject, turn: SourceTurn
     ) -> argparse.Namespace | IntakeFileRequest | LookupRequest:
+        if command == "lookup":
+            return self.lookup_request(arguments)
         if isinstance(arguments, dict):
-            if command != "lookup":
-                raise SourceArchiveError("invalid_request")
-            return LookupRequest.from_named(self._config, arguments)
+            raise SourceArchiveError("invalid_request")
         args = self._parse(command, arguments)
         if command == "intake-file":
             return self._intake_request(args, turn)
         self._apply_helper_policy(command, args)
-        if command == "lookup":
-            return LookupRequest.from_cli(args)
         return args
+
+    def lookup_request(self, arguments: list[str] | JsonObject) -> LookupRequest:
+        if isinstance(arguments, dict):
+            return LookupRequest.from_named(self._config, arguments)
+        return LookupRequest.from_cli(self._parse("lookup", arguments))
+
+    def local_lookup(self, request: LookupRequest, turn: SourceTurn) -> JsonObject:
+        """Discover metadata with local access checks and retain the final delivery reservation."""
+        host = SourceHost(cancelled=turn.cancelled, retain_delivery=partial(_retain_delivery, turn))
+        return _bounded(_run_command(request, host))
 
     def __call__(self, command: str, argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
         turn.local_delivery_hold = None

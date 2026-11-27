@@ -273,6 +273,71 @@ covers native CLI/TUI sessions, not the desktop app's Code tab. Use
 no-save, no-file, and strict hook opt-out instructions. A missing receipt must
 remain pending; do not weaken those limits to clear a reminder.
 
+## Find a previously saved source
+
+If your project already uses Tedd's [local source archive](sources/setup.md),
+you can let the Claude Code CLI look up source metadata. For example, ask for
+the version and capture date of a saved document. The result can include a
+source reference, title, and date. The source contents stay in the archive.
+This optional setup requires Claude Code CLI 2.1.328 or later so a failed
+preparation hook can block a lookup. The graph setup command reports
+`source_access: not_enabled_by_this_route` because it configures project
+memory. The steps below connect the source archive separately.
+
+1. Complete the project memory check above. In the approved project directory,
+   add a local server using absolute paths to your Python interpreter, the
+   script in this build of Tedd, and the same graph configuration you just
+   checked. If you use a separate profile, append `--profile` and its absolute path.
+
+   ```sh
+   claude mcp add --scope local --transport stdio tedd_lookup -- "<python-executable>" -B "<plugin-directory>/skills/tedd/scripts/tedd_claude_lookup.py" --config "<graph-config>"
+   ```
+
+2. Add this hook to the project's private `.claude/settings.local.json`.
+   Keep existing settings and append the entry if there are already
+   `PreToolUse` hooks. Claude passes the current session, directory, and tool
+   call ID to Tedd before each lookup. See the
+   [Claude hook reference](https://code.claude.com/docs/en/hooks#block-the-action-when-a-hook-fails).
+
+   ```json
+   {
+     "hooks": {
+       "PreToolUse": [{
+         "matcher": "^mcp__tedd_lookup__lookup$",
+         "hooks": [{
+           "type": "mcp_tool",
+           "server": "tedd_lookup",
+           "tool": "prepare_lookup",
+           "input": {
+             "session_id": "${session_id}",
+             "cwd": "${cwd}",
+             "tool_use_id": "${tool_use_id}"
+           },
+           "onFailure": "block"
+         }]
+       }]
+     }
+   }
+   ```
+
+3. Start a fresh session in that directory, invoke `/tedd:tedd`, and ask
+   Claude to find one source you know belongs to this project. Use the session's
+   own subscription and approved subject IDs, and compare the returned version
+   with the one you saved. Keep normal tool permissions enabled.
+
+The hook prepares one call for 120 seconds. If a permission prompt stays open
+past that window, Tedd returns `scope_denied`. Ask Claude to make a fresh
+lookup. If it still reports `scope_denied`, check the session binding, the
+hook, and whether you can still access the source.
+
+Each server handles one lookup at a time. If a second lookup returns
+`capability_unavailable` while the first is running, wait for the first reply
+and try the second lookup again.
+
+To disconnect it, remove this one hook and run
+`claude mcp remove --scope local tedd_lookup` in the same project.
+Source capture and access to Google remain separate.
+
 ## Troubleshooting and limits
 
 | Symptom | What to check |
@@ -296,7 +361,6 @@ Interactive permission approval and denial in the Claude desktop app on Windows
 remain unverified. The [qualification summary](CLAUDE_CODE_QUALIFICATION.md)
 records this and the other host test limits.
 
-In Claude Code, Tedd supports compact graph memory and reviewed CLI saving, with
-the same authorship, revision history, and “don't save” rules as Codex. This route
-adds no source server, Google connection, transcript reader, or automatic source
-retention.
+Claude Code shares Tedd's authorship, revision history, and “don't save” rules.
+The optional source lookup above has been exercised in the Windows CLI.
+Its Desktop behavior remains unverified.

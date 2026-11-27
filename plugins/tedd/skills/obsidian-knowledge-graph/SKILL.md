@@ -53,6 +53,7 @@ In Claude Code, freshly invoke the shared Tedd skill (`/tedd:tedd`) and follow
 its [Claude session guidance](../tedd/SKILL.md#use-relevant-memory) before recall.
 The read-only setup/session check verifies approved scope and current ownership;
 an inherited or unresolved session ID is not usable.
+Use that same verified scope for optional Claude Code source metadata lookup.
 
 ## Paths and configuration
 

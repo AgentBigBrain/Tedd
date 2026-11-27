@@ -230,6 +230,36 @@ Skipped tests retain their platform and dependency limits. Local results do not
 change the failed CI status, update an installed package, or establish native
 behavior on an untested host.
 
+## Local source metadata lookup
+
+Headless Claude Code CLI 2.1.330 sessions on Windows (`claude -p`) retrieved
+metadata for a synthetic archived chat with
+both named arguments and the compatibility `argv` form. Both replies matched
+the CLI lookup, including the source version and reference. A different
+session's subscription and an unapproved subject both returned `scope_denied`.
+
+In separate native sessions the test paused each argument form after Tedd
+found the source. A Claude interrupt, withdrawal of the project binding, and
+restriction of the individual archived source each withheld the pending result.
+The checks compared the text and structured MCP replies. The lookup tool was
+preapproved for those processes, and all data came from a disposable graph.
+
+The server gets the host session and project from `CLAUDE_CODE_SESSION_ID`
+and `CLAUDE_PROJECT_DIR` at launch. The preparation hook supplies `session_id`,
+`cwd`, and `tool_use_id`. Claude sends the matching `claudecode/toolUseId` in
+the lookup request metadata.
+
+On November 27, 2026, an interactive Windows CLI 2.1.330 session used a
+disposable project set to ask before each lookup. The user approved the
+first call 132.74 seconds after preparation. Tedd returned `scope_denied`
+and withheld the source reference. The user approved a fresh retry after
+6.99 seconds. Both the text and structured replies matched the command-line
+lookup. On the final call, Claude recorded the user's denial and never sent
+the lookup to Tedd.
+
+Desktop and native Claude sessions on Linux and macOS remain unverified for
+this endpoint. See the [source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
+
 ## Historical records
 
 The implementation plans, original failures, fixes, and dated checkpoints

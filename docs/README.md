@@ -20,7 +20,7 @@ development guidance and historical evidence.
 | [Architecture](ARCHITECTURE.md) | How agent instructions, identity, memory, source storage, and generated views fit together |
 | [Identity and private profile](IDENTITY.md) | Operator setup, authorship, and account matching |
 | [Windows setup](WINDOWS_SETUP.md) | Verify the installed files, graph and source connections, and hooks after an update |
-| [Claude Code setup](CLAUDE_CODE_SETUP.md) | Install or update the local marketplace, connect a project, and retrieve a known memory |
+| [Claude Code setup](CLAUDE_CODE_SETUP.md) | Connect a project, retrieve a known memory, and optionally look up saved source metadata |
 | [Codex and Claude qualification](CLAUDE_CODE_QUALIFICATION.md) | Host checks for shared memory, preferences, overdue review, and saving |
 | [Testing on macOS](MACOS_TESTING.md) | Isolated installation checks, source tests, and optional reader prerequisites |
 | [Knowledge-graph scale](SCALE.md) | Measured graph bounds and growth guidance |
