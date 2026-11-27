@@ -33,6 +33,7 @@ from tedd_knowledge_graph.source_credentials import CredentialStore
 from tedd_knowledge_graph.source_google import GoogleSourceSession
 from tedd_knowledge_graph.source_host import SourceHost
 from tedd_knowledge_graph.source_intake import IntakeFileRequest, IntakeHelpers
+from tedd_knowledge_graph.source_lookup import LookupRequest
 from tedd_knowledge_graph.source_mcp import SOURCE_COMMANDS, SourceMcpServer, SourceTurn
 from tedd_knowledge_graph.source_reader_cold import load_mac_cold_entitlement
 from tedd_knowledge_graph.source_reader_contracts import SourceReader
@@ -332,7 +333,7 @@ class SourceOperations:
     def _build_host(
         self,
         command: str,
-        args: argparse.Namespace,
+        args: argparse.Namespace | IntakeFileRequest | LookupRequest,
         turn: SourceTurn,
         collecting: Callable[[GraphReadSession, SourceScope], AbstractContextManager[None]],
     ) -> Iterator[SourceHost]:
@@ -347,7 +348,7 @@ class SourceOperations:
         with ExitStack() as stack:
             viewer = None
             if command == "owner-view":
-                if not args.private_viewer:
+                if not isinstance(args, argparse.Namespace) or not args.private_viewer:
                     raise SourceArchiveError("capability_unavailable")
                 viewer = PrivateViewer()
                 stack.callback(viewer.close)
@@ -401,21 +402,34 @@ class SourceOperations:
                 display_owner_rendering=display_rendering if viewer else None,
             )
 
-    def __call__(self, command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
-        turn.local_delivery_hold = None
-        args = self._parse(command, argv)
-        intake = self._intake_request(args, turn) if command == "intake-file" else None
+    def _request(
+        self, command: str, arguments: list[str] | JsonObject, turn: SourceTurn
+    ) -> argparse.Namespace | IntakeFileRequest | LookupRequest:
+        if isinstance(arguments, dict):
+            if command != "lookup":
+                raise SourceArchiveError("invalid_request")
+            return LookupRequest.from_named(self._config, arguments)
+        args = self._parse(command, arguments)
+        if command == "intake-file":
+            return self._intake_request(args, turn)
         self._apply_helper_policy(command, args)
-        collecting = _collection_guard(command, args, intake, turn)
+        if command == "lookup":
+            return LookupRequest.from_cli(args)
+        return args
+
+    def __call__(self, command: str, argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
+        turn.local_delivery_hold = None
+        args = self._request(command, argv, turn)
+        collecting = _collection_guard(command, args, turn)
         _require_active(turn)
         try:
             with self._build_host(command, args, turn, collecting) as host:
-                if command == "source-evidence":
+                if isinstance(args, argparse.Namespace) and command == "source-evidence":
                     result = _run_evidence(args, self._config, host)
-                elif command == "capture":
+                elif isinstance(args, argparse.Namespace) and command == "capture":
                     result = _run_bind_memory(args, self._config, host, turn)
                 else:
-                    result = _run_command(intake if intake is not None else args, host)
+                    result = _run_command(args, host)
                 _require_active(turn)
                 return _bounded(result)
         finally:
@@ -467,24 +481,19 @@ class _GoogleAccess:
 
 def _collection_guard(
     command: str,
-    args: argparse.Namespace,
-    intake: IntakeFileRequest | None,
+    args: argparse.Namespace | IntakeFileRequest | LookupRequest,
     turn: SourceTurn,
 ) -> Callable[[GraphReadSession, SourceScope], AbstractContextManager[None]]:
-    expected_session = (
-        intake.session
-        if intake is not None
-        else GraphReadSession(
+    if isinstance(args, (LookupRequest, IntakeFileRequest)):
+        expected_session, subjects = args.session, args.subject_ids
+    else:
+        expected_session = GraphReadSession(
             args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
         )
-    )
+        subjects = args.source_subject_id if command == "capture" else args.subject_id
 
     @contextmanager
     def collecting(session: GraphReadSession, scope: SourceScope) -> Iterator[None]:
-        if intake is not None:
-            subjects = intake.subject_ids
-        else:
-            subjects = args.source_subject_id if command == "capture" else args.subject_id
         if session != expected_session or set(scope.subject_ids) != set(subjects):
             raise SourceArchiveError("scope_denied")
         with turn.delivery():
@@ -591,7 +600,7 @@ def _run_bind_memory(
 
 
 def _run_command(
-    request: argparse.Namespace | IntakeFileRequest, host: SourceHost
+    request: argparse.Namespace | IntakeFileRequest | LookupRequest, host: SourceHost
 ) -> dict[str, object]:
     import tedd_sources
 

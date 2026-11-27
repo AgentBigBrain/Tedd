@@ -67,6 +67,7 @@ from tedd_knowledge_graph.source_documents import DocumentReading, read_document
 from tedd_knowledge_graph.source_host import SourceHost
 from tedd_knowledge_graph.source_images import ImageReading
 from tedd_knowledge_graph.source_intake import IntakeFileRequest, IntakeHelpers
+from tedd_knowledge_graph.source_lookup import LookupRequest
 from tedd_knowledge_graph.source_macos_host import MacOSWorkerUnavailable, require_worker_boundary
 from tedd_knowledge_graph.source_preview_recovery import IS_LINUX, PreviewRecovery, recovery_report
 from tedd_knowledge_graph.source_reader_contracts import ReaderRequest
@@ -1204,7 +1205,7 @@ def _render_pdf_png(
 
 
 def _execute(
-    args: argparse.Namespace | IntakeFileRequest,
+    args: argparse.Namespace | IntakeFileRequest | LookupRequest,
     *,
     provider_check: ProviderCheck | None = None,
     host: SourceHost | None = None,
@@ -1236,14 +1237,16 @@ def _execute(
             graph.atomic_write(config_path, encode(changed).decode("utf-8") + "\n")
             cleanup_result = _cleanup_owner_preview_files(changed, config_path=config_path)
         return {"status": "disabled", "history_deleted": False, "preview_cleanup": cleanup_result}
-    if (args.command.startswith("capture-") or args.command == "intake-file") and run_if_collecting(
-        lambda: True, state=args.workflow_state, enabled=enabled
-    ) is None:
+    if (
+        not isinstance(args, LookupRequest)
+        and (args.command.startswith("capture-") or args.command == "intake-file")
+        and run_if_collecting(lambda: True, state=args.workflow_state, enabled=enabled) is None
+    ):
         return {"status": "inactive"}
     store_path = graph.secure_state_path(config.get("store_path"), "Canonical store")
     session = (
         args.session
-        if isinstance(args, IntakeFileRequest)
+        if isinstance(args, (LookupRequest, IntakeFileRequest))
         else GraphReadSession(
             args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
         )
@@ -1251,11 +1254,13 @@ def _execute(
     graph_scope = GraphReadScope(ReadScopeKind.SUBSCRIPTION, args.subscription_id)
     with v4.open_store(store_path, readonly=True) as store:
         subjects = (
-            args.subject_ids if isinstance(args, IntakeFileRequest) else tuple(args.subject_id)
+            args.subject_ids
+            if isinstance(args, (LookupRequest, IntakeFileRequest))
+            else tuple(args.subject_id)
         )
         scope = authorized_scope(store, session, graph_scope, subjects)
         configured_root = config.get("source_archive_root")
-        if not isinstance(args, IntakeFileRequest) and args.command == "init":
+        if isinstance(args, argparse.Namespace) and args.command == "init":
             maximum = (
                 positive(args.max_bytes, maximum=DEFAULT_QUOTA)
                 if args.max_bytes is not None
@@ -1286,7 +1291,7 @@ def _execute(
                 "intake-file",
                 "forget",
                 "recover",
-            ) and not (args.command == "intake-file" and args.review_only)
+            ) and not (isinstance(args, IntakeFileRequest) and args.review_only)
             archive = open_archive(
                 root,
                 scope,
@@ -1294,24 +1299,13 @@ def _execute(
                 readonly=not writable,
                 provider_check=provider_check,
                 audience="owner"
-                if args.command == "intake-file" and args.owner_review
+                if isinstance(args, IntakeFileRequest) and args.owner_review
                 else "model",
             )
+            if isinstance(args, LookupRequest):
+                return {"basis": "fresh_source_discovery", **asdict(args.discover(archive))}
             if isinstance(args, IntakeFileRequest) or args.command.startswith("capture-"):
                 return capture(archive, args, scope, session, host=host)
-            if args.command == "lookup":
-                return {
-                    "basis": "fresh_source_discovery",
-                    **asdict(
-                        archive.discover(
-                            source_id=args.source_id,
-                            source_version=args.source_version,
-                            query=args.query,
-                            offset=args.offset,
-                            snapshot_sha256=args.snapshot_sha256,
-                        )
-                    ),
-                }
             if args.command == "inspect":
                 excerpt = archive.read(parse_source_uri(args.source_uri), max_chars=args.max_chars)
                 inspection = {
@@ -1383,9 +1377,11 @@ def _read_reservation(
 
 
 def execute(
-    args: argparse.Namespace | IntakeFileRequest, *, host: SourceHost | None = None
+    args: argparse.Namespace | IntakeFileRequest | LookupRequest, *, host: SourceHost | None = None
 ) -> dict[str, object]:
     """Fresh release-boundary checks for all source-discovery/read routes."""
+    if isinstance(args, LookupRequest):
+        return _read_source(args, host)
     if isinstance(args, IntakeFileRequest):
         return _execute(args, host=host)
     if args.command == "intake-file":
@@ -1416,18 +1412,30 @@ def execute(
         return configure_preview_command(args)
     if args.command == "preview":
         return preview_command(args)
-    if args.command not in ("lookup", "inspect", "render-page", "render-image", "render-document"):
-        return _execute(args, host=host)
+    if args.command == "lookup":
+        return _read_source(LookupRequest.from_cli(args), host)
+    if args.command in ("inspect", "render-page", "render-image", "render-document"):
+        return _read_source(args, host)
+    return _execute(args, host=host)
+
+
+def _read_source(
+    args: argparse.Namespace | LookupRequest, host: SourceHost | None
+) -> dict[str, object]:
     config_path = Path(args.config)
     config_bytes, config = load_config(config_path)
     store_path = graph.secure_state_path(config.get("store_path"), "Canonical store")
-    session = GraphReadSession(
-        args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
-    )
+    if isinstance(args, LookupRequest):
+        session, subjects = args.session, args.subject_ids
+    else:
+        session = GraphReadSession(
+            args.producer_agent_id, args.task_id, args.producer_run_id, args.consumer_id
+        )
+        subjects = tuple(args.subject_id)
     graph_scope = GraphReadScope(ReadScopeKind.SUBSCRIPTION, args.subscription_id)
     with v4.open_store(store_path, readonly=True) as store:
         with store.read_snapshot():
-            scope = authorized_scope(store, session, graph_scope, tuple(args.subject_id))
+            scope = authorized_scope(store, session, graph_scope, subjects)
             state = dict(store.state())
         result = (
             _execute(args, provider_check=host.provider_check, host=host)
@@ -1441,14 +1449,8 @@ def execute(
             provider_check=host.provider_check if host is not None else None,
         )
         heads: dict[SourceRef, str] | None = None
-        if args.command == "lookup":
-            latest = archive.discover(
-                source_id=args.source_id,
-                source_version=args.source_version,
-                query=args.query,
-                offset=args.offset,
-                snapshot_sha256=args.snapshot_sha256,
-            )
+        if isinstance(args, LookupRequest):
+            latest = args.discover(archive)
             if result.get("snapshot_sha256") != latest.snapshot_sha256:
                 raise SourceArchiveError("capture_incomplete")
             # Permission selection is not part of the archive snapshot hash.
@@ -1493,7 +1495,7 @@ def execute(
             archive,
             session,
             graph_scope,
-            tuple(args.subject_id),
+            subjects,
             state,
             refs,
             heads,

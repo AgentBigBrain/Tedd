@@ -628,6 +628,165 @@ class SourceIntakeCommandTests(unittest.TestCase):
         assert isinstance(value, dict)
         return value
 
+    def test_named_lookup_matches_argv_and_cli_through_scoped_delivery(self) -> None:
+        fixture = self.fixture
+        fixture._capture_chat_fixture()
+        self._start_source_endpoint()
+        named: JsonObject = {
+            "consumer_id": "consumer",
+            "producer_agent_id": "agent",
+            "task_id": "task",
+            "producer_run_id": "run",
+            "subscription_id": "subscription",
+            "subject_id": ["entity_task"],
+            "source_id": "case",
+            "source_version": "v1",
+            "query": "CASE",
+        }
+        argv = [
+            *fixture.session,
+            "--source-id",
+            "case",
+            "--source-version",
+            "v1",
+            "--query",
+            "CASE",
+        ]
+        expected = fixture.invoke("lookup", *argv)
+        self.assertTrue(expected["sources"])
+        self.assertEqual(
+            self._source_content(self._source_call("lookup", {"argv": [*argv]})), expected
+        )
+        self.assertEqual(self._source_content(self._source_call("lookup", named)), expected)
+        unmatched = fixture.invoke("lookup", *fixture.session, "--query", "no-such-case")
+        self.assertEqual(unmatched["sources"], [])
+        snapshot = expected["snapshot_sha256"]
+        assert isinstance(snapshot, str)
+        page = self._source_content(
+            self._source_call("lookup", {**named, "offset": 1, "snapshot_sha256": snapshot})
+        )
+        self.assertEqual(
+            page, fixture.invoke("lookup", *argv, "--offset", "1", "--snapshot-sha256", snapshot)
+        )
+        for key in ("query", "source_id", "source_version"):
+            with self.subTest(selector=key):
+                self.assertEqual(
+                    self._source_content(self._source_call("lookup", {**named, key: "--help"}))[
+                        "sources"
+                    ],
+                    [],
+                )
+        refusals: tuple[tuple[JsonObject, str], ...] = (
+            ({"subject_id": ["entity_task", "other"]}, "scope_denied"),
+            ({"offset": 1, "snapshot_sha256": "0" * 64}, "capture_incomplete"),
+        )
+        for changes, expected_code in refusals:
+            with self.subTest(changes=changes):
+                self.assertEqual(
+                    self._source_call("lookup", {**named, **changes})["structuredContent"],
+                    {"status": expected_code},
+                )
+
+    def test_lookup_withholds_prepared_results_after_consumer_rebind(self) -> None:
+        import knowledge_graph_v4 as v4
+
+        self.fixture._capture_chat_fixture()
+        self._start_source_endpoint()
+        operation = self._source_server._operation
+        prepared: list[JsonValue] = []
+
+        def rebind(command: str, arguments: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
+            result = operation(command, arguments, turn)
+            prepared.append(result["sources"])
+            with v4.open_store(self.fixture.store) as store:
+                store.rebind_consumer(
+                    "consumer", task_id="task", expected_old_agent_id="agent", new_agent_id="other"
+                )
+            return result
+
+        with mock.patch.object(self._source_server, "_operation", side_effect=rebind):
+            result = self._source_call("lookup", {"argv": [*self.fixture.session]})
+        self.assertTrue(prepared[0])
+        self.assertIs(result["isError"], True)
+        self.assertEqual(result["structuredContent"], {"status": "scope_denied"})
+        self.assertEqual(result["content"], [{"type": "text", "text": '{"status":"scope_denied"}'}])
+
+    def test_lookup_advertises_and_validates_both_input_shapes(self) -> None:
+        self._start_source_endpoint()
+        response = self._source_server.dispatch_line(
+            b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+        )
+        assert response is not None and isinstance(response["result"], dict)
+        tools = response["result"]["tools"]
+        assert isinstance(tools, list)
+        schema = next(
+            tool["inputSchema"]
+            for tool in tools
+            if isinstance(tool, dict) and tool["name"] == "lookup"
+        )
+        assert isinstance(schema, dict) and isinstance(schema["properties"], dict)
+        props = schema["properties"]
+        required: JsonObject = {
+            "consumer_id": "consumer",
+            "producer_agent_id": "agent",
+            "task_id": "task",
+            "producer_run_id": "run",
+            "subscription_id": "subscription",
+            "subject_id": ["entity_task"],
+        }
+        self.assertEqual(
+            set(props),
+            required.keys()
+            | {"source_id", "source_version", "query", "offset", "snapshot_sha256", "argv"},
+        )
+        alternatives = schema["oneOf"]
+        assert isinstance(alternatives, list)
+        self.assertIn({"required": ["argv"], "maxProperties": 1}, alternatives)
+        named_form = next(form for form in alternatives if isinstance(form, dict) and "not" in form)
+        named_required = named_form["required"]
+        assert isinstance(named_required, list)
+        self.assertCountEqual(named_required, required)
+        self.assertEqual(named_form["not"], {"required": ["argv"]})
+        self.assertIs(schema["additionalProperties"], False)
+        for name, field in props.items():
+            with self.subTest(field=name):
+                assert isinstance(field, dict)
+                if name in {"subject_id", "argv"}:
+                    self.assertEqual(field["type"], "array")
+                    self.assertEqual(field["items"], {"type": "string", "maxLength": 8192})
+                    self.assertEqual(field["maxItems"], 64)
+                else:
+                    self.assertEqual(field["type"], "integer" if name == "offset" else "string")
+        assert isinstance(props["argv"], dict)
+        self.assertIs(props["argv"]["deprecated"], True)
+        for size, expected_status in ((64, "scope_denied"), (65, "invalid_request")):
+            with self.subTest(subject_count=size):
+                subjects: list[JsonValue] = [f"outside_{i}" for i in range(size)]
+                reply = self._source_call("lookup", {**required, "subject_id": subjects})
+                self.assertEqual(reply["structuredContent"], {"status": expected_status})
+        malformed: list[JsonObject] = [
+            {k: v for k, v in required.items() if k != missing} for missing in required
+        ]
+        for name in props.keys() - {"argv", "subject_id", "offset"}:
+            malformed.append({**required, name: 1})
+        invalid_fields: tuple[tuple[str, JsonValue], ...] = (
+            ("subject_id", []),
+            ("subject_id", "entity_task"),
+            ("subject_id", [1]),
+            ("offset", True),
+            ("offset", "0"),
+            ("source_id", None),
+            ("query", "x" * 8193),
+            ("config", "another-file"),
+            ("argv", []),
+        )
+        for key, value in invalid_fields:
+            malformed.append({**required, key: value})
+        for arguments in malformed:
+            with self.subTest(keys=set(arguments)):
+                result = self._source_call("lookup", arguments)
+                self.assertEqual(result["structuredContent"], {"status": "invalid_request"})
+
     def test_memory_tools_report_malformed_arguments_as_invalid_requests(self) -> None:
         self._start_source_endpoint()
         for tool, option in (

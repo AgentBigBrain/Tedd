@@ -440,7 +440,7 @@ class SourceLifecycleTests(unittest.TestCase):
                 raise SourceArchiveError("reauthentication_required")
             yield
 
-        def operation(command: str, _argv: list[str], turn: SourceTurn) -> JsonObject:
+        def operation(command: str, _argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
             if command == "lookup":
                 turn.provider_hold = provider_hold
                 return {"status": "synthetic_google_read"}
@@ -511,7 +511,7 @@ class SourceLifecycleTests(unittest.TestCase):
 
                 def operation(
                     command: str,
-                    argv: list[str],
+                    argv: list[str] | JsonObject,
                     turn: SourceTurn,
                     *,
                     audience: str = audience,
@@ -624,7 +624,7 @@ class SourceLifecycleTests(unittest.TestCase):
 
                 def operation(
                     command: str,
-                    argv: list[str],
+                    argv: list[str] | JsonObject,
                     turn: SourceTurn,
                     *,
                     mode: str = mode,
@@ -750,6 +750,74 @@ class SourceLifecycleTests(unittest.TestCase):
                 "turn_id": "turn",
             },
         }
+
+    def test_malformed_requests_preserve_each_tool_class_and_turn_boundary(self) -> None:
+        from tedd_knowledge_graph.source_mcp import SourceMcpServer
+        from tedd_sources_mcp import SourceOperations
+
+        commands = (
+            "intake_file",
+            "import_exports",
+            "list_google",
+            "capture_google",
+            "inspect",
+            "render_image",
+            "render_document",
+            "lookup",
+            "owner_view",
+            "bind_memory",
+            "check_memory",
+        )
+        controls = ("disconnect_google", "reconnect_google")
+        protected = ("begin_turn", "end_turn", "link_sources", "acknowledge_review")
+        with tempfile.TemporaryDirectory() as directory:
+            operations = SourceOperations(Path(directory) / "unused.json")
+            server = SourceMcpServer(operations)
+            self.addCleanup(server.close)
+            self.addCleanup(operations.close)
+            server.dispatch_line(
+                b'{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}'
+            )
+            for active in (False, True):
+                if active:
+                    server.lifecycle.begin({"session_id": "thread", "turn_id": "turn"}, self.hook)
+                for name in (*commands, *controls, *protected):
+                    cases: list[object] = [None, {"unexpected": True}]
+                    if name in commands:
+                        cases.append({"argv": [1]})
+                    for arguments in cases:
+                        for metadata in (self.call, None):
+                            expected = "scope_denied"
+                            if metadata is not None and active and name in commands:
+                                expected = "invalid_request"
+                            if metadata is not None and arguments is not None and name in controls:
+                                expected = "capability_unavailable"
+                            with self.subTest(
+                                name=name, active=active, args=arguments, meta=metadata
+                            ):
+                                response = server.dispatch_line(
+                                    json.dumps(
+                                        {
+                                            "jsonrpc": "2.0",
+                                            "id": 1,
+                                            "method": "tools/call",
+                                            "params": {
+                                                "name": name,
+                                                "arguments": arguments,
+                                                **(
+                                                    {"_meta": metadata}
+                                                    if metadata is not None
+                                                    else {}
+                                                ),
+                                            },
+                                        }
+                                    ).encode()
+                                )
+                                assert response is not None and isinstance(response["result"], dict)
+                                self.assertTrue(response["result"]["isError"])
+                                self.assertEqual(
+                                    response["result"]["structuredContent"], {"status": expected}
+                                )
 
     def test_untrusted_arguments_cannot_create_an_active_turn(self) -> None:
         with self.assertRaises(SourceArchiveError):
@@ -1056,7 +1124,7 @@ class SourceLifecycleTests(unittest.TestCase):
         entered, release, finished = (threading.Event() for _ in range(3))
         published: list[bool] = []
 
-        def operation(command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
+        def operation(command: str, argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
             self.assertEqual((command, argv), ("capture-google", ["--metadata", "neutral"]))
             entered.set()
             self.assertTrue(release.wait(3))
@@ -1163,7 +1231,7 @@ class SourceLifecycleTests(unittest.TestCase):
                 waiting.set()
             return pending.get(timeout=5)
 
-        def operation(command: str, argv: list[str], turn: SourceTurn) -> JsonObject:
+        def operation(command: str, argv: list[str] | JsonObject, turn: SourceTurn) -> JsonObject:
             active.append(turn)
             entered.set()
             return {}
