@@ -249,13 +249,16 @@ and `CLAUDE_PROJECT_DIR` at launch. The preparation hook supplies `session_id`,
 `cwd`, and `tool_use_id`. Claude sends the matching `claudecode/toolUseId` in
 the lookup request metadata.
 
-An interactive Windows CLI session returned the expected metadata on four
-successive lookups. The project had saved an allow rule by the final call.
-Before release, verify that declining a prompt withholds the source and that
-a fresh call succeeds after an approval arrives past the 120-second deadline.
+On November 27, 2026, an interactive Windows CLI 2.1.330 session used a
+disposable project set to ask before each lookup. The user approved the
+first call 132.74 seconds after preparation. Tedd returned `scope_denied`
+and withheld the source reference. The user approved a fresh retry after
+6.99 seconds. Both the text and structured replies matched the command-line
+lookup. On the final call, Claude recorded the user's denial and never sent
+the lookup to Tedd.
+
 Desktop and native Claude sessions on Linux and macOS remain unverified for
-this endpoint. See the
-[source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
+this endpoint. See the [source lookup setup](CLAUDE_CODE_SETUP.md#find-a-previously-saved-source).
 
 ## Historical records
 
